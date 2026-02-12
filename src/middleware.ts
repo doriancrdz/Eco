@@ -1,12 +1,15 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { clerkMiddleware } from "@clerk/nextjs/server";
 
-const isProtectedRoute = createRouteMatcher([
-  "/settings(.*)",
-  "/api/(.*)",
-]);
+export default clerkMiddleware(async (auth, req) => {
+  const pathname = req.nextUrl.pathname;
 
-export default clerkMiddleware((auth, req) => {
-  if (isProtectedRoute(req)) auth().protect();
+  // Protect /settings
+  if (pathname.startsWith("/settings")) {
+    await auth.protect();
+  }
+
+  // (Optionnel) Protect APIs too:
+  // if (pathname.startsWith("/api/")) await auth.protect();
 });
 
 export const config = {
