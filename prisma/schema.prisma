@@ -1,0 +1,44 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                  String   @id @default(cuid())
+  clerkUserId         String   @unique
+  plan                 String   @default("free") // "free" | "student" | "pro" | "business"
+  monthKey             String   @default("") // Format: "YYYY-MM" (ex: "2026-02")
+  minutesUsedMonth     Int      @default(0) // Minutes consommées ce mois
+  extraMinutesMonth    Int      @default(0) // Minutes de packs achetés ce mois
+  stripeCustomerId     String?  @unique // ID Stripe Customer
+  stripeSubscriptionId String?  @unique // ID Stripe Subscription (si abonné)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  transactions Transaction[]
+
+  @@index([clerkUserId])
+  @@index([monthKey])
+}
+
+model Transaction {
+  id                  String   @id @default(cuid())
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  stripePriceId        String   // ID du prix Stripe (plan ou pack)
+  type                 String   // "subscription" | "pack"
+  minutesDelta         Int      @default(0) // Minutes ajoutées (pour packs) ou 0 (pour abonnements)
+  createdAt            DateTime @default(now())
+
+  @@index([userId])
+  @@index([stripeCustomerId])
+}
