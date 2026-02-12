@@ -37,7 +37,7 @@ export default function SettingsPage() {
   const fetchBillingData = async () => {
     try {
       setIsLoading(true);
-      const res = await fetch("/api/billing/me");
+      const res = await fetch("/api/billing/me", { credentials: "include" });
       
       if (!res.ok) {
         throw new Error("Erreur lors de la récupération des données");
