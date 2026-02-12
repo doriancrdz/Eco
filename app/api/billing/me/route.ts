@@ -1,44 +1,31 @@
-export const dynamic = "force-dynamic";
-
-import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { getOrCreateUserWithQuota, getAvailableMinutes } from "@/lib/billing";
-import { PLANS } from "@/lib/billingConfig";
+import { NextResponse } from "next/server";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const { userId } = await auth();
+    const { userId } = auth();
 
     if (!userId) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Non authentifié" },
+        { status: 401 }
+      );
     }
 
-    const user = await getOrCreateUserWithQuota(userId);
-    const planConfig = PLANS[user.plan];
-    const availableMinutes = getAvailableMinutes(
-      user.plan,
-      user.minutesUsedMonth,
-      user.extraMinutesMonth
-    );
-
-    return NextResponse.json({
-      plan: user.plan,
-      planName: planConfig.name,
-      minutesPerMonth: planConfig.minutesPerMonth,
-      minutesUsedMonth: user.minutesUsedMonth,
-      extraMinutesMonth: user.extraMinutesMonth,
-      availableMinutes,
-      monthKey: user.monthKey,
-    });
-  } catch (error) {
-    console.error("Erreur récupération quotas:", error);
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Erreur lors de la récupération des quotas",
+        success: true,
+        userId,
       },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("Billing API error:", error);
+    return NextResponse.json(
+      { error: "Erreur serveur" },
       { status: 500 }
     );
   }
