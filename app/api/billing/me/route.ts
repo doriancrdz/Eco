@@ -1,32 +1,25 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  try {
-    const { userId } = auth();
+  const h = headers();
+  const cookie = h.get("cookie") ?? "";
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: "Non authentifié" },
-        { status: 401 }
-      );
-    }
+  const { userId } = auth();
 
-    return NextResponse.json(
-      {
-        success: true,
-        userId,
-      },
-      { status: 200 }
-    );
-  } catch (error) {
-    console.error("Billing API error:", error);
-    return NextResponse.json(
-      { error: "Erreur serveur" },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json(
+    {
+      userId: userId ?? null,
+      hasCookie: cookie.length > 0,
+      cookieLength: cookie.length,
+      host: h.get("host"),
+      origin: h.get("origin"),
+      referer: h.get("referer"),
+    },
+    { status: 200 }
+  );
 }
