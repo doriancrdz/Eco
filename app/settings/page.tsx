@@ -18,7 +18,7 @@ interface BillingData {
 }
 
 export default function SettingsPage() {
-  const { isSignedIn, userId } = useAuth();
+  const { isLoaded, isSignedIn, userId } = useAuth();
   const router = useRouter();
   const [billingData, setBillingData] = useState<BillingData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -26,13 +26,13 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isSignedIn) {
+    if (isLoaded && !isSignedIn) {
       router.push("/sign-in?redirect_url=/settings");
       return;
     }
 
     fetchBillingData();
-  }, [isSignedIn, router]);
+  }, [isLoaded, isSignedIn, router]);
 
   const fetchBillingData = async () => {
     try {
@@ -90,7 +90,7 @@ export default function SettingsPage() {
     }
   };
 
-  if (!isSignedIn) {
+  if (isLoaded && !isSignedIn) {
     return null;
   }
 
