@@ -16,7 +16,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
+    <ClerkProvider
+      signInUrl="/sign-in"
+      signUpUrl="/sign-up"
+      afterSignInUrl="/settings"
+      afterSignUpUrl="/settings"
+    >
       <html lang="fr">
         <body className={`${inter.className} aura-gradient`}>{children}</body>
       </html>
