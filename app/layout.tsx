@@ -12,19 +12,21 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <ClerkProvider
-      signInUrl="/sign-in"
-      signUpUrl="/sign-up"
-      afterSignInUrl="/settings"
-      afterSignUpUrl="/settings"
-    >
-      <html lang="fr">
-        <body className={`${inter.className} aura-gradient`}>{children}</body>
-      </html>
-    </ClerkProvider>
+    <html lang="fr">
+      <body className={`${inter.className} aura-gradient`}>
+        <ClerkProvider
+          signInUrl="/sign-in"
+          signUpUrl="/sign-up"
+          afterSignInUrl="/settings"
+          afterSignUpUrl="/settings"
+        >
+          {children}
+        </ClerkProvider>
+      </body>
+    </html>
   );
 }
