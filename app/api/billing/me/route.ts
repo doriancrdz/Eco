@@ -13,6 +13,7 @@ export async function GET() {
 
   return NextResponse.json(
     {
+      commit: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
       userId: userId ?? null,
       hasCookie: cookie.length > 0,
       cookieLength: cookie.length,
