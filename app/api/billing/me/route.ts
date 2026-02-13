@@ -1,26 +1,46 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { headers } from "next/headers";
+import { getOrCreateUserWithQuota, getAvailableMinutes } from "@/lib/billing";
+import { PLANS } from "@/lib/billingConfig";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const h = headers();
-  const cookie = h.get("cookie") ?? "";
+  try {
+    const { userId } = await auth();
 
-  const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    }
 
-  return NextResponse.json(
-    {
-      commit: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
-      userId: userId ?? null,
-      hasCookie: cookie.length > 0,
-      cookieLength: cookie.length,
-      host: h.get("host"),
-      origin: h.get("origin"),
-      referer: h.get("referer"),
-    },
-    { status: 200 }
-  );
+    const user = await getOrCreateUserWithQuota(userId);
+    const planConfig = PLANS[user.plan];
+    const availableMinutes = getAvailableMinutes(
+      user.plan,
+      user.minutesUsedMonth,
+      user.extraMinutesMonth
+    );
+
+    return NextResponse.json({
+      plan: user.plan,
+      planName: planConfig.name,
+      minutesPerMonth: planConfig.minutesPerMonth,
+      minutesUsedMonth: user.minutesUsedMonth,
+      extraMinutesMonth: user.extraMinutesMonth,
+      availableMinutes,
+      monthKey: user.monthKey,
+    });
+  } catch (error) {
+    console.error("Erreur récupération quotas:", error);
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Erreur lors de la récupération des quotas",
+      },
+      { status: 500 }
+    );
+  }
 }
