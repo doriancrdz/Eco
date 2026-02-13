@@ -9,7 +9,7 @@ export async function GET() {
   const h = headers();
   const cookie = h.get("cookie") ?? "";
 
-  const { userId } = auth();
+  const { userId } = await auth();
 
   return NextResponse.json(
     {
