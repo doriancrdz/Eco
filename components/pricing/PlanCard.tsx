@@ -210,13 +210,18 @@ export default function PlanCard({
             </div>
 
             <div className="space-y-4 mb-8">
-              {[
-                { text: <><strong>{plan.minutesPerMonth} minutes</strong> par mois</>, delay: 0.3 },
-                { text: <>Maximum <strong>30 minutes</strong> par enregistrement</>, delay: 0.35 },
-                ...(planKey !== "free"
-                  ? [{ text: <>Transcription + résumé illimités</>, delay: 0.4 }]
-                  : [{ text: <>Packs de minutes disponibles</>, delay: 0.4 }]),
-              ].map((item, idx) => (
+              {(planKey === "free"
+                ? [
+                    { text: "10 minutes offertes", delay: 0.3 },
+                    { text: "Transcription + résumé + points clés et notions à retenir", delay: 0.35 },
+                    { text: "Packs de minutes disponibles", delay: 0.4 },
+                  ]
+                : [
+                    { text: <><strong>{plan.minutesPerMonth} minutes</strong> par mois</>, delay: 0.3 },
+                    { text: <>Maximum <strong>30 minutes</strong> par enregistrement</>, delay: 0.35 },
+                    { text: "Transcription + résumés illimités + points clés et notions à retenir", delay: 0.4 },
+                  ]
+              ).map((item, idx) => (
                 <motion.div
                   key={idx}
                   initial={{ opacity: 0, x: -10 }}
@@ -238,49 +243,49 @@ export default function PlanCard({
             </div>
           </div>
 
-          <motion.button
-            whileHover={{
-              scale: isLoading ? 1 : 1.02,
-              y: isLoading ? 0 : -2,
-            }}
-            whileTap={{ scale: 0.98 }}
-            onClick={onSelect}
-            disabled={isLoading}
-            className={`w-full py-3.5 px-4 rounded-xl font-semibold text-sm transition-all duration-250 relative overflow-hidden ${
-              isMostPopular
-                ? "bg-gradient-to-r from-gray-900 to-gray-800 text-white hover:from-gray-800 hover:to-gray-700 shadow-xl hover:shadow-[0_10px_30px_rgba(0,0,0,0.3)] hover:shadow-emerald-500/20"
-                : isFree
-                ? "bg-white border-2 border-gray-300 text-gray-900 hover:bg-gray-50 hover:border-gray-400"
-                : "bg-gradient-to-r from-gray-800 to-gray-700 text-white hover:from-gray-700 hover:to-gray-600 shadow-lg"
-            } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
-          >
-            {isLoading ? (
-              <span className="flex items-center justify-center gap-2">
+          {!isFree && (
+            <motion.button
+              whileHover={{
+                scale: isLoading ? 1 : 1.02,
+                y: isLoading ? 0 : -2,
+              }}
+              whileTap={{ scale: 0.98 }}
+              onClick={onSelect}
+              disabled={isLoading}
+              className={`w-full py-3.5 px-4 rounded-xl font-semibold text-sm transition-all duration-250 relative overflow-hidden ${
+                isMostPopular
+                  ? "bg-gradient-to-r from-gray-900 to-gray-800 text-white hover:from-gray-800 hover:to-gray-700 shadow-xl hover:shadow-[0_10px_30px_rgba(0,0,0,0.3)] hover:shadow-emerald-500/20"
+                  : "bg-gradient-to-r from-gray-800 to-gray-700 text-white hover:from-gray-700 hover:to-gray-600 shadow-lg"
+              } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+            >
+              {isLoading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <motion.span
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    className="w-4 h-4 border-2 border-current border-t-transparent rounded-full"
+                  />
+                  Chargement...
+                </span>
+              ) : (
                 <motion.span
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                  className="w-4 h-4 border-2 border-current border-t-transparent rounded-full"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="relative z-10"
+                >
+                  Choisir ce plan
+                </motion.span>
+              )}
+              {!isLoading && isMostPopular && (
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                  initial={{ x: "-100%" }}
+                  whileHover={{ x: "100%" }}
+                  transition={{ duration: 0.6 }}
                 />
-                Chargement...
-              </span>
-            ) : (
-              <motion.span
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="relative z-10"
-              >
-                {isFree ? "Commencer gratuitement" : "Choisir ce plan"}
-              </motion.span>
-            )}
-            {!isLoading && isMostPopular && (
-              <motion.div
-                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                initial={{ x: "-100%" }}
-                whileHover={{ x: "100%" }}
-                transition={{ duration: 0.6 }}
-              />
-            )}
-          </motion.button>
+              )}
+            </motion.button>
+          )}
         </div>
       </motion.div>
     </motion.div>
