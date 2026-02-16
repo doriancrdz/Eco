@@ -61,12 +61,12 @@ export default function PlanBadge() {
   if (loading) {
     return (
       <div
-        className="bg-white/50 backdrop-blur-md border border-white/60 rounded-full px-4 py-2 flex items-center gap-3 h-9 animate-pulse"
+        className="bg-white/30 backdrop-blur-md border border-white/30 rounded-full px-4 py-2 flex items-center gap-2 h-9 animate-pulse"
         style={{ minWidth: 120 }}
       >
-        <div className="w-4 h-4 rounded bg-gray-200" />
-        <div className="h-3 bg-gray-200 rounded w-8" />
-        <div className="h-3 bg-gray-200 rounded w-12" />
+        <div className="w-4 h-4 rounded bg-white/40" />
+        <div className="h-3 bg-white/40 rounded w-8" />
+        <div className="h-3 bg-white/40 rounded w-12" />
       </div>
     );
   }
@@ -81,7 +81,7 @@ export default function PlanBadge() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       onClick={() => router.push("/settings")}
-      className="bg-white/50 backdrop-blur-md border border-white/60 rounded-full px-4 py-2 flex items-center gap-3 text-sm font-bold cursor-pointer hover:bg-white/70 transition-all"
+      className="bg-white/30 backdrop-blur-md border border-white/30 rounded-full px-4 py-2 flex items-center gap-2 text-sm font-bold cursor-pointer hover:bg-white/40 transition-all"
     >
       <Clock className="w-4 h-4 text-gray-600" />
       <span>{minutesLeft} min</span>

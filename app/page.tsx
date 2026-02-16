@@ -208,13 +208,13 @@ export default function Home() {
 
       {/* Desktop: Sidebar fixe à gauche. Mobile/Tablet: drawer */}
       <Sidebar
-        key={refreshKey}
         selectedFolder={selectedFolder}
         onSelectFolder={setSelectedFolder}
         selectedEco={selectedEco}
         onSelectEco={setSelectedEco}
         onClose={() => setSidebarOpen(false)}
         isOpen={sidebarOpen}
+        refreshKey={refreshKey}
         onNavigateHome={handleBackToHome}
         onNavigatePricing={() => router.push("/pricing")}
         onNavigateSettings={() => router.push("/settings")}
@@ -229,9 +229,7 @@ export default function Home() {
         {!isFocusMode && (
           <Header
             onGoHome={handleBackToHome}
-            onStartRecording={handleStartRecording}
-            isDemoMode={isDemoMode}
-            onMenuClick={() => setSidebarOpen(true)}
+            onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
             isDetailView={!!selectedEco}
             onShare={selectedEco ? async () => {
               const url = window.location.href;
@@ -244,7 +242,6 @@ export default function Home() {
                   });
                 } catch {
                   await navigator.clipboard.writeText(url);
-                  // Toast "Lien copié !" - simple alert for now
                   alert("Lien copié !");
                 }
               } else {
@@ -259,7 +256,7 @@ export default function Home() {
         )}
 
         <main className="flex-1 overflow-y-auto overflow-x-hidden pt-6">
-          <div className="max-w-4xl md:max-w-2xl lg:max-w-[960px] mx-auto px-4 md:px-6 lg:px-8">
+          <div className={`${sidebarOpen ? "" : "max-w-3xl mx-auto"} px-4 md:px-6 lg:px-8`}>
             <AnimatePresence mode="wait">
             {!selectedEco && !isFocusMode && !viewAllEcos && !isProcessing && (
             <motion.div
@@ -268,92 +265,84 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -16 }}
               transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-              className="flex-1 flex flex-col p-4 md:p-8 gap-8"
+              className="flex-1 flex flex-col items-center justify-center min-h-[60vh] p-4 md:p-8"
             >
-              <div className="flex items-center justify-center">
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
-                className="floating-card rounded-card border border-white/40 p-16 max-w-lg w-full"
-              >
-                <div className="text-center space-y-8">
-                  <motion.div
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1, duration: 0.4, ease: "easeOut" }}
-                    className="space-y-3"
-                  >
-                    <h2 className="text-3xl font-semibold text-gray-900 tracking-tight">Nouvel Eco</h2>
-                    <p className="text-gray-600 text-base leading-relaxed">
-                      Appuyez pour commencer
-                    </p>
-                  </motion.div>
-                  
-                  <motion.div
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2, duration: 0.4, ease: "easeOut" }}
-                    className="flex justify-center pt-4"
-                  >
-                    <Logo
-                      state="idle"
-                      size={160}
-                      onClick={handleStartRecording}
-                      isClickable
-                      showMicroWarning={false}
-                    />
-                  </motion.div>
-                  <motion.div
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.25, duration: 0.4, ease: "easeOut" }}
-                    className="flex justify-center pt-4"
-                  >
-                    {userPlan === "free" ? (
-                      <motion.button
-                        whileHover={{ scale: 1.05, y: -2 }}
-                        whileTap={{ scale: 0.97 }}
-                        onClick={() => router.push("/pricing")}
-                        onHoverStart={() => setUpgradeHovered(true)}
-                        onHoverEnd={() => setUpgradeHovered(false)}
-                        className="relative mt-4 px-6 py-2.5 rounded-full font-bold text-sm bg-gradient-to-r from-[#99f6e4] via-[#7dd3fc] to-[#a5b4fc] text-gray-900 shadow-lg hover:shadow-xl border border-white/40 backdrop-blur-sm flex items-center gap-2 transition-all duration-300 overflow-hidden"
-                      >
-                        <span className="relative z-10 flex items-center gap-2">
-                          <Sparkles className="w-4 h-4 shrink-0" />
-                          Passer à Pro — dès 19€/mois
-                          <ArrowRight className="w-4 h-4 shrink-0" />
-                        </span>
-                        <motion.div
-                          className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none"
-                          animate={{ x: upgradeHovered ? "100%" : "-100%" }}
-                          transition={{ duration: 0.6 }}
-                        />
-                      </motion.button>
-                    ) : (
-                      <motion.button
-                        whileHover={{ scale: 1.05, y: -2 }}
-                        whileTap={{ scale: 0.97 }}
-                        onClick={() => router.push("/settings")}
-                        className="mt-4 px-6 py-2.5 rounded-full font-bold text-sm bg-white/60 border border-white/50 backdrop-blur-md text-gray-900 hover:bg-white/90 transition-all flex items-center gap-2"
-                      >
-                        <Settings className="w-4 h-4" />
-                        Gérer mon plan
-                      </motion.button>
-                    )}
-                  </motion.div>
-                </div>
-              </motion.div>
+              {/* Halo derrière le logo */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none -z-10">
+                <div className="bg-gradient-radial from-white/20 to-transparent blur-3xl w-96 h-96" />
               </div>
-              {/* Section Derniers ECOs */}
+
+              <motion.div
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2, duration: 0.4, ease: "easeOut" }}
+                className="relative"
+              >
+                <Logo
+                  state="idle"
+                  size={280}
+                  onClick={handleStartRecording}
+                  isClickable
+                  showMicroWarning={false}
+                />
+              </motion.div>
+
+              <motion.h1
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1, duration: 0.4, ease: "easeOut" }}
+                className="text-5xl font-extrabold tracking-tight text-gray-900 mt-8"
+              >
+                Nouveau ECO
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15, duration: 0.4, ease: "easeOut" }}
+                className="text-lg text-gray-500 font-medium mt-2 opacity-80"
+              >
+                Appuyez pour commencer
+              </motion.p>
+
+              {userPlan === "free" ? (
+                <motion.button
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => router.push("/pricing")}
+                  onHoverStart={() => setUpgradeHovered(true)}
+                  onHoverEnd={() => setUpgradeHovered(false)}
+                  className="relative mt-6 px-7 py-3 rounded-full font-bold text-sm bg-gradient-to-r from-[#99f6e4] via-[#7dd3fc] to-[#a5b4fc] text-gray-900 shadow-lg hover:shadow-xl border border-white/40 backdrop-blur-sm flex items-center gap-2 transition-all duration-300 overflow-hidden"
+                >
+                  <Sparkles className="w-4 h-4 shrink-0 relative z-10" />
+                  <span className="relative z-10">Passer à Pro — dès 19€/mois</span>
+                  <ArrowRight className="w-4 h-4 shrink-0 relative z-10" />
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none"
+                    animate={{ x: upgradeHovered ? "100%" : "-100%" }}
+                    transition={{ duration: 0.6 }}
+                  />
+                </motion.button>
+              ) : (
+                <motion.button
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => router.push("/settings")}
+                  className="mt-6 px-7 py-3 rounded-full font-bold text-sm bg-white/60 border border-white/50 backdrop-blur-md text-gray-900 hover:bg-white/90 transition-all flex items-center gap-2"
+                >
+                  <Settings className="w-4 h-4" />
+                  Gérer mon plan
+                </motion.button>
+              )}
+
+              {/* Section Vos derniers ECOs */}
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3, duration: 0.4 }}
-                className="mt-8 space-y-4"
+                className="mt-16 w-full max-w-4xl space-y-4"
               >
                 <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold text-gray-800">Derniers ECOs</h2>
+                  <h2 className="text-xl font-bold text-gray-800">Vos derniers ECOs</h2>
                   {getEcos().length > 0 && (
                     <motion.button
                       whileHover={{ scale: 1.02 }}
