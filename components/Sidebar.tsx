@@ -94,9 +94,9 @@ export default function Sidebar({
                 className="flex flex-col h-full min-w-[280px]"
               >
                 {/* Logo ECO */}
-                <div className="px-4 py-4 flex items-center gap-2 shrink-0">
-                  <div className="w-5 h-5 relative shrink-0">
-                    <Image src="/logo-eco.png" alt="" width={20} height={20} className="object-contain" />
+                <div className="px-4 py-4 flex items-center gap-2 shrink-0 bg-transparent">
+                  <div className="w-5 h-5 relative shrink-0 bg-transparent border-0">
+                    <Image src="/logo-eco.png" alt="" width={20} height={20} className="bg-transparent block object-contain" />
                   </div>
                   <span className="font-bold text-gray-900">ECO</span>
                 </div>

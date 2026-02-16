@@ -136,7 +136,7 @@ export default function Logo({
         <img
           src="/logo-eco.png"
           alt="ECO"
-          className="block w-full h-full object-contain select-none"
+          className="bg-transparent block w-full h-full object-contain select-none"
         />
       </motion.div>
       {showMicroWarning && (

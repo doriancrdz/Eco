@@ -35,7 +35,7 @@ export default function Header({
           className="p-0 bg-transparent border-0 rounded-none hover:opacity-90 transition-opacity shrink-0"
           aria-label="Retour à l'accueil"
         >
-          <Image src="/logo-eco.png" alt="" width={40} height={40} className="block h-10 w-10 object-contain select-none" />
+          <Image src="/logo-eco.png" alt="" width={40} height={40} className="bg-transparent block h-10 w-10 object-contain select-none" />
         </motion.button>
         {onToggleSidebar && (
           <motion.button
@@ -82,7 +82,7 @@ export default function Header({
         className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 bg-transparent p-0 border-0 z-10"
         aria-label="Retour à l'accueil"
       >
-        <Image src="/logo-eco.png" alt="" width={36} height={36} className="block h-9 w-9 object-contain select-none" />
+        <Image src="/logo-eco.png" alt="" width={36} height={36} className="bg-transparent block h-9 w-9 object-contain select-none" />
         <span className="font-bold text-gray-900 text-lg">ECO</span>
       </motion.button>
 
