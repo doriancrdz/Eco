@@ -324,7 +324,7 @@ export default function Home() {
                   className="relative mt-6 px-7 py-3 rounded-full font-bold text-sm bg-gradient-to-r from-[#99f6e4] via-[#7dd3fc] to-[#a5b4fc] text-gray-900 shadow-lg hover:shadow-xl border border-white/40 backdrop-blur-sm flex items-center gap-2 transition-all duration-300 overflow-hidden"
                 >
                   <Sparkles className="w-4 h-4 shrink-0 relative z-10" />
-                  <span className="relative z-10">Passer à Pro — dès 19€/mois</span>
+                  <span className="relative z-10">Passer à Student — dès 19€/mois</span>
                   <ArrowRight className="w-4 h-4 shrink-0 relative z-10" />
                   <motion.div
                     className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none"
