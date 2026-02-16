@@ -1,5 +1,6 @@
 import { prisma } from "./prisma";
 import { PLANS, PlanType } from "./billingConfig";
+import type { BillingMode } from "./billingConfig";
 
 /**
  * Obtient la clé du mois actuel au format "YYYY-MM" (timezone Europe/Paris)
@@ -219,20 +220,30 @@ export async function creditExtraMinutes(
 }
 
 /**
- * Met à jour le plan d'un utilisateur
+ * Met à jour le plan d'un utilisateur (et champs Stripe / engagement)
  */
 export async function updateUserPlan(
   userId: string,
   plan: PlanType,
   stripeCustomerId?: string,
-  stripeSubscriptionId?: string
+  stripeSubscriptionId?: string | null,
+  options?: {
+    stripePriceId?: string | null;
+    billingMode?: BillingMode | null;
+    commitmentEndAt?: Date | null;
+    stripeSubscriptionId?: string | null;
+  }
 ): Promise<void> {
   await prisma.user.update({
     where: { id: userId },
     data: {
       plan,
-      ...(stripeCustomerId && { stripeCustomerId }),
-      ...(stripeSubscriptionId && { stripeSubscriptionId }),
+      ...(stripeCustomerId !== undefined && stripeCustomerId !== null && { stripeCustomerId }),
+      ...(stripeSubscriptionId !== undefined && { stripeSubscriptionId }),
+      ...(options?.stripeSubscriptionId !== undefined && { stripeSubscriptionId: options.stripeSubscriptionId }),
+      ...(options?.stripePriceId !== undefined && { stripePriceId: options.stripePriceId }),
+      ...(options?.billingMode !== undefined && { billingMode: options.billingMode }),
+      ...(options?.commitmentEndAt !== undefined && { commitmentEndAt: options.commitmentEndAt }),
     },
   });
 }

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowLeft, Package, CreditCard, Calendar, Clock } from "lucide-react";
+import { ArrowLeft, Package, CreditCard, Calendar, Clock, AlertCircle } from "lucide-react";
 import Link from "next/link";
 
 interface BillingData {
@@ -16,6 +16,8 @@ interface BillingData {
   availableMinutes: number;
   monthKey: string;
   quotaResetAt: string | null;
+  commitmentEndAt: string | null;
+  canCancel: boolean;
 }
 
 export default function SettingsPage() {
@@ -24,6 +26,7 @@ export default function SettingsPage() {
   const [billingData, setBillingData] = useState<BillingData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState(false);
 
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
@@ -33,6 +36,22 @@ export default function SettingsPage() {
 
     fetchBillingData();
   }, [isLoaded, isSignedIn, router]);
+
+  const handleCancelSubscription = async () => {
+    if (!billingData?.canCancel) return;
+    setCancelling(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/billing/cancel", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Erreur lors de l'annulation");
+      await fetchBillingData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Une erreur est survenue");
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   const fetchBillingData = async () => {
     try {
@@ -145,6 +164,12 @@ export default function SettingsPage() {
                 </span>
               </div>
             </div>
+            {billingData?.commitmentEndAt && !billingData?.canCancel && (
+              <div className="mt-3 flex items-center gap-2 text-sm text-amber-700 bg-amber-50/80 border border-amber-200/60 rounded-xl px-3 py-2">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span>Engagement jusqu&apos;au {new Date(billingData.commitmentEndAt).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</span>
+              </div>
+            )}
           </div>
 
           {/* Quotas */}
@@ -239,6 +264,26 @@ export default function SettingsPage() {
               Acheter un pack
             </motion.button>
           </div>
+
+          {billingData && billingData.plan !== "free" && (
+            <div className="mt-6 pt-6 border-t border-white/40">
+              {billingData.canCancel ? (
+                <motion.button
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                  onClick={handleCancelSubscription}
+                  disabled={cancelling}
+                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-200 rounded-xl transition-colors disabled:opacity-50"
+                >
+                  {cancelling ? "Annulation en cours..." : "Résilier mon abonnement"}
+                </motion.button>
+              ) : (
+                <p className="text-sm text-gray-500">
+                  L&apos;annulation sera possible après la date d&apos;engagement.
+                </p>
+              )}
+            </div>
+          )}
         </motion.div>
       </div>
     </div>

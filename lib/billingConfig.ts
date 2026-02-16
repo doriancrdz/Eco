@@ -12,6 +12,9 @@
  * STRIPE_PRICE_PRO_YEARLY=price_xxx
  * STRIPE_PRICE_BUSINESS_MONTHLY=price_xxx
  * STRIPE_PRICE_BUSINESS_YEARLY=price_xxx
+ * STRIPE_PRICE_STUDENT_ANNUAL_COMMIT_MONTHLY=price_xxx  (paiement mensuel, engagement 12 mois)
+ * STRIPE_PRICE_PRO_ANNUAL_COMMIT_MONTHLY=price_xxx
+ * STRIPE_PRICE_BUSINESS_ANNUAL_COMMIT_MONTHLY=price_xxx
  * STRIPE_PRICE_PACK_120=price_xxx
  * STRIPE_PRICE_PACK_600=price_xxx
  * STRIPE_PRICE_PACK_3000=price_xxx
@@ -19,6 +22,8 @@
 
 export type PlanType = "free" | "student" | "pro" | "business";
 export type BillingPeriod = "monthly" | "yearly";
+/** yearly_upfront = paiement annuel en 1 fois ; annual_commit_monthly = mensuel avec engagement 12 mois */
+export type BillingMode = "monthly" | "yearly_upfront" | "annual_commit_monthly";
 
 export interface PlanConfig {
   name: string;
@@ -108,6 +113,44 @@ export function getStripePriceIdForPack(packIndex: number): string {
   }
 
   return priceId;
+}
+
+/** Plans payants (sans free) pour annual commit monthly */
+const PAID_PLANS: PlanType[] = ["student", "pro", "business"];
+
+/**
+ * Récupère le PRICE_ID Stripe pour un plan en "annual commit monthly" (paiement mensuel, engagement 12 mois)
+ * @throws Error si le PRICE_ID n'est pas configuré
+ */
+export function getStripePriceIdAnnualCommitMonthly(plan: PlanType): string {
+  if (plan === "free") {
+    throw new Error("Le plan free n'a pas de price annual_commit_monthly");
+  }
+  const envKey = `STRIPE_PRICE_${plan.toUpperCase()}_ANNUAL_COMMIT_MONTHLY`;
+  const priceId = process.env[envKey];
+
+  if (!priceId || priceId.trim() === "") {
+    throw new Error(
+      `PRICE_ID manquant pour ${plan} (annual_commit_monthly). Ajoutez ${envKey} dans .env.local`
+    );
+  }
+
+  return priceId;
+}
+
+/**
+ * Vérifie si un priceId Stripe correspond au mode annual_commit_monthly (par comparaison aux env)
+ */
+export function isAnnualCommitMonthlyPriceId(priceId: string): boolean {
+  if (!priceId) return false;
+  for (const plan of PAID_PLANS) {
+    try {
+      if (getStripePriceIdAnnualCommitMonthly(plan) === priceId) return true;
+    } catch {
+      // env non configuré pour ce plan, continuer
+    }
+  }
+  return false;
 }
 
 /**

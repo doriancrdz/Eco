@@ -6,7 +6,7 @@ import { getStripeOrNull } from "@/lib/stripe";
 import { getOrCreateUserWithQuota, updateUserPlan, creditExtraMinutes } from "@/lib/billing";
 import { getCurrentMonthKey } from "@/lib/billing";
 import { prisma } from "@/lib/prisma";
-import { PlanType } from "@/lib/billingConfig";
+import { PlanType, isAnnualCommitMonthlyPriceId } from "@/lib/billingConfig";
 
 export async function POST(req: NextRequest) {
   const stripe = getStripeOrNull();
@@ -65,12 +65,30 @@ export async function POST(req: NextRequest) {
         // Abonnement créé
         const subscriptionId = session.subscription as string;
         const customerId = session.customer as string;
+        const priceId = session.metadata.priceId as string | undefined;
+        const billingMode = (session.metadata.billingMode as string) || "monthly";
+
+        let commitmentEndAt: Date | null = null;
+        if (billingMode === "annual_commit_monthly" && subscriptionId) {
+          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+          const periodStart = subscription.current_period_start;
+          if (periodStart) {
+            const end = new Date(periodStart * 1000);
+            end.setUTCMonth(end.getUTCMonth() + 12);
+            commitmentEndAt = end;
+          }
+        }
 
         await updateUserPlan(
           user.id,
           session.metadata.plan as PlanType,
           customerId,
-          subscriptionId
+          subscriptionId,
+          {
+            stripePriceId: priceId || null,
+            billingMode: billingMode as "monthly" | "yearly_upfront" | "annual_commit_monthly",
+            commitmentEndAt,
+          }
         );
 
         // Logger la transaction
@@ -79,7 +97,7 @@ export async function POST(req: NextRequest) {
             userId: user.id,
             stripeCustomerId: customerId,
             stripeSubscriptionId: subscriptionId,
-            stripePriceId: session.metadata.priceId || "",
+            stripePriceId: priceId || "",
             type: "subscription",
             minutesDelta: 0,
           },
@@ -117,9 +135,28 @@ export async function POST(req: NextRequest) {
       });
 
       if (user && subscription.status === "active") {
-        // Mettre à jour le plan si nécessaire (basé sur le price_id)
-        // Pour simplifier, on garde le plan actuel
-        // Une version plus avancée pourrait mapper price_id -> plan
+        const priceId = subscription.items?.data?.[0]?.price?.id as string | undefined;
+        const periodStart = subscription.current_period_start;
+        const interval = subscription.items?.data?.[0]?.price?.recurring?.interval;
+        const billingMode = priceId && isAnnualCommitMonthlyPriceId(priceId)
+          ? "annual_commit_monthly"
+          : interval === "year"
+          ? "yearly_upfront"
+          : "monthly";
+        let commitmentEndAt: Date | null = null;
+        if (priceId && isAnnualCommitMonthlyPriceId(priceId) && periodStart) {
+          const end = new Date(periodStart * 1000);
+          end.setUTCMonth(end.getUTCMonth() + 12);
+          commitmentEndAt = end;
+        }
+        await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            ...(priceId && { stripePriceId: priceId }),
+            billingMode,
+            ...(commitmentEndAt && { commitmentEndAt }),
+          },
+        });
       }
     } else if (event.type === "customer.subscription.deleted") {
       const subscription = event.data.object as any;
@@ -130,8 +167,12 @@ export async function POST(req: NextRequest) {
       });
 
       if (user) {
-        // Rétrograder vers Free
-        await updateUserPlan(user.id, "free");
+        await updateUserPlan(user.id, "free", undefined, null, {
+          stripeSubscriptionId: null,
+          stripePriceId: null,
+          billingMode: null,
+          commitmentEndAt: null,
+        });
       }
     }
 

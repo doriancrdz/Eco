@@ -11,16 +11,19 @@ datasource db {
 }
 
 model User {
-  id                  String   @id @default(cuid())
-  clerkUserId         String   @unique
-  plan                 String   @default("free") // "free" | "student" | "pro" | "business"
-  monthKey             String   @default("") // Format: "YYYY-MM" (ex: "2026-02")
-  minutesUsedMonth     Int      @default(0) // Minutes consommées ce mois
-  extraMinutesMonth    Int      @default(0) // Minutes de packs achetés ce mois
-  stripeCustomerId     String?  @unique // ID Stripe Customer
+  id                  String    @id @default(cuid())
+  clerkUserId         String    @unique
+  plan                String    @default("free") // "free" | "student" | "pro" | "business"
+  monthKey            String    @default("") // Format: "YYYY-MM" (ex: "2026-02")
+  minutesUsedMonth    Int       @default(0) // Minutes consommées ce mois
+  extraMinutesMonth   Int       @default(0) // Minutes de packs achetés ce mois
+  stripeCustomerId    String?   @unique // ID Stripe Customer
   stripeSubscriptionId String?  @unique // ID Stripe Subscription (si abonné)
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  stripePriceId       String?   // Price ID Stripe actif (pour détecter annual_commit_monthly)
+  billingMode         String?   // "monthly" | "yearly_upfront" | "annual_commit_monthly"
+  commitmentEndAt     DateTime? // Fin d'engagement 12 mois (si annual_commit_monthly)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   transactions Transaction[]
   ecos         Eco[]

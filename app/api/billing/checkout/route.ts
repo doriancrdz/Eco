@@ -5,10 +5,12 @@ import { auth } from "@clerk/nextjs/server";
 import { getStripeOrNull } from "@/lib/stripe";
 import {
   getStripePriceId,
+  getStripePriceIdAnnualCommitMonthly,
   getStripePriceIdForPack,
   validateStripeConfig,
   PlanType,
   BillingPeriod,
+  BillingMode,
 } from "@/lib/billingConfig";
 import { getOrCreateUserWithQuota } from "@/lib/billing";
 
@@ -42,7 +44,7 @@ export async function POST(req: NextRequest) {
     if (!stripe) return NextResponse.json({ error: "Stripe non configuré" }, { status: 503 });
 
     const body = await req.json();
-    const { type, plan, period, packIndex } = body;
+    const { type, plan, period, packIndex, billingMode } = body;
 
     if (type === "subscription") {
       // Achat d'un abonnement
@@ -53,7 +55,17 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const priceId = getStripePriceId(plan as PlanType, period as BillingPeriod);
+      const mode: BillingMode =
+        period === "yearly" && billingMode === "annual_commit_monthly"
+          ? "annual_commit_monthly"
+          : period === "yearly"
+          ? "yearly_upfront"
+          : "monthly";
+
+      const priceId =
+        mode === "annual_commit_monthly"
+          ? getStripePriceIdAnnualCommitMonthly(plan as PlanType)
+          : getStripePriceId(plan as PlanType, period as BillingPeriod);
 
       // Récupérer ou créer l'utilisateur pour obtenir/create le Stripe Customer
       const user = await getOrCreateUserWithQuota(userId);
@@ -89,6 +101,8 @@ export async function POST(req: NextRequest) {
           type: "subscription",
           plan,
           period,
+          billingMode: mode,
+          priceId,
         },
       });
 

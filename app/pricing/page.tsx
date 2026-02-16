@@ -11,6 +11,7 @@ import PackCard from "@/components/pricing/PackCard";
 import PricingComparison from "@/components/pricing/PricingComparison";
 import TrustLine from "@/components/pricing/TrustLine";
 import PricingFAQ from "@/components/pricing/PricingFAQ";
+import AnnualChoiceModal, { type AnnualBillingChoice } from "@/components/pricing/AnnualChoiceModal";
 import { PLANS, PACKS, PlanType } from "@/lib/billingConfig";
 import { Mic, FileText, Clock, Calendar } from "lucide-react";
 
@@ -21,6 +22,8 @@ export default function PricingPage() {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [loadingPack, setLoadingPack] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [annualModalOpen, setAnnualModalOpen] = useState(false);
+  const [selectedPlanForModal, setSelectedPlanForModal] = useState<PlanType | null>(null);
 
   useEffect(() => {
     // Masquer l'erreur après 5 secondes
@@ -30,7 +33,7 @@ export default function PricingPage() {
     }
   }, [error]);
 
-  const handlePlanSelect = async (planKey: PlanType) => {
+  const doCheckout = async (planKey: PlanType, billingMode?: AnnualBillingChoice) => {
     if (!isSignedIn) {
       router.push(`/sign-in?redirect_url=/pricing`);
       return;
@@ -40,14 +43,19 @@ export default function PricingPage() {
     setError(null);
 
     try {
+      const body: Record<string, string> = {
+        type: "subscription",
+        plan: planKey,
+        period: isYearly ? "yearly" : "monthly",
+      };
+      if (isYearly && billingMode) {
+        body.billingMode = billingMode;
+      }
+
       const res = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "subscription",
-          plan: planKey,
-          period: isYearly ? "yearly" : "monthly",
-        }),
+        body: JSON.stringify(body),
       });
 
       const data = await res.json();
@@ -65,7 +73,6 @@ export default function PricingPage() {
           ? err.message
           : "Une erreur est survenue. Veuillez réessayer.";
       
-      // Message user-friendly si Stripe n'est pas configuré
       if (message.includes("PRICE_ID") || message.includes("Stripe")) {
         setError(
           "Configuration de paiement en cours. Veuillez contacter le support ou réessayer plus tard."
@@ -76,6 +83,26 @@ export default function PricingPage() {
     } finally {
       setLoadingPlan(null);
     }
+  };
+
+  const handlePlanSelect = (planKey: PlanType) => {
+    if (!isSignedIn) {
+      router.push(`/sign-in?redirect_url=/pricing`);
+      return;
+    }
+    if (isYearly && planKey !== "free") {
+      setSelectedPlanForModal(planKey);
+      setAnnualModalOpen(true);
+      return;
+    }
+    doCheckout(planKey);
+  };
+
+  const handleAnnualChoice = (choice: AnnualBillingChoice) => {
+    if (!selectedPlanForModal) return;
+    doCheckout(selectedPlanForModal, choice);
+    setAnnualModalOpen(false);
+    setSelectedPlanForModal(null);
   };
 
   const handlePackSelect = async (packIndex: number) => {
@@ -240,6 +267,19 @@ export default function PricingPage() {
             ))}
           </motion.div>
         </div>
+
+        <AnnualChoiceModal
+          isOpen={annualModalOpen}
+          onClose={() => {
+            setAnnualModalOpen(false);
+            setSelectedPlanForModal(null);
+          }}
+          planName={selectedPlanForModal ? PLANS[selectedPlanForModal].name : ""}
+          planKey={selectedPlanForModal ?? ""}
+          priceYearly={selectedPlanForModal ? PLANS[selectedPlanForModal].priceYearly : 0}
+          onChoose={handleAnnualChoice}
+          isLoading={!!loadingPlan}
+        />
 
         {/* Comparaison rapide */}
         <div className="max-w-6xl mx-auto px-4 mb-16">

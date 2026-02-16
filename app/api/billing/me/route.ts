@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getOrCreateUserWithQuota, getAvailableMinutes } from "@/lib/billing";
 import { PLANS } from "@/lib/billingConfig";
 import { getStripeOrNull } from "@/lib/stripe";
+import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,6 +23,19 @@ export async function GET() {
       user.minutesUsedMonth,
       user.extraMinutesMonth
     );
+
+    const fullUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { commitmentEndAt: true, billingMode: true },
+    });
+    const commitmentEndAt = fullUser?.commitmentEndAt?.toISOString() ?? null;
+    const billingMode = fullUser?.billingMode ?? null;
+    const now = new Date();
+    const canCancel =
+      !user.stripeSubscriptionId ||
+      user.plan === "free" ||
+      billingMode !== "annual_commit_monthly" ||
+      (fullUser?.commitmentEndAt ? now >= fullUser.commitmentEndAt : true);
 
     // Récupérer current_period_end depuis Stripe si l'utilisateur a une subscription
     let quotaResetAt: string | null = null;
@@ -53,6 +67,8 @@ export async function GET() {
       availableMinutes,
       monthKey: user.monthKey,
       quotaResetAt,
+      commitmentEndAt,
+      canCancel,
     });
   } catch (error) {
     console.error("Erreur récupération quotas:", error);
