@@ -15,6 +15,7 @@ interface BillingData {
   extraMinutesMonth: number;
   availableMinutes: number;
   monthKey: string;
+  quotaResetAt: string | null;
 }
 
 export default function SettingsPage() {
@@ -237,7 +238,16 @@ export default function SettingsPage() {
                   Reset
                 </div>
                 <div className="text-lg font-semibold text-gray-900">
-                  Le 1er du mois
+                  {billingData?.quotaResetAt
+                    ? new Date(billingData.quotaResetAt).toLocaleDateString(
+                        "fr-FR",
+                        {
+                          day: "numeric",
+                          month: "long",
+                          year: "numeric",
+                        }
+                      )
+                    : "—"}
                 </div>
               </div>
             </div>

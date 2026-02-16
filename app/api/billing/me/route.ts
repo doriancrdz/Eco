@@ -2,6 +2,7 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { getOrCreateUserWithQuota, getAvailableMinutes } from "@/lib/billing";
 import { PLANS } from "@/lib/billingConfig";
+import { getStripeOrNull } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,6 +23,27 @@ export async function GET() {
       user.extraMinutesMonth
     );
 
+    // Récupérer current_period_end depuis Stripe si l'utilisateur a une subscription
+    let quotaResetAt: string | null = null;
+    if (user.stripeSubscriptionId && user.plan !== "free") {
+      const stripe = getStripeOrNull();
+      if (stripe) {
+        try {
+          const subscription = await stripe.subscriptions.retrieve(
+            user.stripeSubscriptionId
+          );
+          if (subscription.current_period_end) {
+            quotaResetAt = new Date(
+              subscription.current_period_end * 1000
+            ).toISOString();
+          }
+        } catch (err) {
+          console.error("Erreur récupération subscription Stripe:", err);
+          // Continue sans quotaResetAt si erreur
+        }
+      }
+    }
+
     return NextResponse.json({
       plan: user.plan,
       planName: planConfig.name,
@@ -30,6 +52,7 @@ export async function GET() {
       extraMinutesMonth: user.extraMinutesMonth,
       availableMinutes,
       monthKey: user.monthKey,
+      quotaResetAt,
     });
   } catch (error) {
     console.error("Erreur récupération quotas:", error);
