@@ -286,7 +286,7 @@ export default function Home() {
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2, duration: 0.4, ease: "easeOut" }}
-                className="relative"
+                className="relative bg-transparent"
               >
                 <Logo
                   state="idle"

@@ -53,7 +53,7 @@ export default function Logo({
 
   return (
     <motion.div
-      className="relative inline-flex items-center justify-center"
+      className="relative inline-flex items-center justify-center bg-transparent"
       style={{ width: size, height: size }}
       onClick={isClickable ? onClick : undefined}
       role={isClickable ? "button" : undefined}
@@ -77,7 +77,7 @@ export default function Logo({
         <div className="bg-gradient-radial from-white/15 to-transparent blur-3xl w-32 h-32" />
       </div>
       <motion.div
-        className="w-full h-full flex items-center justify-center cursor-pointer select-none bg-transparent"
+        className="w-full h-full flex items-center justify-center cursor-pointer select-none bg-transparent rounded-none border-0 shadow-none"
         animate={{
           rotate: state === "paused" ? 0 : 360,
           scale:
@@ -136,7 +136,7 @@ export default function Logo({
         <img
           src="/logo-eco.png"
           alt="ECO"
-          className="w-full h-full object-contain p-2"
+          className="block w-full h-full object-contain select-none"
         />
       </motion.div>
       {showMicroWarning && (
