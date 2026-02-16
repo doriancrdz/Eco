@@ -61,7 +61,7 @@ export default function FocusMode({
             transition={{ delay: 0.1, duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
             className="w-full flex flex-col items-center justify-center text-center gap-10 px-4"
           >
-            <div className="flex flex-col items-center gap-6">
+            <div className="flex flex-col items-center gap-8">
               <Logo
                 state={isPaused ? "paused" : "recording"}
                 soundLevel={soundLevel}
@@ -72,22 +72,21 @@ export default function FocusMode({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.2 }}
-                className="text-3xl font-semibold tabular-nums text-gray-900 tracking-wide"
-                style={{
-                  textShadow: "0 0 20px rgba(255,255,255,0.5), 0 0 40px rgba(125,211,252,0.2)",
-                }}
+                className="flex items-center justify-center gap-4 w-full max-w-md"
               >
-                {formatTimer(recordingElapsedSeconds)}
+                <AudioWave frequencyData={frequencyData} isPaused={isPaused} />
+                <span className="text-sm font-semibold tabular-nums text-gray-700 shrink-0 min-w-[3rem]">
+                  {formatTimer(recordingElapsedSeconds)}
+                </span>
               </motion.div>
             </div>
-            <AudioWave frequencyData={frequencyData} isPaused={isPaused} />
             <div className="flex items-center justify-center gap-5">
               {onTogglePause && (
                 <motion.button
-                  whileHover={{ scale: 1.06 }}
-                  whileTap={{ scale: 0.96 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.97 }}
                   onClick={onTogglePause}
-                  className="w-16 h-16 rounded-2xl flex items-center justify-center text-white font-medium shadow-[0_0_24px_rgba(34,211,238,0.4),0_0_12px_rgba(139,92,246,0.3)] border border-cyan-400/30 bg-gradient-to-br from-cyan-500 via-cyan-600 to-violet-600 hover:from-cyan-400 hover:to-violet-500 transition-all"
+                  className="w-16 h-16 rounded-2xl flex items-center justify-center text-white font-medium bg-white/25 backdrop-blur-xl border border-white/40 shadow-[0_0_20px_rgba(34,211,238,0.2),inset_0_1px_0_rgba(255,255,255,0.3)] hover:bg-white/35 hover:border-white/50 transition-all bg-gradient-to-br from-cyan-500/80 via-violet-500/70 to-violet-600/80"
                 >
                   {isPaused ? <Play className="w-7 h-7" /> : <Pause className="w-7 h-7" />}
                 </motion.button>

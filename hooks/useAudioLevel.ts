@@ -59,7 +59,7 @@ export function useAudioLevel(enabled: boolean, isPaused: boolean = false): UseA
             audio: {
               echoCancellation: false,
               noiseSuppression: false,
-              autoGainControl: false,
+              autoGainControl: true,
             },
           });
         } catch {
@@ -74,7 +74,7 @@ export function useAudioLevel(enabled: boolean, isPaused: boolean = false): UseA
         }
         const analyser = audioContext.createAnalyser();
         analyser.fftSize = 1024;
-        analyser.smoothingTimeConstant = 0.3;
+        analyser.smoothingTimeConstant = 0.2;
         analyserRef.current = analyser;
 
         source = audioContext.createMediaStreamSource(stream);
@@ -151,15 +151,18 @@ export function useAudioLevel(enabled: boolean, isPaused: boolean = false): UseA
 
       const sum = dataArray.reduce((a, b) => a + b, 0);
       const rms = Math.sqrt(sum / dataArray.length);
-      const normalized = Math.min(Math.max((rms / 128) * 1.4, 0), 1);
-      const level = 0.95 + normalized * 0.18;
-      setSoundLevel(Math.min(Math.max(level, 0.95), 1.15));
+      const rawNorm = Math.min(rms / 128, 1);
+      const boosted = Math.pow(rawNorm, 0.65) * 2.2;
+      const normalized = Math.min(boosted, 1);
+      const level = 0.95 + normalized * 0.2;
+      setSoundLevel(Math.min(Math.max(level, 0.95), 1.18));
 
       const samples: number[] = [];
+      const gain = 1.8;
+      const curve = (v: number) => Math.min(255, Math.pow(Math.min(v / 255, 1), 0.7) * 255 * gain);
       for (let i = 0; i < FREQ_BARS; i++) {
         const idx = Math.floor((i / FREQ_BARS) * binCount);
-        const raw = (dataArray[idx] ?? 0) * 1.2;
-        samples.push(Math.min(255, raw));
+        samples.push(curve(dataArray[idx] ?? 0));
       }
       setFrequencyData(samples);
 

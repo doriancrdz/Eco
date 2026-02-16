@@ -17,10 +17,10 @@ export default function RecordButton({
   if (isRecording) {
     return (
       <motion.button
-        whileHover={{ scale: 1.06 }}
-        whileTap={{ scale: 0.96 }}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.97 }}
         onClick={onStop}
-        className="relative w-16 h-16 rounded-2xl flex items-center justify-center text-white font-medium z-10 border border-rose-400/30 bg-gradient-to-br from-rose-500 via-rose-600 to-red-600 hover:from-rose-400 hover:to-red-500 shadow-[0_0_24px_rgba(244,63,94,0.4),0_0_12px_rgba(190,18,60,0.3)] transition-all"
+        className="relative w-16 h-16 rounded-2xl flex items-center justify-center text-white font-medium z-10 bg-white/25 backdrop-blur-xl border border-white/40 shadow-[0_0_20px_rgba(244,114,182,0.2),inset_0_1px_0_rgba(255,255,255,0.25)] hover:bg-white/35 hover:border-white/50 transition-all bg-gradient-to-br from-rose-300/80 via-pink-400/70 to-violet-500/70"
       >
         <Square className="w-7 h-7" />
       </motion.button>

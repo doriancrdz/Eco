@@ -43,10 +43,8 @@ export default function Logo({
       : 20;
 
   const glowStyle =
-    state === "recording"
-      ? undefined
-      : state === "paused"
-      ? { boxShadow: "0 0 30px rgba(251,191,36,0.4)" }
+    state === "paused"
+      ? { boxShadow: "0 0 40px rgba(251,191,36,0.25)" }
       : state === "generating"
       ? undefined
       : undefined;
@@ -69,12 +67,12 @@ export default function Logo({
           : undefined
       }
     >
-      {/* Halo flou derrière le logo (seul effet autorisé, pas de fond blanc) */}
+      {/* Halo doux type accueil : sphère iridescente, pas de shape géométrique */}
       <div
         className="absolute inset-0 flex items-center justify-center pointer-events-none -z-10"
         aria-hidden
       >
-        <div className="bg-gradient-radial from-white/15 to-transparent blur-3xl w-32 h-32" />
+        <div className="bg-gradient-radial from-white/20 to-transparent blur-3xl w-40 h-40" />
       </div>
       <motion.div
         className="w-full h-full flex items-center justify-center cursor-pointer select-none bg-transparent rounded-none border-0 shadow-none"
@@ -91,18 +89,9 @@ export default function Logo({
               : 1,
           boxShadow:
             state === "recording"
-              ? [
-                  "0 0 20px rgba(153,246,228,0.4)",
-                  "0 0 40px rgba(125,211,252,0.6)",
-                  "0 0 20px rgba(153,246,228,0.4)",
-                ]
+              ? "0 0 50px rgba(184,232,208,0.2), 0 0 90px rgba(184,216,232,0.15)"
               : state === "generating"
-              ? [
-                  "0 0 30px rgba(153,246,228,0.5)",
-                  "0 0 40px rgba(125,211,252,0.6)",
-                  "0 0 30px rgba(244,114,182,0.5)",
-                  "0 0 30px rgba(153,246,228,0.5)",
-                ]
+              ? "0 0 40px rgba(184,232,208,0.2), 0 0 60px rgba(184,216,232,0.15)"
               : undefined,
         }}
         transition={
@@ -116,7 +105,6 @@ export default function Logo({
                 rotate: { duration: 8, repeat: Infinity, ease: "linear" },
                 y: { duration: 2.5, repeat: Infinity, ease: "easeInOut" },
                 scale: { type: "spring", stiffness: 220, damping: 22 },
-                boxShadow: { duration: 1.5, repeat: Infinity },
               }
             : state === "paused"
             ? { duration: 0.3 }
@@ -124,7 +112,6 @@ export default function Logo({
             ? {
                 rotate: { duration: 3, repeat: Infinity, ease: "linear" },
                 scale: { duration: 2, repeat: Infinity, ease: "easeInOut" },
-                boxShadow: { duration: 2, repeat: Infinity },
               }
             : {}
         }
