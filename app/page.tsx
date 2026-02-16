@@ -39,12 +39,16 @@ export default function Home() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [viewAllEcos, setViewAllEcos] = useState(false);
+  const [recordingElapsedSeconds, setRecordingElapsedSeconds] = useState(0);
 
   const { soundLevel, frequencyData, isAvailable } = useAudioLevel(isFocusMode && isRecording, isPaused);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const startTimeRef = useRef<number | null>(null);
+  const totalPausedMsRef = useRef(0);
+  const pausedAtRef = useRef<number | null>(null);
+  const elapsedAtStopRef = useRef(0);
 
   useEffect(() => {
     if (selectedEco) {
@@ -60,10 +64,32 @@ export default function Home() {
     if (!mr || !isRecording) return;
     if (isPaused && mr.state === "recording") {
       mr.pause();
+      pausedAtRef.current = Date.now();
     } else if (!isPaused && mr.state === "paused") {
+      if (pausedAtRef.current !== null) {
+        totalPausedMsRef.current += Date.now() - pausedAtRef.current;
+        pausedAtRef.current = null;
+      }
       mr.resume();
     }
   }, [isPaused, isRecording]);
+
+  useEffect(() => {
+    if (!isRecording || startTimeRef.current === null) {
+      setRecordingElapsedSeconds(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      const start = startTimeRef.current;
+      if (start === null) return;
+      const totalPaused = totalPausedMsRef.current;
+      const elapsedMs = isPaused && pausedAtRef.current !== null
+        ? pausedAtRef.current - start - totalPaused
+        : Date.now() - start - totalPaused;
+      setRecordingElapsedSeconds(Math.floor(elapsedMs / 1000));
+    }, 100);
+    return () => clearInterval(interval);
+  }, [isRecording, isPaused]);
 
   useEffect(() => {
     const fetchPlan = async () => {
@@ -99,14 +125,10 @@ export default function Home() {
 
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-        
-        // Calculer la durée de l'enregistrement
-        const durationSeconds = startTimeRef.current
-          ? Math.round((Date.now() - startTimeRef.current) / 1000)
-          : 0;
-        
-        startTimeRef.current = null; // Reset pour le prochain enregistrement
-        
+        const durationSeconds = elapsedAtStopRef.current;
+        startTimeRef.current = null;
+        totalPausedMsRef.current = 0;
+        pausedAtRef.current = null;
         await processRecording(audioBlob, durationSeconds);
         
         if (streamRef.current) {
@@ -116,9 +138,12 @@ export default function Home() {
       };
 
       startTimeRef.current = Date.now();
+      totalPausedMsRef.current = 0;
+      pausedAtRef.current = null;
       mediaRecorder.start();
       setIsRecording(true);
       setIsFocusMode(true);
+      setRecordingElapsedSeconds(0);
     } catch (error) {
       console.error("Erreur lors de l'accès au microphone:", error);
       alert("Impossible d'accéder au microphone. Veuillez vérifier les permissions.");
@@ -131,6 +156,7 @@ export default function Home() {
 
   const confirmStop = () => {
     if (mediaRecorderRef.current && isRecording) {
+      elapsedAtStopRef.current = recordingElapsedSeconds;
       mediaRecorderRef.current.stop();
       setIsRecording(false);
       setIsProcessing(true);
@@ -501,6 +527,7 @@ export default function Home() {
         showStopConfirm={showStopConfirm}
         onConfirmStop={confirmStop}
         onCancelStop={() => setShowStopConfirm(false)}
+        recordingElapsedSeconds={recordingElapsedSeconds}
       />
 
       <ProfileView

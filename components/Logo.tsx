@@ -24,7 +24,7 @@ export default function Logo({
 }: LogoProps) {
   const scale =
     state === "recording"
-      ? soundLevel
+      ? 0.97 + (soundLevel - 0.95) * 1.2
       : state === "generating"
       ? undefined
       : state === "paused"
@@ -80,6 +80,7 @@ export default function Logo({
         className="w-full h-full flex items-center justify-center cursor-pointer select-none bg-transparent rounded-none border-0 shadow-none"
         animate={{
           rotate: state === "paused" ? 0 : 360,
+          y: state === "recording" ? [0, -4, 0] : state === "paused" ? 0 : undefined,
           scale:
             state === "idle"
               ? [1, 1.03, 1]
@@ -113,7 +114,8 @@ export default function Logo({
             : state === "recording"
             ? {
                 rotate: { duration: 8, repeat: Infinity, ease: "linear" },
-                scale: { type: "spring", stiffness: 200, damping: 25 },
+                y: { duration: 2.5, repeat: Infinity, ease: "easeInOut" },
+                scale: { type: "spring", stiffness: 220, damping: 22 },
                 boxShadow: { duration: 1.5, repeat: Infinity },
               }
             : state === "paused"
@@ -129,7 +131,7 @@ export default function Logo({
         style={{
           ...glowStyle,
           ...(state === "recording" && typeof soundLevel === "number"
-            ? { filter: `brightness(${0.95 + soundLevel * 0.08})` }
+            ? { filter: `brightness(${0.92 + (soundLevel - 0.95) * 0.5})` }
             : {}),
         }}
       >

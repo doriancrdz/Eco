@@ -21,6 +21,7 @@ export function useAudioLevel(enabled: boolean, isPaused: boolean = false): UseA
   const streamRef = useRef<MediaStream | null>(null);
   const animationRef = useRef<number | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
   const dataArrayRef = useRef<Uint8Array | null>(null);
   const isPausedRef = useRef(isPaused);
 
@@ -37,6 +38,7 @@ export function useAudioLevel(enabled: boolean, isPaused: boolean = false): UseA
         animationRef.current = null;
       }
       analyserRef.current = null;
+      audioContextRef.current = null;
       dataArrayRef.current = null;
       return;
     }
@@ -51,13 +53,28 @@ export function useAudioLevel(enabled: boolean, isPaused: boolean = false): UseA
 
     const startCapture = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        let stream: MediaStream;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: false,
+              noiseSuppression: false,
+              autoGainControl: false,
+            },
+          });
+        } catch {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        }
         streamRef.current = stream;
 
         audioContext = new AudioContext();
+        audioContextRef.current = audioContext;
+        if (audioContext.state === "suspended") {
+          await audioContext.resume();
+        }
         const analyser = audioContext.createAnalyser();
-        analyser.fftSize = 256;
-        analyser.smoothingTimeConstant = 0.8;
+        analyser.fftSize = 1024;
+        analyser.smoothingTimeConstant = 0.3;
         analyserRef.current = analyser;
 
         source = audioContext.createMediaStreamSource(stream);
@@ -89,6 +106,7 @@ export function useAudioLevel(enabled: boolean, isPaused: boolean = false): UseA
       source?.disconnect();
       audioContext?.close();
       analyserRef.current = null;
+      audioContextRef.current = null;
       dataArrayRef.current = null;
     };
   }, [enabled]);
@@ -122,20 +140,26 @@ export function useAudioLevel(enabled: boolean, isPaused: boolean = false): UseA
 
     const updateLevel = () => {
       if (isPausedRef.current) return;
+      const ctx = audioContextRef.current;
+      if (ctx?.state === "suspended") {
+        ctx.resume();
+      }
       if (!analyserRef.current) return;
       // getByteFrequencyData attend Uint8Array<ArrayBuffer>, ref fournit ArrayBufferLike
       // @ts-expect-error - typage strict Web API, compatible à l'exécution
       analyser.getByteFrequencyData(dataArray);
 
-      const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-      const normalized = Math.min(Math.max(average / 128, 0), 1);
-      const level = 0.95 + normalized * 0.13;
-      setSoundLevel(Math.min(Math.max(level, 0.95), 1.08));
+      const sum = dataArray.reduce((a, b) => a + b, 0);
+      const rms = Math.sqrt(sum / dataArray.length);
+      const normalized = Math.min(Math.max((rms / 128) * 1.4, 0), 1);
+      const level = 0.95 + normalized * 0.18;
+      setSoundLevel(Math.min(Math.max(level, 0.95), 1.15));
 
       const samples: number[] = [];
       for (let i = 0; i < FREQ_BARS; i++) {
         const idx = Math.floor((i / FREQ_BARS) * binCount);
-        samples.push(dataArray[idx] ?? 0);
+        const raw = (dataArray[idx] ?? 0) * 1.2;
+        samples.push(Math.min(255, raw));
       }
       setFrequencyData(samples);
 
