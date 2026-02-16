@@ -74,15 +74,16 @@ export default function Header({
         )}
       </div>
 
-      {/* Center: logo ECO seul (sans texte, sans fond) */}
+      {/* Center: logo h-9 w-9 + texte ECO, bg-transparent */}
       <motion.button
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
         onClick={onGoHome}
-        className="absolute left-1/2 -translate-x-1/2 p-0 rounded-lg hover:opacity-90 transition-opacity z-10"
+        className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 bg-transparent p-0 border-0 z-10"
         aria-label="Retour à l'accueil"
       >
-        <Image src="/logo-eco.png" alt="" width={40} height={40} className="h-10 w-10 object-contain" />
+        <Image src="/logo-eco.png" alt="" width={36} height={36} className="h-9 w-9 object-contain" />
+        <span className="font-bold text-gray-900 text-lg">ECO</span>
       </motion.button>
 
       {/* Right: PlanBadge + avatar */}
