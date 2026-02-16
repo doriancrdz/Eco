@@ -23,6 +23,7 @@ model User {
   updatedAt            DateTime @updatedAt
 
   transactions Transaction[]
+  ecos         Eco[]
 
   @@index([clerkUserId])
   @@index([monthKey])
@@ -41,4 +42,22 @@ model Transaction {
 
   @@index([userId])
   @@index([stripeCustomerId])
+}
+
+model Eco {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title             String
+  content           String?  // Contenu optionnel (transcription, résumé, etc.)
+  audioUrl          String?  // URL de l'audio
+  transcriptionText String?  // Texte de transcription
+  summaryText       String?  // Texte de résumé
+  folder            String?  // ID du dossier
+  archived          Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([userId])
+  @@index([archived])
 }

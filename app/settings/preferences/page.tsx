@@ -3,11 +3,13 @@
 import { useState, useEffect } from "react";
 import { useAuth, useUser, useClerk } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { getEcos } from "@/lib/storage";
+import { Eco } from "@/types";
 
-type TabId = "general" | "notifications" | "personalization" | "applications" | "data" | "security" | "account";
+type TabId = "general" | "data" | "security" | "account";
 
 interface Tab {
   id: TabId;
@@ -16,9 +18,6 @@ interface Tab {
 
 const tabs: Tab[] = [
   { id: "general", label: "Général" },
-  { id: "notifications", label: "Notifications" },
-  { id: "personalization", label: "Personnalisation" },
-  { id: "applications", label: "Applications" },
   { id: "data", label: "Gestion des données" },
   { id: "security", label: "Sécurité" },
   { id: "account", label: "Compte" },
@@ -36,6 +35,18 @@ export default function PreferencesPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabId>("general");
   const [billingData, setBillingData] = useState<BillingData | null>(null);
+  const [appearance, setAppearance] = useState<string>("system");
+  const [language, setLanguage] = useState<string>("auto");
+  const [spokenLanguage, setSpokenLanguage] = useState<string>("auto");
+  
+  // Modales
+  const [showArchivedModal, setShowArchivedModal] = useState(false);
+  const [showArchiveAllModal, setShowArchiveAllModal] = useState(false);
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [archivedEcos, setArchivedEcos] = useState<Eco[]>([]);
+  const [isLoadingArchive, setIsLoadingArchive] = useState(false);
+  const [isLoadingDelete, setIsLoadingDelete] = useState(false);
 
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
@@ -70,6 +81,70 @@ export default function PreferencesPage() {
 
   const handleMFA = () => {
     openUserProfile();
+  };
+
+  const handleAppearanceChange = (value: string) => {
+    setAppearance(value);
+    // TODO: theme implementation
+    // Si le dark mode n'est pas implémenté globalement, stocker uniquement la valeur sans effet visuel immédiat
+  };
+
+  const handleOpenArchived = async () => {
+    setShowArchivedModal(true);
+    // Récupérer les ECOs archivés depuis localStorage
+    const allEcos = getEcos();
+    const archived = allEcos.filter((eco: any) => eco.archived === true);
+    setArchivedEcos(archived);
+  };
+
+  const handleArchiveAll = async () => {
+    setIsLoadingArchive(true);
+    try {
+      const res = await fetch("/api/ecos/archive-all", {
+        method: "PATCH",
+        credentials: "include",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setShowArchiveAllModal(false);
+        // Rafraîchir la liste locale
+        window.dispatchEvent(new Event("eco-updated"));
+        // Toast de confirmation (simple alert pour l'instant)
+        alert(`${data.count || 0} ECOs archivés avec succès`);
+      }
+    } catch (error) {
+      console.error("Erreur lors de l'archivage:", error);
+    } finally {
+      setIsLoadingArchive(false);
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    if (deleteConfirmText !== "SUPPRIMER") return;
+    
+    setIsLoadingDelete(true);
+    try {
+      const res = await fetch("/api/ecos/delete-all", {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setShowDeleteAllModal(false);
+        setDeleteConfirmText("");
+        // Vider la liste locale
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("eco_recordings");
+        }
+        window.dispatchEvent(new Event("eco-updated"));
+        // Toast de confirmation
+        alert(`${data.count || 0} ECOs supprimés définitivement`);
+      }
+    } catch (error) {
+      console.error("Erreur lors de la suppression:", error);
+    } finally {
+      setIsLoadingDelete(false);
+    }
   };
 
   const plan = billingData?.plan || "free";
@@ -130,35 +205,107 @@ export default function PreferencesPage() {
             {activeTab === "general" && (
               <div>
                 <h2 className="text-xl font-bold mb-6 text-gray-900">Général</h2>
-                <p className="text-gray-500">Préférences générales à venir</p>
-              </div>
-            )}
+                <div className="space-y-0">
+                  {/* Ligne 1: Apparence */}
+                  <div className="flex items-center justify-between py-5 border-b border-white/20">
+                    <label className="text-sm font-medium text-gray-800">Apparence</label>
+                    <select
+                      value={appearance}
+                      onChange={(e) => handleAppearanceChange(e.target.value)}
+                      className="bg-white/30 backdrop-blur-md border border-white/30 rounded-xl px-3 py-2 text-sm font-medium text-gray-800 outline-none cursor-pointer hover:bg-white/40 transition-all"
+                    >
+                      <option value="system">Système</option>
+                      <option value="light">Clair</option>
+                      <option value="dark">Sombre</option>
+                    </select>
+                  </div>
 
-            {activeTab === "notifications" && (
-              <div>
-                <h2 className="text-xl font-bold mb-6 text-gray-900">Notifications</h2>
-                <p className="text-gray-500">Préférences de notifications à venir</p>
-              </div>
-            )}
+                  {/* Ligne 2: Langue */}
+                  <div className="flex items-center justify-between py-5 border-b border-white/20">
+                    <label className="text-sm font-medium text-gray-800">Langue</label>
+                    <select
+                      value={language}
+                      onChange={(e) => setLanguage(e.target.value)}
+                      className="bg-white/30 backdrop-blur-md border border-white/30 rounded-xl px-3 py-2 text-sm font-medium text-gray-800 outline-none cursor-pointer hover:bg-white/40 transition-all"
+                    >
+                      <option value="auto">Détection automatique</option>
+                    </select>
+                  </div>
 
-            {activeTab === "personalization" && (
-              <div>
-                <h2 className="text-xl font-bold mb-6 text-gray-900">Personnalisation</h2>
-                <p className="text-gray-500">Options de personnalisation à venir</p>
-              </div>
-            )}
-
-            {activeTab === "applications" && (
-              <div>
-                <h2 className="text-xl font-bold mb-6 text-gray-900">Applications</h2>
-                <p className="text-gray-500">Gestion des applications à venir</p>
+                  {/* Ligne 3: Langue parlée */}
+                  <div className="flex items-start justify-between py-5">
+                    <div className="flex-1">
+                      <label className="text-sm font-medium text-gray-800 block">Langue parlée</label>
+                      <p className="text-xs text-gray-500 mt-1">
+                        La langue dans laquelle vous parlez lors de vos enregistrements ECO. Utilisée pour optimiser la transcription.
+                      </p>
+                    </div>
+                    <div className="ml-4">
+                      <select
+                        value={spokenLanguage}
+                        onChange={(e) => setSpokenLanguage(e.target.value)}
+                        className="bg-white/30 backdrop-blur-md border border-white/30 rounded-xl px-3 py-2 text-sm font-medium text-gray-800 outline-none cursor-pointer hover:bg-white/40 transition-all"
+                      >
+                        <option value="auto">Détection automatique</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
             {activeTab === "data" && (
               <div>
                 <h2 className="text-xl font-bold mb-6 text-gray-900">Gestion des données</h2>
-                <p className="text-gray-500">Gestion des données à venir</p>
+                <div className="space-y-0">
+                  {/* Bloc 1: ECOs archivés */}
+                  <div className="flex items-center justify-between py-5 border-b border-white/20">
+                    <div className="flex-1">
+                      <h3 className="text-sm font-medium text-gray-800">ECOs archivés</h3>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Consultez et gérez vos ECOs archivés.
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleOpenArchived}
+                      className="bg-white/40 border border-white/40 rounded-xl px-4 py-2 text-sm font-medium hover:bg-white/60 transition-all text-gray-900 ml-4"
+                    >
+                      Gérer
+                    </button>
+                  </div>
+
+                  {/* Bloc 2: Archiver tous les ECOs */}
+                  <div className="flex items-center justify-between py-5 border-b border-white/20">
+                    <div className="flex-1">
+                      <h3 className="text-sm font-medium text-gray-800">Archiver tous les ECOs</h3>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Déplacer tous vos ECOs vers les archives. Cette action est réversible.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setShowArchiveAllModal(true)}
+                      className="bg-white/40 border border-white/40 rounded-xl px-4 py-2 text-sm font-medium hover:bg-white/60 transition-all text-gray-900 ml-4"
+                    >
+                      Archiver tout
+                    </button>
+                  </div>
+
+                  {/* Bloc 3: Supprimer tous les ECOs */}
+                  <div className="flex items-center justify-between py-5">
+                    <div className="flex-1">
+                      <h3 className="text-sm font-medium text-gray-800">Supprimer tous les ECOs</h3>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Supprimer définitivement tous vos ECOs. Cette action est irréversible.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setShowDeleteAllModal(true)}
+                      className="bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-2 text-sm font-medium hover:bg-red-100 transition-all ml-4"
+                    >
+                      Supprimer tout
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -233,6 +380,158 @@ export default function PreferencesPage() {
           </div>
         </div>
       </div>
+
+      {/* Modale ECOs archivés */}
+      <AnimatePresence>
+        {showArchivedModal && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowArchivedModal(false)}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="bg-white/80 backdrop-blur-xl rounded-3xl border border-white/40 shadow-2xl p-8 max-w-md w-full mx-4">
+                <h3 className="text-xl font-bold text-gray-900 mb-4">ECOs archivés</h3>
+                <div className="overflow-y-auto max-h-96">
+                  {archivedEcos.length === 0 ? (
+                    <p className="text-gray-500 text-sm text-center py-8">Aucun ECO archivé</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {archivedEcos.map((eco) => (
+                        <div key={eco.id} className="p-3 bg-white/40 rounded-xl">
+                          <div className="text-sm font-medium text-gray-900">{eco.title}</div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {new Date(eco.created_at).toLocaleDateString("fr-FR")}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={() => setShowArchivedModal(false)}
+                  className="mt-6 w-full bg-white/40 border border-white/40 rounded-xl px-4 py-2 text-sm font-medium hover:bg-white/60 transition-all text-gray-900"
+                >
+                  Fermer
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Modale Archiver tout */}
+      <AnimatePresence>
+        {showArchiveAllModal && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowArchiveAllModal(false)}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="bg-white/80 backdrop-blur-xl rounded-3xl border border-white/40 shadow-2xl p-8 max-w-md w-full mx-4">
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Archiver tous les ECOs ?</h3>
+                <p className="text-gray-600 text-sm mb-6">
+                  Cette action archivera tous vos ECOs. Vous pourrez les restaurer depuis la section ECOs archivés.
+                </p>
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => setShowArchiveAllModal(false)}
+                    className="flex-1 bg-white/40 border border-white/40 rounded-xl px-4 py-2 text-sm font-medium hover:bg-white/60 transition-all text-gray-900"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={handleArchiveAll}
+                    disabled={isLoadingArchive}
+                    className="flex-1 bg-amber-500 text-white rounded-xl px-4 py-2 font-bold hover:bg-amber-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLoadingArchive ? "Archivage..." : "Archiver"}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Modale Supprimer tout */}
+      <AnimatePresence>
+        {showDeleteAllModal && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setShowDeleteAllModal(false);
+                setDeleteConfirmText("");
+              }}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 z-50 flex items-center justify-center p-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="bg-white/80 backdrop-blur-xl rounded-3xl border border-white/40 shadow-2xl p-8 max-w-md w-full mx-4">
+                <h3 className="text-xl font-bold text-red-600 mb-2">Supprimer définitivement tous vos ECOs ?</h3>
+                <p className="text-gray-600 text-sm mb-4">
+                  Cette action est irréversible. Tous vos ECOs seront supprimés définitivement. Tapez SUPPRIMER pour confirmer.
+                </p>
+                <input
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="Tapez SUPPRIMER"
+                  className="w-full bg-white/40 border border-white/40 rounded-xl px-3 py-2 text-sm outline-none focus:border-red-300 mt-4"
+                />
+                <div className="flex gap-4 mt-6">
+                  <button
+                    onClick={() => {
+                      setShowDeleteAllModal(false);
+                      setDeleteConfirmText("");
+                    }}
+                    className="flex-1 bg-white/40 border border-white/40 rounded-xl px-4 py-2 text-sm font-medium hover:bg-white/60 transition-all text-gray-900"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={handleDeleteAll}
+                    disabled={deleteConfirmText !== "SUPPRIMER" || isLoadingDelete}
+                    className="flex-1 bg-red-600 text-white rounded-xl px-4 py-2 font-bold hover:bg-red-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLoadingDelete ? "Suppression..." : "Supprimer définitivement"}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
