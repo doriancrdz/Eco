@@ -44,7 +44,7 @@ export default function Logo({
 
   const glowStyle =
     state === "paused"
-      ? { boxShadow: "0 0 40px rgba(251,191,36,0.25)" }
+      ? undefined
       : state === "generating"
       ? undefined
       : undefined;
@@ -52,7 +52,13 @@ export default function Logo({
   return (
     <motion.div
       className="relative inline-flex items-center justify-center bg-transparent"
-      style={{ width: size, height: size }}
+      style={{
+        width: size,
+        height: size,
+        background: "transparent",
+        outline: "none",
+        boxShadow: "none",
+      }}
       onClick={isClickable ? onClick : undefined}
       role={isClickable ? "button" : undefined}
       tabIndex={isClickable ? 0 : undefined}
@@ -67,9 +73,18 @@ export default function Logo({
           : undefined
       }
     >
-      {/* Pas de shape : uniquement logo + glow via boxShadow (rendu identique à l'accueil) */}
+      {/* Rendu identique à l'accueil : logo seul, aucun shape/overlay (glow très diffus uniquement) */}
       <motion.div
-        className="w-full h-full flex items-center justify-center cursor-pointer select-none bg-transparent rounded-none border-0 shadow-none"
+        className="w-full h-full flex items-center justify-center cursor-pointer select-none rounded-none border-0 overflow-visible"
+        style={{
+          background: "transparent",
+          boxShadow: "none",
+          outline: "none",
+          ...(glowStyle ?? {}),
+          ...(state === "recording" && typeof soundLevel === "number"
+            ? { filter: `brightness(${0.92 + (soundLevel - 0.95) * 0.5})` }
+            : {}),
+        }}
         animate={{
           rotate: state === "paused" ? 0 : 360,
           y: state === "recording" ? [0, -4, 0] : state === "paused" ? 0 : undefined,
@@ -83,10 +98,10 @@ export default function Logo({
               : 1,
           boxShadow:
             state === "recording"
-              ? "0 0 50px rgba(184,232,208,0.2), 0 0 90px rgba(184,216,232,0.15)"
+              ? "0 0 80px rgba(184,232,208,0.12)"
               : state === "generating"
-              ? "0 0 40px rgba(184,232,208,0.2), 0 0 60px rgba(184,216,232,0.15)"
-              : undefined,
+              ? "0 0 60px rgba(184,232,208,0.12)"
+              : "none",
         }}
         transition={
           state === "idle"
@@ -109,12 +124,6 @@ export default function Logo({
               }
             : {}
         }
-        style={{
-          ...glowStyle,
-          ...(state === "recording" && typeof soundLevel === "number"
-            ? { filter: `brightness(${0.92 + (soundLevel - 0.95) * 0.5})` }
-            : {}),
-        }}
       >
         <img
           src="/logo-eco.png"

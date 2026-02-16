@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 
 const BAR_COUNT = 32;
-const MIN_HEIGHT = 4;
+const MIN_HEIGHT = 3;
 const MAX_HEIGHT = 56;
 
 interface AudioWaveProps {
@@ -21,7 +21,8 @@ export default function AudioWave({ frequencyData = [], isPaused = false }: Audi
     <div className="flex items-end justify-center gap-0.5 h-14">
       {values.map((raw, i) => {
         const normalized = isPaused ? 0 : Math.min(255, Math.max(0, raw));
-        const height = MIN_HEIGHT + (normalized / 255) * (MAX_HEIGHT - MIN_HEIGHT);
+        const t = normalized / 255;
+        const height = MIN_HEIGHT + Math.pow(t, 0.85) * (MAX_HEIGHT - MIN_HEIGHT);
         return (
           <motion.div
             key={i}

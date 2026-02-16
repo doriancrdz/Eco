@@ -109,6 +109,7 @@ export default function Home() {
   }, []);
 
   const startRecording = async () => {
+    setIsPaused(false);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;

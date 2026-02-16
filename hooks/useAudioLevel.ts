@@ -3,7 +3,7 @@
 import { useState, useRef, useCallback } from "react";
 
 const FREQ_BARS = 32;
-const SMOOTHING = 0.75; // prev = prev * SMOOTHING + next * (1 - SMOOTHING)
+const SMOOTHING = 0.68; // plus réactif : nouvelle valeur pèse plus (ChatGPT-style)
 
 interface UseAudioLevelResult {
   soundLevel: number;
@@ -70,7 +70,7 @@ export function useAudioLevel(isPaused: boolean = false): UseAudioLevelResult {
 
       const analyser = audioContext.createAnalyser();
       analyser.fftSize = 1024;
-      analyser.smoothingTimeConstant = 0.3;
+      analyser.smoothingTimeConstant = 0.2;
       analyserRef.current = analyser;
 
       const source = audioContext.createMediaStreamSource(stream);
@@ -84,9 +84,9 @@ export function useAudioLevel(isPaused: boolean = false): UseAudioLevelResult {
       smoothedRef.current = Array.from({ length: FREQ_BARS }, () => 0);
 
       const binCount = dataArray.length;
-      const gain = 2.2;
+      const gain = 2.8;
       const curve = (v: number) =>
-        Math.min(255, Math.pow(Math.min(v / 255, 1), 0.65) * 255 * gain);
+        Math.min(255, Math.pow(Math.min(v / 255, 1), 0.5) * 255 * gain);
 
       const runLoop = () => {
         if (isStoppedRef.current) return;
@@ -111,8 +111,8 @@ export function useAudioLevel(isPaused: boolean = false): UseAudioLevelResult {
         } else {
           const sum = data.reduce((a, b) => a + b, 0);
           const rms = Math.sqrt(sum / data.length);
-          const rawNorm = Math.min(rms / 128, 1);
-          const boosted = Math.pow(rawNorm, 0.65) * 2.2;
+          const rawNorm = Math.min(rms / 100, 1);
+          const boosted = Math.pow(rawNorm, 0.5) * 2.5;
           const normalized = Math.min(boosted, 1);
           const level = 0.95 + normalized * 0.2;
           setSoundLevel(Math.min(Math.max(level, 0.95), 1.18));

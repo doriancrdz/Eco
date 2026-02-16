@@ -62,12 +62,15 @@ export default function FocusMode({
             className="w-full flex flex-col items-center justify-center text-center gap-10 px-4"
           >
             <div className="flex flex-col items-center gap-8">
-              <Logo
-                state={isPaused ? "paused" : "recording"}
-                soundLevel={soundLevel}
-                size={175}
-                showMicroWarning={showMicroWarning}
-              />
+              {/* Même wrapper que page d'accueil : aucun fond / shape derrière le logo */}
+              <div className="relative bg-transparent">
+                <Logo
+                  state={isPaused ? "paused" : "recording"}
+                  soundLevel={soundLevel}
+                  size={175}
+                  showMicroWarning={showMicroWarning}
+                />
+              </div>
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
