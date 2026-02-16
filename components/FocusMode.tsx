@@ -12,6 +12,7 @@ interface FocusModeProps {
   isPaused?: boolean;
   onTogglePause?: () => void;
   soundLevel?: number;
+  frequencyData?: number[];
   showMicroWarning?: boolean;
   onStartRecording: () => void;
   onStopRecording: () => void;
@@ -26,6 +27,7 @@ export default function FocusMode({
   isPaused = false,
   onTogglePause,
   soundLevel = 1,
+  frequencyData = [],
   showMicroWarning = false,
   onStartRecording,
   onStopRecording,
@@ -42,14 +44,14 @@ export default function FocusMode({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.4, ease: "easeInOut" }}
-        className="fixed inset-0 aura-gradient z-50 flex flex-col items-center justify-center"
+        className="fixed inset-0 aura-gradient z-50 w-full flex flex-col items-center justify-center"
       >
         {isRecording ? (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1, duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-            className="text-center space-y-8"
+            className="w-full flex flex-col items-center justify-center text-center space-y-8"
           >
             <Logo
               state={isPaused ? "paused" : "recording"}
@@ -57,7 +59,7 @@ export default function FocusMode({
               size={120}
               showMicroWarning={showMicroWarning}
             />
-            <AudioWave />
+            <AudioWave frequencyData={frequencyData} isPaused={isPaused} />
             <div className="flex items-center justify-center gap-4">
               {onTogglePause && (
                 <motion.button

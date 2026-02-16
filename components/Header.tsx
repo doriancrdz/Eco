@@ -26,8 +26,17 @@ export default function Header({
 }: HeaderProps) {
   return (
     <header className="h-[72px] px-4 flex items-center justify-between relative bg-white/10 backdrop-blur-sm border-b border-white/10 sticky top-0 z-20">
-      {/* Left: toggle sidebar only */}
+      {/* Left: logo ECO seul (sans texte) + toggle */}
       <div className="flex items-center gap-2 min-w-[44px] shrink-0">
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={onGoHome}
+          className="p-0 rounded-lg hover:opacity-90 transition-opacity shrink-0"
+          aria-label="Retour à l'accueil"
+        >
+          <Image src="/logo-eco.png" alt="" width={40} height={40} className="h-10 w-10 object-contain" />
+        </motion.button>
         {onToggleSidebar && (
           <motion.button
             whileHover={{ scale: 1.1 }}
@@ -65,18 +74,15 @@ export default function Header({
         )}
       </div>
 
-      {/* Center: logo ECO (absolute) - seul ECO visible dans la topbar */}
+      {/* Center: logo ECO seul (sans texte, sans fond) */}
       <motion.button
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
         onClick={onGoHome}
-        className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 rounded-lg hover:bg-white/10 transition-colors py-1.5 px-2 z-10"
+        className="absolute left-1/2 -translate-x-1/2 p-0 rounded-lg hover:opacity-90 transition-opacity z-10"
         aria-label="Retour à l'accueil"
       >
-        <div className="w-7 h-7 relative shrink-0">
-          <Image src="/logo-eco.png" alt="" width={28} height={28} className="object-contain" />
-        </div>
-        <span className="font-bold text-gray-900">ECO</span>
+        <Image src="/logo-eco.png" alt="" width={40} height={40} className="h-10 w-10 object-contain" />
       </motion.button>
 
       {/* Right: PlanBadge + avatar */}

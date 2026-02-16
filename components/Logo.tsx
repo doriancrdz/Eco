@@ -69,8 +69,17 @@ export default function Logo({
           : undefined
       }
     >
+      {/* Halo flou derrière le logo (sans fond blanc) */}
+      {(state === "recording" || state === "generating") && (
+        <div
+          className="absolute inset-0 flex items-center justify-center pointer-events-none -z-10"
+          aria-hidden
+        >
+          <div className="bg-gradient-radial from-white/15 to-transparent blur-3xl w-32 h-32" />
+        </div>
+      )}
       <motion.div
-        className="w-full h-full rounded-full flex items-center justify-center cursor-pointer select-none overflow-hidden"
+        className="w-full h-full flex items-center justify-center cursor-pointer select-none"
         animate={{
           rotate: state === "paused" ? 0 : 360,
           scale:
@@ -119,7 +128,12 @@ export default function Logo({
               }
             : {}
         }
-        style={glowStyle}
+        style={{
+          ...glowStyle,
+          ...(state === "recording" && typeof soundLevel === "number"
+            ? { filter: `brightness(${0.95 + soundLevel * 0.08})` }
+            : {}),
+        }}
       >
         <img
           src="/logo-eco.png"

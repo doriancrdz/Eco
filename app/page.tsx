@@ -39,7 +39,7 @@ export default function Home() {
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [viewAllEcos, setViewAllEcos] = useState(false);
 
-  const { soundLevel, isAvailable } = useAudioLevel(isFocusMode && isRecording && !isPaused);
+  const { soundLevel, frequencyData, isAvailable } = useAudioLevel(isFocusMode && isRecording, isPaused);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
@@ -53,6 +53,16 @@ export default function Home() {
       setCurrentEco(null);
     }
   }, [selectedEco]);
+
+  useEffect(() => {
+    const mr = mediaRecorderRef.current;
+    if (!mr || !isRecording) return;
+    if (isPaused && mr.state === "recording") {
+      mr.pause();
+    } else if (!isPaused && mr.state === "paused") {
+      mr.resume();
+    }
+  }, [isPaused, isRecording]);
 
   useEffect(() => {
     const fetchPlan = async () => {
@@ -471,6 +481,7 @@ export default function Home() {
         isPaused={isPaused}
         onTogglePause={() => setIsPaused((p) => !p)}
         soundLevel={soundLevel}
+        frequencyData={frequencyData}
         showMicroWarning={!isAvailable}
         onStartRecording={handleStartRecording}
         onStopRecording={stopRecording}
