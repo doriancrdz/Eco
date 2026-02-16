@@ -227,7 +227,7 @@ export default function Home() {
         refreshKey={refreshKey}
         onNavigateHome={handleBackToHome}
         onNavigatePricing={() => router.push("/pricing")}
-        onNavigateSettings={() => router.push("/settings")}
+        onNavigateSettings={() => router.push("/settings/preferences")}
         onSignOut={() => signOut()}
         onOpenProfile={() => setShowProfile(true)}
         userName={user?.firstName || user?.username || undefined}

@@ -23,7 +23,6 @@ export default function SettingsPage() {
   const router = useRouter();
   const [billingData, setBillingData] = useState<BillingData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingPortal, setIsLoadingPortal] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -55,41 +54,6 @@ export default function SettingsPage() {
     }
   };
 
-  const handleManageSubscription = async () => {
-    setIsLoadingPortal(true);
-    setError(null);
-
-    try {
-      const res = await fetch("/api/billing/portal", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        // Si Stripe n'est pas configuré ou pas d'abonnement
-        if (data.error?.includes("stripe") || data.error?.includes("abonnement") || data.error?.includes("customer")) {
-          setError("Paiement en cours de configuration");
-        } else {
-          setError(data.error || "Erreur lors de l'accès au portail");
-        }
-        return;
-      }
-
-      if (data.url) {
-        window.location.href = data.url;
-      }
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Une erreur est survenue. Veuillez réessayer."
-      );
-    } finally {
-      setIsLoadingPortal(false);
-    }
-  };
 
   if (isLoaded && !isSignedIn) {
     return null;
@@ -258,25 +222,11 @@ export default function SettingsPage() {
             <motion.button
               whileHover={{ scale: 1.02, y: -2 }}
               whileTap={{ scale: 0.98 }}
-              onClick={handleManageSubscription}
-              disabled={isLoadingPortal}
-              className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-xl font-semibold hover:from-gray-800 hover:to-gray-700 shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={() => router.push("/pricing")}
+              className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-xl font-semibold hover:from-gray-800 hover:to-gray-700 shadow-lg hover:shadow-xl transition-all"
             >
-              {isLoadingPortal ? (
-                <>
-                  <motion.span
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                    className="w-4 h-4 border-2 border-current border-t-transparent rounded-full"
-                  />
-                  Chargement...
-                </>
-              ) : (
-                <>
-                  <CreditCard className="w-4 h-4" />
-                  Gérer mon abonnement
-                </>
-              )}
+              <CreditCard className="w-4 h-4" />
+              Passer au forfait supérieur
             </motion.button>
 
             <motion.button

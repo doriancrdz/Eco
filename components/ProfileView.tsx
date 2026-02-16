@@ -1,10 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useClerk } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Settings, LogOut } from "lucide-react";
+import { X, Settings, LogOut, Sparkles } from "lucide-react";
 
 interface ProfileViewProps {
   isOpen: boolean;
@@ -21,6 +21,25 @@ export default function ProfileView({
 }: ProfileViewProps) {
   const { signOut } = useClerk();
   const router = useRouter();
+  const [userPlan, setUserPlan] = useState<string>("free");
+  const [isLoadingPortal, setIsLoadingPortal] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      const fetchPlan = async () => {
+        try {
+          const res = await fetch("/api/billing/me", { credentials: "include" });
+          if (res.ok) {
+            const data = await res.json();
+            setUserPlan(data.plan || "free");
+          }
+        } catch {
+          // Erreur silencieuse
+        }
+      };
+      fetchPlan();
+    }
+  }, [isOpen]);
 
   const handleSignOut = () => {
     signOut();
@@ -28,6 +47,7 @@ export default function ProfileView({
   };
 
   const handleManageSubscription = async () => {
+    setIsLoadingPortal(true);
     try {
       const res = await fetch("/api/billing/portal", {
         method: "POST",
@@ -36,13 +56,13 @@ export default function ProfileView({
       const data = await res.json();
       if (res.ok && data.url) {
         window.location.href = data.url;
-      } else {
-        router.push("/settings");
       }
     } catch {
-      router.push("/settings");
+      // Erreur silencieuse
+    } finally {
+      setIsLoadingPortal(false);
+      onClose();
     }
-    onClose();
   };
 
   return (
@@ -95,7 +115,7 @@ export default function ProfileView({
               whileHover={{ x: 4 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => {
-                router.push("/settings");
+                router.push("/settings/preferences");
                 onClose();
               }}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/60 border border-white/50 text-gray-900 font-medium hover:bg-white/90 transition-all"
@@ -104,14 +124,44 @@ export default function ProfileView({
               Paramètres
             </motion.button>
 
-            <motion.button
-              whileHover={{ x: 4 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleManageSubscription}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/60 border border-white/50 text-gray-900 font-medium hover:bg-white/90 transition-all"
-            >
-              Gérer mon abonnement
-            </motion.button>
+            {userPlan === "free" ? (
+              <motion.button
+                whileHover={{ x: 4 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => {
+                  router.push("/pricing");
+                  onClose();
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/60 border border-white/50 text-gray-900 font-medium hover:bg-white/90 transition-all"
+              >
+                <Sparkles className="w-5 h-5" />
+                Passer au forfait supérieur
+              </motion.button>
+            ) : (
+              <motion.button
+                whileHover={{ x: 4 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleManageSubscription}
+                disabled={isLoadingPortal}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/60 border border-white/50 text-gray-900 font-medium hover:bg-white/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isLoadingPortal ? (
+                  <>
+                    <motion.span
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      className="w-5 h-5 border-2 border-current border-t-transparent rounded-full"
+                    />
+                    Chargement...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5" />
+                    Gérer mon abonnement
+                  </>
+                )}
+              </motion.button>
+            )}
 
             <motion.button
               whileHover={{ x: 4 }}
