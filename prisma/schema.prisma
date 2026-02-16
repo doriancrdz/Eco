@@ -22,6 +22,8 @@ model User {
   stripePriceId       String?   // Price ID Stripe actif (pour détecter annual_commit_monthly)
   billingMode         String?   // "monthly" | "yearly_upfront" | "annual_commit_monthly"
   commitmentEndAt     DateTime? // Fin d'engagement 12 mois (si annual_commit_monthly)
+  subscriptionStatus  String?   // "active" | "past_due" | "unpaid" | "canceled" (Stripe subscription status)
+  currentPeriodEnd    DateTime? // Fin de la période de facturation en cours
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 

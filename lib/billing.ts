@@ -232,6 +232,8 @@ export async function updateUserPlan(
     billingMode?: BillingMode | null;
     commitmentEndAt?: Date | null;
     stripeSubscriptionId?: string | null;
+    subscriptionStatus?: string | null;
+    currentPeriodEnd?: Date | null;
   }
 ): Promise<void> {
   await prisma.user.update({
@@ -244,6 +246,22 @@ export async function updateUserPlan(
       ...(options?.stripePriceId !== undefined && { stripePriceId: options.stripePriceId }),
       ...(options?.billingMode !== undefined && { billingMode: options.billingMode }),
       ...(options?.commitmentEndAt !== undefined && { commitmentEndAt: options.commitmentEndAt }),
+      ...(options?.subscriptionStatus !== undefined && { subscriptionStatus: options.subscriptionStatus }),
+      ...(options?.currentPeriodEnd !== undefined && { currentPeriodEnd: options.currentPeriodEnd }),
     },
   });
+}
+
+/**
+ * Indique si l'utilisateur peut consommer des minutes (enregistrement, transcription, génération).
+ * Bloqué si abonnement Stripe avec statut non actif (ex: past_due après paiement échoué).
+ * subscriptionStatus null (legacy) = autorisé jusqu'à mise à jour par webhook.
+ */
+export function canUseMinutes(user: {
+  stripeSubscriptionId: string | null;
+  subscriptionStatus: string | null;
+}): boolean {
+  if (!user.stripeSubscriptionId) return true;
+  if (user.subscriptionStatus === "active" || user.subscriptionStatus === null) return true;
+  return false;
 }

@@ -69,10 +69,14 @@ export async function POST(req: NextRequest) {
         const billingMode = (session.metadata.billingMode as string) || "monthly";
 
         let commitmentEndAt: Date | null = null;
-        if (billingMode === "annual_commit_monthly" && subscriptionId) {
+        let currentPeriodEnd: Date | null = null;
+        if (subscriptionId) {
           const subscription = await stripe.subscriptions.retrieve(subscriptionId);
           const periodStart = subscription.current_period_start;
-          if (periodStart) {
+          if (subscription.current_period_end) {
+            currentPeriodEnd = new Date(subscription.current_period_end * 1000);
+          }
+          if (billingMode === "annual_commit_monthly" && periodStart) {
             const end = new Date(periodStart * 1000);
             end.setUTCMonth(end.getUTCMonth() + 12);
             commitmentEndAt = end;
@@ -88,6 +92,8 @@ export async function POST(req: NextRequest) {
             stripePriceId: priceId || null,
             billingMode: billingMode as "monthly" | "yearly_upfront" | "annual_commit_monthly",
             commitmentEndAt,
+            subscriptionStatus: "active",
+            currentPeriodEnd,
           }
         );
 
@@ -126,15 +132,46 @@ export async function POST(req: NextRequest) {
           });
         }
       }
+    } else if (event.type === "invoice.payment_failed") {
+      const invoice = event.data.object as { subscription?: string; customer?: string };
+      const subscriptionId = typeof invoice.subscription === "string" ? invoice.subscription : null;
+      if (!subscriptionId) return NextResponse.json({ received: true });
+
+      const user = await prisma.user.findFirst({
+        where: { stripeSubscriptionId: subscriptionId },
+      });
+      if (user) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { subscriptionStatus: "past_due" },
+        });
+      }
+    } else if (event.type === "invoice.payment_succeeded") {
+      const invoice = event.data.object as { subscription?: string; customer?: string };
+      const subscriptionId = typeof invoice.subscription === "string" ? invoice.subscription : null;
+      if (!subscriptionId) return NextResponse.json({ received: true });
+
+      const user = await prisma.user.findFirst({
+        where: { stripeSubscriptionId: subscriptionId },
+      });
+      if (user) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { subscriptionStatus: "active" },
+        });
+      }
     } else if (event.type === "customer.subscription.updated") {
       const subscription = event.data.object as any;
       const customerId = subscription.customer as string;
+      const subscriptionId = subscription.id as string;
+      const status = subscription.status as string;
+      const periodEnd = subscription.current_period_end as number | undefined;
 
       const user = await prisma.user.findFirst({
         where: { stripeCustomerId: customerId },
       });
 
-      if (user && subscription.status === "active") {
+      if (user) {
         const priceId = subscription.items?.data?.[0]?.price?.id as string | undefined;
         const periodStart = subscription.current_period_start;
         const interval = subscription.items?.data?.[0]?.price?.recurring?.interval;
@@ -152,9 +189,12 @@ export async function POST(req: NextRequest) {
         await prisma.user.update({
           where: { id: user.id },
           data: {
+            stripeSubscriptionId: subscriptionId,
             ...(priceId && { stripePriceId: priceId }),
             billingMode,
             ...(commitmentEndAt && { commitmentEndAt }),
+            subscriptionStatus: status,
+            currentPeriodEnd: periodEnd ? new Date(periodEnd * 1000) : null,
           },
         });
       }
@@ -172,6 +212,8 @@ export async function POST(req: NextRequest) {
           stripePriceId: null,
           billingMode: null,
           commitmentEndAt: null,
+          subscriptionStatus: null,
+          currentPeriodEnd: null,
         });
       }
     }

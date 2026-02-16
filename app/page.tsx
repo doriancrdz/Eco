@@ -26,6 +26,7 @@ export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [userPlan, setUserPlan] = useState<string>("free");
+  const [paymentBlocked, setPaymentBlocked] = useState(false);
   const [upgradeHovered, setUpgradeHovered] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -71,9 +72,11 @@ export default function Home() {
         if (res.ok) {
           const data = await res.json();
           setUserPlan(data.plan || "free");
+          setPaymentBlocked(data.paymentBlocked === true);
         }
       } catch {
         setUserPlan("free");
+        setPaymentBlocked(false);
       }
     };
     fetchPlan();
@@ -184,6 +187,7 @@ export default function Home() {
   };
 
   const handleStartRecording = () => {
+    if (paymentBlocked) return;
     if (!isRecording) {
       startRecording();
     }
@@ -282,6 +286,15 @@ export default function Home() {
                 <div className="bg-gradient-radial from-white/20 to-transparent blur-3xl w-96 h-96" />
               </div>
 
+              {paymentBlocked && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-800 text-center text-sm font-medium max-w-md"
+                >
+                  Paiement échoué — accès suspendu
+                </motion.div>
+              )}
               <motion.div
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -292,7 +305,7 @@ export default function Home() {
                   state="idle"
                   size={280}
                   onClick={handleStartRecording}
-                  isClickable
+                  isClickable={!paymentBlocked}
                   showMicroWarning={false}
                 />
               </motion.div>

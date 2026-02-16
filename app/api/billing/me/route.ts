@@ -17,17 +17,23 @@ export async function GET() {
     }
 
     const user = await getOrCreateUserWithQuota(userId);
-    const planConfig = PLANS[user.plan];
-    const availableMinutes = getAvailableMinutes(
-      user.plan,
-      user.minutesUsedMonth,
-      user.extraMinutesMonth
-    );
-
     const fullUser = await prisma.user.findUnique({
       where: { id: user.id },
-      select: { commitmentEndAt: true, billingMode: true },
+      select: { commitmentEndAt: true, billingMode: true, stripeSubscriptionId: true, subscriptionStatus: true },
     });
+
+    const subscriptionBlocked = Boolean(
+      fullUser?.stripeSubscriptionId &&
+      (fullUser.subscriptionStatus === "past_due" || fullUser.subscriptionStatus === "unpaid")
+    );
+    const planConfig = PLANS[user.plan];
+    const availableMinutes = subscriptionBlocked
+      ? 0
+      : getAvailableMinutes(
+          user.plan,
+          user.minutesUsedMonth,
+          user.extraMinutesMonth
+        );
     const commitmentEndAt = fullUser?.commitmentEndAt?.toISOString() ?? null;
     const billingMode = fullUser?.billingMode ?? null;
     const now = new Date();
@@ -69,6 +75,8 @@ export async function GET() {
       quotaResetAt,
       commitmentEndAt,
       canCancel,
+      subscriptionStatus: fullUser?.subscriptionStatus ?? null,
+      paymentBlocked: subscriptionBlocked ?? false,
     });
   } catch (error) {
     console.error("Erreur récupération quotas:", error);

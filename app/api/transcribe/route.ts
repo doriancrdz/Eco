@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import OpenAI from "openai";
-import { getOrCreateUserWithQuota, getAvailableMinutes } from "@/lib/billing";
+import { getOrCreateUserWithQuota, getAvailableMinutes, canUseMinutes } from "@/lib/billing";
 import { PLANS, PlanType } from "@/lib/billingConfig";
 import { prisma } from "@/lib/prisma";
 
@@ -71,6 +71,19 @@ export async function POST(req: NextRequest) {
 
     // Charger l'utilisateur avec gestion automatique du reset mensuel
     const user = await getOrCreateUserWithQuota(userId);
+    const fullUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { stripeSubscriptionId: true, subscriptionStatus: true },
+    });
+
+    // Gating : accès suspendu si paiement échoué (subscription non active)
+    if (fullUser && !canUseMinutes(fullUser)) {
+      return NextResponse.json(
+        { error: "Paiement échoué — accès suspendu" },
+        { status: 402 }
+      );
+    }
+
     const planConfig = PLANS[user.plan];
     const availableMinutes = getAvailableMinutes(
       user.plan,

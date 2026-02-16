@@ -18,6 +18,8 @@ interface BillingData {
   quotaResetAt: string | null;
   commitmentEndAt: string | null;
   canCancel: boolean;
+  subscriptionStatus: string | null;
+  paymentBlocked: boolean;
 }
 
 export default function SettingsPage() {
@@ -141,6 +143,18 @@ export default function SettingsPage() {
             className="mb-6 p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-xl text-sm"
           >
             {error}
+          </motion.div>
+        )}
+
+        {/* Paiement échoué — accès suspendu */}
+        {billingData?.paymentBlocked && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 p-4 bg-red-50 border border-red-200 text-red-800 rounded-xl text-sm font-medium flex items-center gap-2"
+          >
+            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            Paiement échoué — accès suspendu. Mettez à jour votre moyen de paiement pour réactiver l&apos;accès.
           </motion.div>
         )}
 
