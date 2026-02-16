@@ -67,13 +67,7 @@ export default function Logo({
           : undefined
       }
     >
-      {/* Halo doux type accueil : sphère iridescente, pas de shape géométrique */}
-      <div
-        className="absolute inset-0 flex items-center justify-center pointer-events-none -z-10"
-        aria-hidden
-      >
-        <div className="bg-gradient-radial from-white/20 to-transparent blur-3xl w-40 h-40" />
-      </div>
+      {/* Pas de shape : uniquement logo + glow via boxShadow (rendu identique à l'accueil) */}
       <motion.div
         className="w-full h-full flex items-center justify-center cursor-pointer select-none bg-transparent rounded-none border-0 shadow-none"
         animate={{

@@ -41,7 +41,7 @@ export default function Home() {
   const [viewAllEcos, setViewAllEcos] = useState(false);
   const [recordingElapsedSeconds, setRecordingElapsedSeconds] = useState(0);
 
-  const { soundLevel, frequencyData, isAvailable } = useAudioLevel(isFocusMode && isRecording, isPaused);
+  const { soundLevel, frequencyData, isAvailable, startAudioLevel, stopAudioLevel } = useAudioLevel(isPaused);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
@@ -113,6 +113,8 @@ export default function Home() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
+      await startAudioLevel(stream);
+
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
@@ -124,13 +126,14 @@ export default function Home() {
       };
 
       mediaRecorder.onstop = async () => {
+        stopAudioLevel();
         const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
         const durationSeconds = elapsedAtStopRef.current;
         startTimeRef.current = null;
         totalPausedMsRef.current = 0;
         pausedAtRef.current = null;
         await processRecording(audioBlob, durationSeconds);
-        
+
         if (streamRef.current) {
           streamRef.current.getTracks().forEach((track) => track.stop());
           streamRef.current = null;
