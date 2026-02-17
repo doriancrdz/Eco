@@ -84,30 +84,79 @@ export default function EcoView({ eco }: EcoViewProps) {
               <h2 className="text-xl font-semibold text-gray-900 mb-6">Résumé structuré</h2>
               <div className="prose prose-base max-w-none">
                 <div className="text-gray-700 leading-relaxed space-y-4">
-                  {eco.summary_text.split("\n").map((line, index) => {
-                    if (line.startsWith("## ")) {
+                  {(() => {
+                    // Essayer de parser le JSON (nouveau format structuré)
+                    try {
+                      const summary = JSON.parse(eco.summary_text);
+                      if (summary.titre && summary.resume) {
+                        // Format JSON structuré
+                        return (
+                          <>
+                            <h3 className="text-xl font-semibold mt-8 mb-4 text-gray-900 first:mt-0">
+                              {summary.titre}
+                            </h3>
+                            <p className="mb-4">{summary.resume}</p>
+                            {summary.pointsCles && summary.pointsCles.length > 0 && (
+                              <>
+                                <h4 className="text-lg font-semibold mt-6 mb-3 text-gray-900">
+                                  Points clés
+                                </h4>
+                                <ul className="list-disc ml-6 space-y-2">
+                                  {summary.pointsCles.map((point: string, index: number) => (
+                                    <li key={index}>{point}</li>
+                                  ))}
+                                </ul>
+                              </>
+                            )}
+                            {summary.notions && summary.notions.length > 0 && (
+                              <>
+                                <h4 className="text-lg font-semibold mt-6 mb-3 text-gray-900">
+                                  Notions importantes
+                                </h4>
+                                <div className="flex flex-wrap gap-2">
+                                  {summary.notions.map((notion: string, index: number) => (
+                                    <span
+                                      key={index}
+                                      className="px-3 py-1 bg-gray-100 rounded-full text-sm"
+                                    >
+                                      {notion}
+                                    </span>
+                                  ))}
+                                </div>
+                              </>
+                            )}
+                          </>
+                        );
+                      }
+                    } catch {
+                      // Format markdown legacy (ancien format)
+                    }
+                    // Fallback : affichage markdown legacy
+                    return eco.summary_text.split("\n").map((line, index) => {
+                      if (line.startsWith("## ")) {
+                        return (
+                          <h3 key={index} className="text-xl font-semibold mt-8 mb-4 text-gray-900 first:mt-0">
+                            {line.replace("## ", "")}
+                          </h3>
+                        );
+                      }
+                      if (line.startsWith("- ")) {
+                        return (
+                          <li key={index} className="ml-6 mb-2">
+                            {line.replace("- ", "")}
+                          </li>
+                        );
+                      }
+                      if (line.trim() === "") {
+                        return <br key={index} />;
+                      }
                       return (
-                        <h3 key={index} className="text-xl font-semibold mt-8 mb-4 text-gray-900 first:mt-0">
-                          {line.replace("## ", "")}
-                        </h3>
+                        <p key={index} className="mb-4">
+                          {line}
+                        </p>
                       );
-                    }
-                    if (line.startsWith("- ")) {
-                      return (
-                        <li key={index} className="ml-6 mb-2">
-                          {line.replace("- ", "")}
-                        </li>
-                      );
-                    }
-                    if (line.trim() === "") {
-                      return <br key={index} />;
-                    }
-                    return (
-                      <p key={index} className="mb-4">
-                        {line}
-                      </p>
-                    );
-                  })}
+                    });
+                  })()}
                 </div>
               </div>
             </div>

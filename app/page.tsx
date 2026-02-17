@@ -186,12 +186,14 @@ export default function Home() {
       }
 
       // Créer l'Eco
+      // Utiliser le titre du résumé si disponible, sinon titre par défaut
+      const ecoTitle = summary.titre || `Eco du ${new Date().toLocaleDateString("fr-FR")}`;
       const newEco: Eco = {
         id: Date.now().toString(),
-        title: `Eco du ${new Date().toLocaleDateString("fr-FR")}`,
+        title: ecoTitle,
         audio_url: audioUrl,
         transcription_text: transcription,
-        summary_text: summary,
+        summary_text: JSON.stringify(summary), // Sérialiser l'objet Summary en JSON string
         folder: DEFAULT_FOLDERS[0].id, // Par défaut dans "Travail"
         created_at: new Date().toISOString(),
       };

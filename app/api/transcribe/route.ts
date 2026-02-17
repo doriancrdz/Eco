@@ -3,8 +3,7 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import OpenAI from "openai";
-import { getOrCreateUserWithQuota, getAvailableMinutes, canUseMinutes } from "@/lib/billing";
-import { PLANS, PlanType } from "@/lib/billingConfig";
+import { getOrCreateUserWithQuota, getAvailableMinutes, canUseMinutes, debitMinutes } from "@/lib/billing";
 import { prisma } from "@/lib/prisma";
 
 const openai = new OpenAI({
@@ -13,7 +12,7 @@ const openai = new OpenAI({
 
 export async function POST(req: NextRequest) {
   try {
-    // Vérifier authentification Clerk
+    // 1. Authentification Clerk obligatoire
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json(
@@ -29,18 +28,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // 2. Récupérer le fichier audio depuis FormData (clé "audio")
     const formData = await req.formData();
-    const file = formData.get("file");
+    const audioFile = formData.get("audio");
     const durationSecondsStr = formData.get("durationSeconds");
 
-    if (!file || !(file instanceof File)) {
+    if (!audioFile || !(audioFile instanceof File)) {
       return NextResponse.json(
         { error: "Aucun fichier audio valide fourni." },
         { status: 400 }
       );
     }
 
-    // Vérifier et parser durationSeconds
+    // 3. Calculer la durée de l'audio en minutes
     if (!durationSecondsStr || typeof durationSecondsStr !== "string") {
       return NextResponse.json(
         { error: "Durée de l'enregistrement manquante ou invalide." },
@@ -56,20 +56,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Calculer les minutes nécessaires (arrondi au supérieur)
-    const minutesForThisEco = Math.ceil(durationSeconds / 60);
+    const minutesNeeded = Math.ceil(durationSeconds / 60);
 
     // Vérifier la limite de 30 minutes par enregistrement
-    if (minutesForThisEco > 30) {
+    if (minutesNeeded > 30) {
       return NextResponse.json(
         {
-          error: `Enregistrement trop long (${minutesForThisEco} min). La limite est de 30 minutes par enregistrement.`,
+          error: `Enregistrement trop long (${minutesNeeded} min). La limite est de 30 minutes par enregistrement.`,
         },
         { status: 400 }
       );
     }
 
-    // Charger l'utilisateur avec gestion automatique du reset mensuel
+    // 4. Vérifier le quota utilisateur
     const user = await getOrCreateUserWithQuota(userId);
     const fullUser = await prisma.user.findUnique({
       where: { id: user.id },
@@ -84,147 +83,116 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const planConfig = PLANS[user.plan];
     const availableMinutes = getAvailableMinutes(
       user.plan,
       user.minutesUsedMonth,
       user.extraMinutesMonth
     );
 
-    // Vérifier si le quota est suffisant
-    if (minutesForThisEco > availableMinutes) {
+    // 6. Si quota insuffisant → retourner 403
+    if (minutesNeeded > availableMinutes) {
       return NextResponse.json(
         {
-          error: `Quota insuffisant. Vous avez ${availableMinutes} minute(s) disponible(s) ce mois-ci, mais cet enregistrement nécessite ${minutesForThisEco} minute(s). Veuillez acheter un pack de minutes ou passer à un plan supérieur.`,
-          availableMinutes,
-          requiredMinutes: minutesForThisEco,
+          error: "Quota insuffisant",
+          available: availableMinutes,
+          needed: minutesNeeded,
         },
-        { status: 402 }
+        { status: 403 }
       );
     }
 
-    // Débiter les minutes AVANT l'appel OpenAI (dans une transaction)
-    let debitSuccess = false;
-    // Stocker les valeurs AVANT le débit pour le rollback si nécessaire
+    // 9. Débiter les minutes AVANT l'appel OpenAI
+    const debitSuccess = await debitMinutes(user.id, minutesNeeded);
+    if (!debitSuccess) {
+      // Re-vérifier au cas où le quota aurait changé entre-temps
+      const updatedUser = await getOrCreateUserWithQuota(userId);
+      const updatedAvailable = getAvailableMinutes(
+        updatedUser.plan,
+        updatedUser.minutesUsedMonth,
+        updatedUser.extraMinutesMonth
+      );
+      return NextResponse.json(
+        {
+          error: "Quota insuffisant",
+          available: updatedAvailable,
+          needed: minutesNeeded,
+        },
+        { status: 403 }
+      );
+    }
+
+    // Stocker les valeurs pour rollback si nécessaire
     const beforeDebitMinutesUsed = user.minutesUsedMonth;
     const beforeDebitExtraMinutes = user.extraMinutesMonth;
 
     try {
-      // Débiter les minutes dans une transaction
-      await prisma.$transaction(async (tx) => {
-        // Relire l'utilisateur pour avoir les dernières valeurs
-        const currentUser = await tx.user.findUnique({
-          where: { id: user.id },
-        });
-
-        if (!currentUser) {
-          throw new Error("Utilisateur introuvable");
-        }
-
-        // Vérifier à nouveau les quotas (au cas où ils auraient changé)
-        const currentAvailable = getAvailableMinutes(
-          currentUser.plan as PlanType,
-          currentUser.minutesUsedMonth,
-          currentUser.extraMinutesMonth
-        );
-
-        if (minutesForThisEco > currentAvailable) {
-          throw new Error("Quota insuffisant");
-        }
-
-        // Débiter les minutes (d'abord les extra, puis les included)
-        let remainingToDebit = minutesForThisEco;
-        let newExtraMinutes = currentUser.extraMinutesMonth;
-        let newUsedMinutes = currentUser.minutesUsedMonth;
-
-        // Débiter d'abord les extra minutes
-        if (newExtraMinutes > 0 && remainingToDebit > 0) {
-          const debitFromExtra = Math.min(newExtraMinutes, remainingToDebit);
-          newExtraMinutes -= debitFromExtra;
-          remainingToDebit -= debitFromExtra;
-        }
-
-        // Débiter ensuite les minutes incluses
-        if (remainingToDebit > 0) {
-          newUsedMinutes += remainingToDebit;
-        }
-
-        // Mettre à jour dans la transaction
-        await tx.user.update({
-          where: { id: user.id },
-          data: {
-            minutesUsedMonth: newUsedMinutes,
-            extraMinutesMonth: newExtraMinutes,
-          },
-        });
-
-        debitSuccess = true;
-      });
-    } catch (debitError) {
-      if (debitError instanceof Error && debitError.message === "Quota insuffisant") {
-        return NextResponse.json(
-          {
-            error: `Quota insuffisant. Vous avez ${availableMinutes} minute(s) disponible(s) ce mois-ci, mais cet enregistrement nécessite ${minutesForThisEco} minute(s). Veuillez acheter un pack de minutes ou passer à un plan supérieur.`,
-            availableMinutes,
-            requiredMinutes: minutesForThisEco,
-          },
-          { status: 402 }
-        );
-      }
-      throw debitError;
-    }
-
-    // Si le débit a réussi, appeler OpenAI
-    // Si OpenAI échoue, on devra rollback le débit
-    try {
-      // 1) Transcription avec Whisper
+      // 7. Appeler OpenAI Whisper pour transcription
       const transcriptionResponse = await openai.audio.transcriptions.create({
-        file,
+        file: audioFile,
         model: "whisper-1",
         language: "fr",
       });
 
       const transcription = transcriptionResponse.text;
 
-      // 2) Résumé structuré avec GPT
-      const systemPrompt =
-        "Tu es un assistant chargé de résumer des transcriptions audio en français. " +
-        "Tu dois produire un texte structuré, clair, pédagogique, sans ajout d'information non présente dans la transcription.";
-
-      const userPrompt = `
-Voici une transcription (en français). Génère un résumé structuré avec le format suivant :
-
-## Résumé global
-<un paragraphe synthétique>
-
-## Points clés
-- point 1
-- point 2
-- ...
-
-## Notions importantes à retenir
-- notion 1
-- notion 2
-- ...
-
-Transcription :
-"""${transcription}"""
-`;
-
+      // 8. Appeler gpt-4o-mini pour générer résumé structuré (format JSON strict)
       const completion = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
+          {
+            role: "system",
+            content:
+              "Tu es un assistant IA qui structure la connaissance. Réponds UNIQUEMENT avec du JSON valide, sans texte avant ou après.",
+          },
+          {
+            role: "user",
+            content: `Tu es un assistant IA qui structure la connaissance.
+À partir de cette transcription d'enregistrement audio, génère un résumé structuré au format JSON strict suivant :
+
+{
+  "titre": "Titre court et percutant (max 60 caractères)",
+  "resume": "Résumé global en 2-3 phrases maximum",
+  "pointsCles": [
+    "Point clé 1 (phrase complète)",
+    "Point clé 2 (phrase complète)",
+    "Point clé 3 (phrase complète)"
+  ],
+  "notions": ["Notion 1", "Notion 2", "Notion 3"]
+}
+
+IMPORTANT :
+- Réponds UNIQUEMENT avec le JSON, sans texte avant ou après
+- Les points clés doivent être des phrases complètes et actionnables
+- Les notions sont des mots-clés ou concepts principaux (3 à 5 maximum)
+- Le titre doit être engageant et informatif
+
+Transcription :
+"""${transcription}"""`,
+          },
         ],
         temperature: 0.4,
+        response_format: { type: "json_object" },
       });
 
-      const summary =
+      const summaryContent =
         completion.choices[0]?.message?.content ??
-        "Résumé indisponible. Une erreur est survenue lors de la génération.";
+        '{"titre": "Résumé indisponible", "resume": "Une erreur est survenue lors de la génération.", "pointsCles": [], "notions": []}';
 
-      // Si tout s'est bien passé, retourner le résultat
+      let summary;
+      try {
+        summary = JSON.parse(summaryContent);
+      } catch (parseError) {
+        console.error("Erreur parsing JSON summary:", parseError);
+        // Fallback si le JSON est invalide
+        summary = {
+          titre: "Résumé",
+          resume: transcription.substring(0, 200) + "...",
+          pointsCles: [],
+          notions: [],
+        };
+      }
+
+      // 10. Retourner JSON avec transcription + résumé
       return NextResponse.json(
         {
           transcription,
@@ -245,46 +213,11 @@ Transcription :
           });
         } catch (rollbackError) {
           console.error("Erreur lors du rollback des minutes:", rollbackError);
-          // On log l'erreur mais on ne bloque pas la réponse d'erreur OpenAI
         }
       }
 
       console.error("Erreur API OpenAI:", openaiError);
 
-      // Mode DEV fallback : retourner une réponse demo si en développement
-      if (process.env.NODE_ENV === "development") {
-        const demoTranscription = `[Mode démo] Transcription simulée de l'enregistrement audio. Dans un environnement de production, cette transcription serait générée automatiquement par OpenAI Whisper à partir de l'audio enregistré. Durée estimée : ${Math.ceil(durationSeconds / 60)} minute(s).`;
-
-        const demoSummary = `## Résumé global
-
-Cette transcription de démonstration illustre le fonctionnement de l'application ECO en mode développement. En production, le contenu serait généré automatiquement à partir de l'audio réel.
-
-## Points clés
-
-- Transcription automatique via OpenAI Whisper
-- Génération de résumé structuré via GPT
-- Gestion des quotas mensuels
-- Interface minimaliste et intuitive
-
-## Notions importantes à retenir
-
-- L'application permet d'enregistrer de l'audio directement depuis le navigateur
-- La transcription est générée automatiquement après l'enregistrement
-- Les résumés structurés facilitent la compréhension et la mémorisation
-- Le système de quotas permet de gérer l'utilisation des ressources`;
-
-        return NextResponse.json(
-          {
-            transcription: demoTranscription,
-            summary: demoSummary,
-            demoMode: true,
-            warning: "API OpenAI indisponible, mode démo activé",
-          },
-          { status: 200 }
-        );
-      }
-
-      // En production : retourner l'erreur normale
       return NextResponse.json(
         {
           error:
