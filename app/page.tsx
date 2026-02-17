@@ -50,7 +50,6 @@ export default function Home() {
   const pausedAtRef = useRef<number | null>(null);
   const elapsedAtStopRef = useRef(0);
   const mimeTypeRef = useRef<string>("audio/webm");
-  const dataRequestIntervalRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (selectedEco) {
@@ -116,160 +115,104 @@ export default function Home() {
 
     try {
       console.log("[startRecording] Demande accès micro...");
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 44100,
+        },
+      });
+
       console.log("[startRecording] Stream obtenu:", stream.id);
-      const audioTracks = stream.getAudioTracks();
-      console.log("[startRecording] Pistes audio:", audioTracks.length, audioTracks.map(t => ({
-        id: t.id,
-        enabled: t.enabled,
-        readyState: t.readyState,
-        label: t.label,
-      })));
-      
-      if (audioTracks.length === 0) {
+
+      if (stream.getAudioTracks().length === 0) {
         throw new Error("Aucune piste audio disponible");
       }
 
-      // Vérifier que les pistes sont actives
-      const activeTracks = audioTracks.filter(t => t.enabled && t.readyState === "live");
-      if (activeTracks.length === 0) {
-        throw new Error("Aucune piste audio active");
-      }
+      // Réinitialiser les chunks
+      audioChunksRef.current = [];
+      console.log("[startRecording] Chunks réinitialisés");
 
-      streamRef.current = stream;
-
-      // Déterminer le meilleur format audio supporté par Whisper
-      // PRIORITÉ: audio/mp4 (génère des chunks non vides sur Safari et autres navigateurs)
-      let mimeType: string;
-      if (MediaRecorder.isTypeSupported("audio/mp4")) {
-        mimeType = "audio/mp4";
-      } else if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
+      // Détection format (webm;codecs=opus en premier pour Chrome)
+      let mimeType = "";
+      if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
         mimeType = "audio/webm;codecs=opus";
       } else if (MediaRecorder.isTypeSupported("audio/webm")) {
         mimeType = "audio/webm";
-      } else if (MediaRecorder.isTypeSupported("audio/wav")) {
-        mimeType = "audio/wav";
+      } else if (MediaRecorder.isTypeSupported("audio/mp4")) {
+        mimeType = "audio/mp4";
       } else {
-        mimeType = "audio/mp4"; // Fallback par défaut
+        mimeType = "";
       }
-      
-      mimeTypeRef.current = mimeType;
-      console.log("[startRecording] Format audio sélectionné:", mimeType);
-      console.log("[startRecording] Format supporté?", MediaRecorder.isTypeSupported(mimeType));
-      console.log("[startRecording] Formats testés:", {
-        "audio/mp4": MediaRecorder.isTypeSupported("audio/mp4"),
-        "audio/webm;codecs=opus": MediaRecorder.isTypeSupported("audio/webm;codecs=opus"),
-        "audio/webm": MediaRecorder.isTypeSupported("audio/webm"),
-        "audio/wav": MediaRecorder.isTypeSupported("audio/wav"),
-      });
 
-      const mediaRecorder = new MediaRecorder(stream, { mimeType });
-      console.log("[startRecording] MediaRecorder créé", {
-        mimeType,
-        state: mediaRecorder.state,
-      });
+      mimeTypeRef.current = mimeType || "audio/webm";
+      console.log("[startRecording] Format:", mimeType || "default");
+      console.log("[startRecording] Format supporté?", mimeType ? MediaRecorder.isTypeSupported(mimeType) : "n/a");
 
-      // Réinitialiser les chunks
-      audioChunksRef.current = [];
-      console.log("[startRecording] audioChunks réinitialisé");
+      // Créer MediaRecorder
+      const mediaRecorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
+      console.log("[startRecording] MediaRecorder créé, state:", mediaRecorder.state);
 
-      // Définir ondataavailable AVANT start()
-      mediaRecorder.ondataavailable = (event) => {
-        console.log("[ondataavailable] Événement reçu", {
-          dataSize: event.data?.size || 0,
-          dataType: event.data?.type || "unknown",
-          timestamp: Date.now(),
-        });
-        
-        if (event.data && event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-          console.log("[MediaRecorder] Chunk reçu:", event.data.size, "bytes, total chunks:", audioChunksRef.current.length);
-        } else {
-          console.warn("[ondataavailable] Chunk vide ou invalide", {
-            hasData: !!event.data,
-            dataSize: event.data?.size || 0,
-          });
+      // IMPORTANT: Définir TOUS les handlers AVANT start()
+      mediaRecorder.ondataavailable = (e) => {
+        console.log("[ondataavailable] size:", e.data?.size ?? 0, "type:", e.data?.type ?? "unknown");
+        if (e.data && e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
+          console.log("[Chunk collecté] Total chunks:", audioChunksRef.current.length);
         }
       };
 
       mediaRecorder.onstop = async () => {
-        console.log("[MediaRecorder] onstop appelé, chunks:", audioChunksRef.current.length);
+        console.log("[onstop] Chunks collectés:", audioChunksRef.current.length);
         stopAudioLevel();
-        
-        if (audioChunksRef.current.length === 0) {
-          console.error("[MediaRecorder] AUCUN CHUNK RECU! Vérifier la configuration.");
-        }
-        
-        // Utiliser le même mimeType que celui utilisé pour l'enregistrement
-        const audioBlob = new Blob(audioChunksRef.current, { type: mimeTypeRef.current });
-        console.log("[onstop] Blob audio créé", {
-          size: audioBlob.size,
-          type: audioBlob.type,
-          mimeType: mimeTypeRef.current,
-          chunkCount: audioChunksRef.current.length,
-        });
-        const durationSeconds = elapsedAtStopRef.current;
         startTimeRef.current = null;
         totalPausedMsRef.current = 0;
         pausedAtRef.current = null;
-        await processRecording(audioBlob, durationSeconds, mimeTypeRef.current);
+
+        if (audioChunksRef.current.length === 0) {
+          console.error("[onstop] AUCUN CHUNK!");
+          setIsRecording(false);
+          setIsProcessing(false);
+          setIsFocusMode(false);
+          if (streamRef.current) {
+            streamRef.current.getTracks().forEach((t) => t.stop());
+            streamRef.current = null;
+          }
+          alert("Erreur: aucune donnée audio enregistrée. Réessayez.");
+          return;
+        }
+
+        const mimeTypeUsed =
+          audioChunksRef.current[0].type || mimeTypeRef.current || "audio/webm";
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeTypeUsed });
+        console.log("[onstop] Blob créé:", audioBlob.size, "bytes, type:", audioBlob.type);
+
+        const durationSeconds = elapsedAtStopRef.current;
+        await processRecording(audioBlob, durationSeconds, mimeTypeUsed);
 
         if (streamRef.current) {
-          streamRef.current.getTracks().forEach((track) => track.stop());
+          streamRef.current.getTracks().forEach((t) => t.stop());
           streamRef.current = null;
         }
       };
 
-      // Stocker dans la ref AVANT start()
+      mediaRecorder.onerror = (e) => {
+        console.error("[MediaRecorder] Erreur:", e);
+      };
+
+      // Stocker dans ref
       mediaRecorderRef.current = mediaRecorder;
-      console.log("[startRecording] MediaRecorder stocké dans ref");
 
-      // Démarrer le MediaRecorder
-      // Pour audio/mp4, utiliser start() sans argument pour éviter les chunks vides
-      // Les chunks seront collectés à la fin lors de stop()
-      console.log("[MediaRecorder] Appel de start()...");
-      try {
-        if (mimeType === "audio/mp4") {
-          // Pour mp4, ne pas utiliser timeslice pour éviter les chunks vides
-          mediaRecorder.start();
-          console.log("[MediaRecorder] start() appelé (sans timeslice pour mp4), state:", mediaRecorder.state);
-        } else {
-          // Pour webm, essayer avec timeslice
-          mediaRecorder.start(1000);
-          console.log("[MediaRecorder] start(1000) appelé, state:", mediaRecorder.state);
-          
-          // Alternative: Si start(1000) ne génère pas de chunks, utiliser requestData() manuellement
-          dataRequestIntervalRef.current = window.setInterval(() => {
-            if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-              console.log("[MediaRecorder] Appel manuel de requestData()");
-              try {
-                mediaRecorderRef.current.requestData();
-              } catch (reqError) {
-                console.warn("[MediaRecorder] Erreur lors de requestData():", reqError);
-              }
-            } else {
-              if (dataRequestIntervalRef.current) {
-                clearInterval(dataRequestIntervalRef.current);
-                dataRequestIntervalRef.current = null;
-              }
-            }
-          }, 1000);
-        }
-        
-        // Vérifier l'état après un court délai
-        setTimeout(() => {
-          console.log("[MediaRecorder] État après 100ms:", mediaRecorder.state);
-          if (mediaRecorder.state !== "recording") {
-            console.error("[MediaRecorder] ERREUR: Le MediaRecorder n'est pas en état 'recording'");
-          }
-        }, 100);
-      } catch (startError) {
-        console.error("[MediaRecorder] Erreur lors de start():", startError);
-        throw startError;
-      }
+      // Stocker le stream tout de suite pour que Chrome le considère utilisé
+      streamRef.current = stream;
 
-      // Démarrer l'analyse audio
+      // Démarrer avec timeslice 1000ms pour collecter régulièrement (évite que Chrome coupe le stream)
+      mediaRecorder.start(1000);
+      console.log("[MediaRecorder] start(1000) appelé, state:", mediaRecorder.state);
+
+      // Démarrer l'analyse audio (consomme aussi le stream)
       await startAudioLevel(stream);
       console.log("[startRecording] Analyse audio démarrée");
 
@@ -278,13 +221,12 @@ export default function Home() {
       totalPausedMsRef.current = 0;
       pausedAtRef.current = null;
 
-      // SEULEMENT MAINTENANT on peut afficher FocusMode
+      // Afficher FocusMode
       setIsFocusMode(true);
       setIsRecording(true);
-      console.log("[startRecording] FocusMode activé");
+      console.log("[startRecording] Tout initialisé");
     } catch (error) {
       console.error("[startRecording] Erreur:", error);
-      // Réinitialiser l'état en cas d'erreur
       setIsFocusMode(false);
       setIsRecording(false);
       alert("Impossible d'accéder au microphone. Veuillez autoriser l'accès.");
@@ -296,49 +238,29 @@ export default function Home() {
   };
 
   const confirmStop = () => {
-    console.log("[confirmStop] Début", {
-      hasMediaRecorder: !!mediaRecorderRef.current,
-      isRecording,
-      mediaRecorderState: mediaRecorderRef.current?.state,
-    });
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      console.log("[confirmStop] Arrêt...");
+      elapsedAtStopRef.current = recordingElapsedSeconds;
+      mediaRecorderRef.current.stop();
+      console.log("[confirmStop] MediaRecorder.stop() appelé");
 
-    // Arrêter l'intervalle de requestData() si actif
-    if (dataRequestIntervalRef.current) {
-      clearInterval(dataRequestIntervalRef.current);
-      dataRequestIntervalRef.current = null;
-      console.log("[confirmStop] Intervalle requestData() arrêté");
-    }
-
-    if (mediaRecorderRef.current && isRecording) {
-      if (mediaRecorderRef.current.state === "recording") {
-        console.log("[confirmStop] Arrêt du MediaRecorder...");
-        elapsedAtStopRef.current = recordingElapsedSeconds;
-        
-        // Demander une dernière fois les données avant stop()
-        try {
-          mediaRecorderRef.current.requestData();
-          console.log("[confirmStop] Dernier requestData() appelé");
-        } catch (reqError) {
-          console.warn("[confirmStop] Erreur lors du dernier requestData():", reqError);
-        }
-        
-        mediaRecorderRef.current.stop();
-        console.log("[confirmStop] stop() appelé, state:", mediaRecorderRef.current.state);
-      } else {
-        console.error("[confirmStop] MediaRecorder non en état 'recording'", {
-          state: mediaRecorderRef.current.state,
-        });
+      // Arrêter le stream après l'arrêt du MediaRecorder
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+        console.log("[confirmStop] Stream arrêté");
       }
-      setIsRecording(false);
-      setIsProcessing(true);
-      setIsFocusMode(false);
-      setShowStopConfirm(false);
     } else {
-      console.error("[confirmStop] MediaRecorder non disponible ou pas en enregistrement", {
-        hasMediaRecorder: !!mediaRecorderRef.current,
+      console.warn("[confirmStop] MediaRecorder non disponible ou pas en recording", {
+        hasRef: !!mediaRecorderRef.current,
+        state: mediaRecorderRef.current?.state,
         isRecording,
       });
     }
+    setIsRecording(false);
+    setIsProcessing(true);
+    setIsFocusMode(false);
+    setShowStopConfirm(false);
   };
 
   const processRecording = async (audioBlob: Blob, durationSeconds: number, mimeType: string = "audio/webm") => {
