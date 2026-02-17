@@ -50,6 +50,7 @@ export default function Home() {
   const pausedAtRef = useRef<number | null>(null);
   const elapsedAtStopRef = useRef(0);
   const mimeTypeRef = useRef<string>("audio/webm");
+  const dataRequestIntervalRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (selectedEco) {
@@ -151,25 +152,49 @@ export default function Home() {
       console.log("[startRecording] Format audio sélectionné:", mimeType);
 
       const mediaRecorder = new MediaRecorder(stream, { mimeType });
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
+      console.log("[startRecording] MediaRecorder créé", {
+        mimeType,
+        state: mediaRecorder.state,
+      });
 
+      // Réinitialiser les chunks
+      audioChunksRef.current = [];
+      console.log("[startRecording] audioChunks réinitialisé");
+
+      // Définir ondataavailable AVANT start()
       mediaRecorder.ondataavailable = (event) => {
+        console.log("[ondataavailable] Événement reçu", {
+          dataSize: event.data?.size || 0,
+          dataType: event.data?.type || "unknown",
+          timestamp: Date.now(),
+        });
+        
         if (event.data && event.data.size > 0) {
           audioChunksRef.current.push(event.data);
-          console.log("[MediaRecorder] Chunk reçu:", event.data.size, "bytes");
+          console.log("[MediaRecorder] Chunk reçu:", event.data.size, "bytes, total chunks:", audioChunksRef.current.length);
+        } else {
+          console.warn("[ondataavailable] Chunk vide ou invalide", {
+            hasData: !!event.data,
+            dataSize: event.data?.size || 0,
+          });
         }
       };
 
       mediaRecorder.onstop = async () => {
-        console.log("[MediaRecorder] Arrêt, chunks:", audioChunksRef.current.length);
+        console.log("[MediaRecorder] onstop appelé, chunks:", audioChunksRef.current.length);
         stopAudioLevel();
+        
+        if (audioChunksRef.current.length === 0) {
+          console.error("[MediaRecorder] AUCUN CHUNK RECU! Vérifier la configuration.");
+        }
+        
         // Utiliser le même mimeType que celui utilisé pour l'enregistrement
         const audioBlob = new Blob(audioChunksRef.current, { type: mimeTypeRef.current });
         console.log("[onstop] Blob audio créé", {
           size: audioBlob.size,
           type: audioBlob.type,
           mimeType: mimeTypeRef.current,
+          chunkCount: audioChunksRef.current.length,
         });
         const durationSeconds = elapsedAtStopRef.current;
         startTimeRef.current = null;
@@ -183,9 +208,45 @@ export default function Home() {
         }
       };
 
+      // Stocker dans la ref AVANT start()
+      mediaRecorderRef.current = mediaRecorder;
+      console.log("[startRecording] MediaRecorder stocké dans ref");
+
       // Démarrer le MediaRecorder avec chunks toutes les secondes
-      mediaRecorder.start(1000);
-      console.log("[MediaRecorder] Démarré, state:", mediaRecorder.state);
+      console.log("[MediaRecorder] Appel de start(1000)...");
+      try {
+        mediaRecorder.start(1000);
+        console.log("[MediaRecorder] start(1000) appelé avec succès, state:", mediaRecorder.state);
+        
+        // Alternative: Si start(1000) ne génère pas de chunks, utiliser requestData() manuellement
+        // Certains navigateurs ne respectent pas l'argument timeslice de start()
+        dataRequestIntervalRef.current = window.setInterval(() => {
+          if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+            console.log("[MediaRecorder] Appel manuel de requestData()");
+            try {
+              mediaRecorderRef.current.requestData();
+            } catch (reqError) {
+              console.warn("[MediaRecorder] Erreur lors de requestData():", reqError);
+            }
+          } else {
+            if (dataRequestIntervalRef.current) {
+              clearInterval(dataRequestIntervalRef.current);
+              dataRequestIntervalRef.current = null;
+            }
+          }
+        }, 1000);
+        
+        // Vérifier l'état après un court délai
+        setTimeout(() => {
+          console.log("[MediaRecorder] État après 100ms:", mediaRecorder.state);
+          if (mediaRecorder.state !== "recording") {
+            console.error("[MediaRecorder] ERREUR: Le MediaRecorder n'est pas en état 'recording'");
+          }
+        }, 100);
+      } catch (startError) {
+        console.error("[MediaRecorder] Erreur lors de start(1000):", startError);
+        throw startError;
+      }
 
       // Démarrer l'analyse audio
       await startAudioLevel(stream);
@@ -214,13 +275,48 @@ export default function Home() {
   };
 
   const confirmStop = () => {
+    console.log("[confirmStop] Début", {
+      hasMediaRecorder: !!mediaRecorderRef.current,
+      isRecording,
+      mediaRecorderState: mediaRecorderRef.current?.state,
+    });
+
+    // Arrêter l'intervalle de requestData() si actif
+    if (dataRequestIntervalRef.current) {
+      clearInterval(dataRequestIntervalRef.current);
+      dataRequestIntervalRef.current = null;
+      console.log("[confirmStop] Intervalle requestData() arrêté");
+    }
+
     if (mediaRecorderRef.current && isRecording) {
-      elapsedAtStopRef.current = recordingElapsedSeconds;
-      mediaRecorderRef.current.stop();
+      if (mediaRecorderRef.current.state === "recording") {
+        console.log("[confirmStop] Arrêt du MediaRecorder...");
+        elapsedAtStopRef.current = recordingElapsedSeconds;
+        
+        // Demander une dernière fois les données avant stop()
+        try {
+          mediaRecorderRef.current.requestData();
+          console.log("[confirmStop] Dernier requestData() appelé");
+        } catch (reqError) {
+          console.warn("[confirmStop] Erreur lors du dernier requestData():", reqError);
+        }
+        
+        mediaRecorderRef.current.stop();
+        console.log("[confirmStop] stop() appelé, state:", mediaRecorderRef.current.state);
+      } else {
+        console.error("[confirmStop] MediaRecorder non en état 'recording'", {
+          state: mediaRecorderRef.current.state,
+        });
+      }
       setIsRecording(false);
       setIsProcessing(true);
       setIsFocusMode(false);
       setShowStopConfirm(false);
+    } else {
+      console.error("[confirmStop] MediaRecorder non disponible ou pas en enregistrement", {
+        hasMediaRecorder: !!mediaRecorderRef.current,
+        isRecording,
+      });
     }
   };
 
