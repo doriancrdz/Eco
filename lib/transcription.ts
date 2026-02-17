@@ -18,16 +18,34 @@ export interface TranscriptionResult {
  */
 export async function transcribeAndSummarize(
   audioBlob: Blob,
-  durationSeconds: number
+  durationSeconds: number,
+  mimeType: string = "audio/webm"
 ): Promise<TranscriptionResult> {
   console.log("[transcribeAndSummarize] Début", {
     blobSize: audioBlob.size,
     blobType: audioBlob.type,
+    mimeType,
     durationSeconds,
   });
 
+  // Déterminer l'extension du fichier à partir du mimeType
+  // Formats supportés par Whisper: mp3, mp4, mpeg, mpga, m4a, wav, webm
+  let extension = "webm"; // Par défaut
+  if (mimeType.includes("webm")) {
+    extension = "webm";
+  } else if (mimeType.includes("mp4") || mimeType.includes("m4a")) {
+    extension = "mp4";
+  } else if (mimeType.includes("wav")) {
+    extension = "wav";
+  } else if (mimeType.includes("mp3") || mimeType.includes("mpeg") || mimeType.includes("mpga")) {
+    extension = "mp3";
+  }
+
+  const fileName = `recording.${extension}`;
+  console.log("[transcribeAndSummarize] Nom de fichier:", fileName);
+
   const formData = new FormData();
-  formData.append("audio", audioBlob, "audio.webm");
+  formData.append("audio", audioBlob, fileName);
   formData.append("durationSeconds", durationSeconds.toString());
 
   console.log("[transcribeAndSummarize] FormData créé, envoi à /api/transcribe...");

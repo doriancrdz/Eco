@@ -49,6 +49,7 @@ export default function Home() {
   const totalPausedMsRef = useRef(0);
   const pausedAtRef = useRef<number | null>(null);
   const elapsedAtStopRef = useRef(0);
+  const mimeTypeRef = useRef<string>("audio/webm");
 
   useEffect(() => {
     if (selectedEco) {
@@ -123,7 +124,19 @@ export default function Home() {
       // Démarrer l'analyse audio
       await startAudioLevel(stream);
 
-      const mediaRecorder = new MediaRecorder(stream);
+      // Déterminer le meilleur format audio supporté par Whisper
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm")
+        ? "audio/webm"
+        : MediaRecorder.isTypeSupported("audio/mp4")
+        ? "audio/mp4"
+        : MediaRecorder.isTypeSupported("audio/wav")
+        ? "audio/wav"
+        : "audio/webm"; // Fallback par défaut
+      
+      mimeTypeRef.current = mimeType;
+      console.log("[startRecording] Format audio sélectionné:", mimeType);
+
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
@@ -135,12 +148,18 @@ export default function Home() {
 
       mediaRecorder.onstop = async () => {
         stopAudioLevel();
-        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        // Utiliser le même mimeType que celui utilisé pour l'enregistrement
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeTypeRef.current });
+        console.log("[onstop] Blob audio créé", {
+          size: audioBlob.size,
+          type: audioBlob.type,
+          mimeType: mimeTypeRef.current,
+        });
         const durationSeconds = elapsedAtStopRef.current;
         startTimeRef.current = null;
         totalPausedMsRef.current = 0;
         pausedAtRef.current = null;
-        await processRecording(audioBlob, durationSeconds);
+        await processRecording(audioBlob, durationSeconds, mimeTypeRef.current);
 
         if (streamRef.current) {
           streamRef.current.getTracks().forEach((track) => track.stop());
@@ -176,7 +195,7 @@ export default function Home() {
     }
   };
 
-  const processRecording = async (audioBlob: Blob, durationSeconds: number) => {
+  const processRecording = async (audioBlob: Blob, durationSeconds: number, mimeType: string = "audio/webm") => {
     try {
       console.log("[processRecording] Début du traitement", {
         blobSize: audioBlob.size,
@@ -191,7 +210,8 @@ export default function Home() {
       console.log("[processRecording] Appel à transcribeAndSummarize...");
       const { transcription, summary, demoMode } = await transcribeAndSummarize(
         audioBlob,
-        durationSeconds
+        durationSeconds,
+        mimeType
       );
       console.log("[processRecording] Transcription réussie", {
         transcriptionLength: transcription.length,
