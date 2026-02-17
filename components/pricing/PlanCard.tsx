@@ -25,12 +25,12 @@ export default function PlanCard({
 }: PlanCardProps) {
   const price = isYearly ? plan.priceYearly : plan.priceMonthly;
   const isFree = planKey === "free";
-  // Vue annuelle : prix mensuel effectif (total/12), format FR 2 décimales
+  // Vue annuelle : prix mensuel effectif (total/12), format FR 1 décimale
   const effectiveMonthlyPrice =
     !isFree && isYearly && plan.priceYearly > 0
-      ? (plan.priceYearly / 12).toLocaleString("fr-FR", {
-          minimumFractionDigits: 2,
-          maximumFractionDigits: 2,
+      ? (Math.round((plan.priceYearly / 12) * 10) / 10).toLocaleString("fr-FR", {
+          minimumFractionDigits: 1,
+          maximumFractionDigits: 1,
         })
       : null;
 
