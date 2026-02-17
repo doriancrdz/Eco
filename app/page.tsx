@@ -238,8 +238,8 @@ export default function Home() {
   };
 
   const confirmStop = () => {
+    console.log("[confirmStop] T0 stop clicked", { ts: Date.now() });
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-      console.log("[confirmStop] Arrêt...");
       elapsedAtStopRef.current = recordingElapsedSeconds;
       mediaRecorderRef.current.stop();
       console.log("[confirmStop] MediaRecorder.stop() appelé");
@@ -264,82 +264,59 @@ export default function Home() {
   };
 
   const processRecording = async (audioBlob: Blob, durationSeconds: number, mimeType: string = "audio/webm") => {
-    const perfStart = performance.now();
+    const t0 = Date.now();
     try {
-      console.log("[processRecording] ⏱️ Début du traitement", {
-        blobSize: audioBlob.size,
-        durationSeconds,
-        blobType: audioBlob.type,
-        timestamp: Date.now(),
-      });
-
-      // Créer une URL pour l'audio
+      console.log("[processRecording] T1 upload start", { ts: t0 });
       const audioUrl = URL.createObjectURL(audioBlob);
 
-      // PHASE A: Transcription rapide uniquement
-      const apiStart = performance.now();
-      console.log("[processRecording] ⏱️ PHASE A: Appel à transcribeAudio...");
       const phaseAResult = await transcribeAudio(audioBlob, durationSeconds, mimeType);
-      const apiDuration = performance.now() - apiStart;
-      console.log("[processRecording] ⏱️ PHASE A terminée", {
-        recordingId: phaseAResult.recordingId,
-        transcriptionLength: phaseAResult.transcription.length,
+      const t4 = Date.now();
+      console.log("[processRecording] T4 transcribe response", {
         status: phaseAResult.status,
-        apiDurationMs: apiDuration.toFixed(2),
+        recordingId: phaseAResult.recordingId,
+        elapsed: t4 - t0,
+        ts: t4,
       });
 
-      // Créer l'Eco IMMÉDIATEMENT avec la transcription (sans attendre le résumé)
       const ecoTitle = `Eco du ${new Date().toLocaleDateString("fr-FR")}`;
       const newEco: Eco = {
-        id: phaseAResult.recordingId, // Utiliser recordingId comme ID temporaire
+        id: phaseAResult.recordingId,
         title: ecoTitle,
         audio_url: audioUrl,
         transcription_text: phaseAResult.transcription,
-        summary_text: null, // Pas encore disponible
+        summary_text: null,
         folder: DEFAULT_FOLDERS[0].id,
         created_at: new Date().toISOString(),
       };
 
-      // Sauvegarder l'Eco avec transcription uniquement
-      const saveStart = performance.now();
       saveEco(newEco);
-      const saveDuration = performance.now() - saveStart;
-      console.log("[processRecording] ⏱️ Eco créé avec transcription", {
-        ecoId: newEco.id,
-        saveDurationMs: saveDuration.toFixed(2),
-      });
 
-      // Afficher IMMÉDIATEMENT la page résultat avec la transcription
+      // T5: navigation immédiate vers page résultat (plus de blocage sur "Traitement en cours…")
       setIsFocusMode(false);
       setIsProcessing(false);
       setSelectedEco(newEco.id);
       setSelectedFolder(newEco.folder);
       setRefreshKey((prev) => prev + 1);
       window.dispatchEvent(new Event("eco-updated"));
+      console.log("[processRecording] T5 navigation → EcoView", { elapsed: Date.now() - t0, ts: Date.now() });
 
-      // PHASE B: Générer le résumé en arrière-plan (non bloquant)
-      // Si 200 + summary → mise à jour immédiate. Si 202 → le polling dans EcoView récupérera le résultat.
-      generateSummary(phaseAResult.recordingId)
-        .then((summary) => {
-          if (!summary) return; // 202, génération en cours, polling s'en occupe
-          updateEco(newEco.id, {
-            title: summary.titre || ecoTitle,
-            summary_text: JSON.stringify(summary),
-          });
-          if (selectedEco === newEco.id) {
-            setCurrentEco(getEcoById(newEco.id) || null);
-            setRefreshKey((prev) => prev + 1);
-            window.dispatchEvent(new Event("eco-updated"));
-          }
-        })
-        .catch((error) => {
-          console.error("[processRecording] Erreur PHASE B:", error);
-        });
-
-      const totalDuration = performance.now() - perfStart;
-      console.log("[processRecording] ⏱️ Traitement initial terminé", {
-        totalDurationMs: totalDuration.toFixed(2),
-      });
+      // PHASE B: generate-summary en fire-and-forget (EcoView poll pour récupérer)
+      if (phaseAResult.status === "TRANSCRIBED") {
+        generateSummary(phaseAResult.recordingId)
+          .then((summary) => {
+            if (!summary) return;
+            updateEco(newEco.id, {
+              title: summary.titre || ecoTitle,
+              summary_text: JSON.stringify(summary),
+            });
+            if (selectedEco === newEco.id) {
+              setCurrentEco(getEcoById(newEco.id) || null);
+              setRefreshKey((prev) => prev + 1);
+              window.dispatchEvent(new Event("eco-updated"));
+            }
+          })
+          .catch((error) => console.error("[processRecording] Erreur PHASE B:", error));
+      }
     } catch (error) {
       console.error("[processRecording] Erreur lors du traitement:", error);
       console.error("[processRecording] Détails de l'erreur:", {

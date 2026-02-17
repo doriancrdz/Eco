@@ -46,17 +46,32 @@ interface EcoViewProps {
 }
 
 export default function EcoView({ eco, onRefresh }: EcoViewProps) {
+  const [transcriptionFromPoll, setTranscriptionFromPoll] = useState<string | null>(null);
   const [summaryFromPoll, setSummaryFromPoll] = useState<Summary | null | undefined>(undefined);
+  const [recordingStatus, setRecordingStatus] = useState<string>("");
   const [aiStatus, setAiStatus] = useState<string>("IDLE");
   const [aiError, setAiError] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const generateSummaryTriggeredRef = useRef(false);
 
-  // Polling quand pas de résumé et eco a un id (= recordingId)
+  const hasTranscription = !!(eco?.transcription_text && eco.transcription_text.length > 0);
+  const hasSummary = !!eco?.summary_text;
+  const needsPolling = eco?.id && (!hasTranscription || !hasSummary);
+
   useEffect(() => {
-    if (!eco?.id || eco.summary_text) {
+    if (eco?.id && needsPolling) {
+      console.log("[EcoView] T6 mounted, polling start", { ecoId: eco.id, ts: Date.now() });
+    }
+  }, [eco?.id, needsPolling]);
+
+  useEffect(() => {
+    if (!needsPolling) {
+      setTranscriptionFromPoll(null);
       setSummaryFromPoll(undefined);
+      setRecordingStatus("");
       setAiStatus("IDLE");
       setAiError(null);
+      generateSummaryTriggeredRef.current = false;
       if (pollRef.current) {
         clearInterval(pollRef.current);
         pollRef.current = null;
@@ -64,16 +79,34 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
       return;
     }
 
+    let firstPoll = true;
     const poll = async () => {
       try {
-        const result = await pollRecordingStatus(eco.id);
+        const result = await pollRecordingStatus(eco!.id);
+        if (firstPoll) {
+          console.log("[EcoView] T7 first recording GET", { status: result.status, aiStatus: result.aiStatus, ts: Date.now() });
+          firstPoll = false;
+        }
+        setRecordingStatus(result.status);
         setAiStatus(result.aiStatus ?? "IDLE");
         setAiError(result.aiError ?? null);
 
+        if (result.transcription) {
+          setTranscriptionFromPoll(result.transcription);
+          updateEco(eco!.id, { transcription_text: result.transcription });
+          onRefresh?.();
+        }
+
+        if (result.status === "TRANSCRIBED" && !generateSummaryTriggeredRef.current) {
+          generateSummaryTriggeredRef.current = true;
+          generateSummary(eco!.id).catch(() => {});
+        }
+
         if (result.aiStatus === "DONE" && result.summary) {
+          console.log("[EcoView] T8 summary displayed", { ecoId: eco!.id, ts: Date.now() });
           setSummaryFromPoll(result.summary);
-          updateEco(eco.id, {
-            title: result.summary.titre || eco.title,
+          updateEco(eco!.id, {
+            title: result.summary.titre || eco!.title,
             summary_text: JSON.stringify(result.summary),
           });
           onRefresh?.();
@@ -87,13 +120,13 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
       }
     };
 
-    poll(); // Premier appel immédiat
+    poll();
     pollRef.current = setInterval(poll, POLL_INTERVAL_MS);
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
       pollRef.current = null;
     };
-  }, [eco?.id, eco?.summary_text, eco?.title, onRefresh]);
+  }, [needsPolling, eco?.id, eco?.summary_text, eco?.title, onRefresh]);
   if (!eco) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -159,9 +192,26 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
             <div className="pt-6 border-t border-gray-200/30">
               <h2 className="text-xl font-semibold text-gray-900 mb-6">Transcription</h2>
               <div className="prose prose-base max-w-none">
-                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                  {eco.transcription_text}
-                </p>
+                {(() => {
+                  const transcription = eco.transcription_text || transcriptionFromPoll || "";
+                  const isTranscribing = !transcription && (recordingStatus === "PROCESSING" || !recordingStatus);
+                  if (isTranscribing) {
+                    return (
+                      <div className="space-y-2 animate-pulse">
+                        <div className="h-4 bg-gray-200 rounded w-full" />
+                        <div className="h-4 bg-gray-200 rounded w-5/6" />
+                        <div className="h-4 bg-gray-200 rounded w-full" />
+                        <div className="h-4 bg-gray-200 rounded w-4/5" />
+                        <p className="text-sm text-gray-500 mt-2">Transcription en cours…</p>
+                      </div>
+                    );
+                  }
+                  return (
+                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                      {transcription || "—"}
+                    </p>
+                  );
+                })()}
               </div>
             </div>
 

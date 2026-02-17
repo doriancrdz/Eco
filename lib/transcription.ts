@@ -17,103 +17,57 @@ export interface TranscriptionResult {
 }
 
 /**
- * PHASE A: Transcription rapide uniquement
- * Retourne immédiatement avec la transcription
+ * PHASE A: Init (rapide) + Upload en fire-and-forget
+ * Retourne immédiatement avec recordingId. La transcription arrive via polling.
  */
 export async function transcribeAudio(
   audioBlob: Blob,
   durationSeconds: number,
   mimeType: string = "audio/webm"
 ): Promise<TranscriptionResult> {
-  const perfStart = performance.now();
-  console.log("[transcribeAudio] ⏱️ Début PHASE A", {
-    blobSize: audioBlob.size,
-    blobType: audioBlob.type,
-    mimeType,
-    durationSeconds,
-    timestamp: Date.now(),
+  const t0 = Date.now();
+  console.log("[transcribeAudio] T2 init start", { ts: t0 });
+
+  const initRes = await fetch("/api/recordings/init", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      durationSeconds,
+      mimeType: audioBlob.type || mimeType,
+    }),
   });
 
-  // Déterminer l'extension du fichier
+  if (!initRes.ok) {
+    const err = await initRes.json().catch(() => ({}));
+    throw new Error(err.error || "Erreur init recording");
+  }
+
+  const initData = await initRes.json();
+  const recordingId = initData.recordingId;
+  const t3 = Date.now();
+  console.log("[transcribeAudio] T3 init done", { recordingId, elapsed: t3 - t0, ts: t3 });
+
   let extension = "webm";
-  if (mimeType.includes("webm")) {
-    extension = "webm";
-  } else if (mimeType.includes("mp4") || mimeType.includes("m4a")) {
-    extension = "mp4";
-  } else if (mimeType.includes("wav")) {
-    extension = "wav";
-  } else if (mimeType.includes("mp3") || mimeType.includes("mpeg") || mimeType.includes("mpga")) {
-    extension = "mp3";
-  }
+  if (mimeType.includes("webm")) extension = "webm";
+  else if (mimeType.includes("mp4") || mimeType.includes("m4a")) extension = "mp4";
+  else if (mimeType.includes("wav")) extension = "wav";
+  else if (mimeType.includes("mp3") || mimeType.includes("mpeg")) extension = "mp3";
 
-  const fileName = `recording.${extension}`;
-  const formDataStart = performance.now();
   const formData = new FormData();
-  formData.append("audio", audioBlob, fileName);
-  formData.append("durationSeconds", durationSeconds.toString());
-  const formDataDuration = performance.now() - formDataStart;
+  formData.append("audio", audioBlob, `recording.${extension}`);
 
-  console.log("[transcribeAudio] ⏱️ FormData créé", {
-    fileName,
-    durationMs: formDataDuration.toFixed(2),
-  });
+  fetch(`/api/recordings/${recordingId}/transcribe`, {
+    method: "POST",
+    body: formData,
+  }).catch((e) => console.error("[transcribeAudio] Upload fire-and-forget error:", e));
 
-  console.log("[transcribeAudio] ⏱️ Envoi à /api/transcribe...");
-  const uploadStart = performance.now();
-  let res: Response;
-  try {
-    res = await fetch("/api/transcribe", {
-      method: "POST",
-      body: formData,
-    });
-    const uploadDuration = performance.now() - uploadStart;
-    console.log("[transcribeAudio] ⏱️ Réponse PHASE A reçue", {
-      status: res.status,
-      ok: res.ok,
-      uploadDurationMs: uploadDuration.toFixed(2),
-    });
-  } catch (fetchError) {
-    console.error("[transcribeAudio] Erreur fetch:", fetchError);
-    throw new Error(
-      `Erreur réseau lors de l'appel API: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`
-    );
-  }
-
-  if (!res.ok) {
-    let message = "Erreur lors de la transcription.";
-    try {
-      const errorData = await res.json();
-      if (errorData && typeof errorData.error === "string") {
-        message = errorData.error;
-      }
-    } catch {
-      // Ignore parse error
-    }
-    throw new Error(message);
-  }
-
-  const parseStart = performance.now();
-  const data = await res.json();
-  const parseDuration = performance.now() - parseStart;
-  const totalDuration = performance.now() - perfStart;
-
-  console.log("[transcribeAudio] ⏱️ PHASE A terminée", {
-    recordingId: data.recordingId,
-    hasTranscription: !!data.transcription,
-    status: data.status,
-    parseDurationMs: parseDuration.toFixed(2),
-    totalDurationMs: totalDuration.toFixed(2),
-  });
-
-  if (data.timings) {
-    console.log("[transcribeAudio] ⏱️ Timings serveur:", data.timings);
-  }
+  console.log("[transcribeAudio] T4 upload fire-and-forget, navigation immédiate", { ts: Date.now() });
 
   return {
-    recordingId: data.recordingId,
-    transcription: data.transcription,
-    summary: null, // Pas encore disponible
-    status: data.status,
+    recordingId,
+    transcription: "",
+    summary: null,
+    status: "PROCESSING",
   };
 }
 

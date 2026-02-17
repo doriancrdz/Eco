@@ -12,8 +12,11 @@ export async function GET(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const reqStart = performance.now();
   try {
+    const authStart = performance.now();
     const { userId } = await auth();
+    const authMs = performance.now() - authStart;
     if (!userId) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
@@ -48,6 +51,16 @@ export async function GET(
     if (!recording) {
       return NextResponse.json({ error: "Recording introuvable" }, { status: 404 });
     }
+
+    const totalMs = performance.now() - reqStart;
+    console.log("[recording GET] request end", {
+      id: params.id,
+      status: recording.status,
+      aiStatus: recording.aiStatus,
+      authMs: authMs.toFixed(0),
+      totalMs: totalMs.toFixed(0),
+      ts: Date.now(),
+    });
 
     let summary = null;
     if (recording.summaryJson) {

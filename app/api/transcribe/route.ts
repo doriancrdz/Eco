@@ -168,55 +168,35 @@ export async function POST(req: NextRequest) {
       },
     });
     timings.dbCreate = performance.now() - dbCreateStart;
-    console.log("[transcribe] Recording créé:", recording.id);
 
     try {
-
-      // 7. Appeler OpenAI Whisper pour transcription
-      console.log("[transcribe] Appel à OpenAI Whisper...", {
-        fileSize: audioFile.size,
-        fileType: audioFile.type,
-        fileName: audioFile.name,
-      });
-
       const whisperStart = performance.now();
       const transcriptionResponse = await openai.audio.transcriptions.create({
         file: audioFile,
         model: "whisper-1",
         language: "fr",
       });
-
       const transcription = transcriptionResponse.text;
       timings.whisperTranscription = performance.now() - whisperStart;
-      console.log("[transcribe] Transcription réussie", {
-        transcriptionLength: transcription.length,
-        durationMs: timings.whisperTranscription.toFixed(2),
-      });
 
-      // 8. Mettre à jour le Recording avec la transcription (status = TRANSCRIBED)
       const dbUpdateStart = performance.now();
       await prisma.recording.update({
         where: { id: recording.id },
         data: {
           status: "TRANSCRIBED",
           transcriptionText: transcription,
+          audioBlobSize: audioFile.size,
         },
       });
       timings.dbUpdate = performance.now() - dbUpdateStart;
-
-      // 9. Retourner IMMÉDIATEMENT avec recordingId + transcription (sans attendre le résumé)
       timings.total = performance.now() - perfStart;
-      console.log("[transcribe] ⏱️ TIMINGS PHASE A:", {
-        auth: `${timings.auth?.toFixed(2)}ms`,
-        formDataParse: `${timings.formDataParse?.toFixed(2)}ms`,
-        quotaCheck: `${timings.quotaCheck?.toFixed(2)}ms`,
-        debitMinutes: `${timings.debitMinutes?.toFixed(2)}ms`,
-        dbCreate: `${timings.dbCreate?.toFixed(2)}ms`,
-        whisperTranscription: `${timings.whisperTranscription?.toFixed(2)}ms`,
-        dbUpdate: `${timings.dbUpdate?.toFixed(2)}ms`,
-        total: `${timings.total.toFixed(2)}ms`,
+
+      console.log("[transcribe] request end", {
+        authMs: timings.auth?.toFixed(0),
+        whisperMs: timings.whisperTranscription?.toFixed(0),
+        totalMs: timings.total?.toFixed(0),
+        ts: Date.now(),
       });
-      console.log("[transcribe] ✅ PHASE A terminée, retour rapide");
 
       return NextResponse.json(
         {
@@ -228,40 +208,23 @@ export async function POST(req: NextRequest) {
         { status: 200 }
       );
     } catch (openaiError) {
-      console.error("[transcribe] Erreur API OpenAI:", openaiError);
-      
-      // Mettre à jour le Recording avec status ERROR (si recording existe)
-      if (recording?.id) {
-        try {
-          await prisma.recording.update({
-            where: { id: recording.id },
-            data: {
-              status: "ERROR",
-              errorMessage: openaiError instanceof Error ? openaiError.message : String(openaiError),
-            },
-          });
-        } catch (dbError) {
-          console.error("[transcribe] Erreur mise à jour Recording:", dbError);
-        }
-      }
-
-      // Rollback : remettre les valeurs d'avant le débit si OpenAI a échoué
-      try {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: {
-            minutesUsedMonth: beforeDebitMinutesUsed,
-            extraMinutesMonth: beforeDebitExtraMinutes,
-          },
-        });
-      } catch (rollbackError) {
-        console.error("[transcribe] Erreur lors du rollback des minutes:", rollbackError);
-      }
-
-      return NextResponse.json(
-        {
-          error: "Impossible de générer la transcription. Les minutes n'ont pas été débitées. Veuillez réessayer ultérieurement.",
+      console.error("[transcribe] Erreur OpenAI:", openaiError);
+      await prisma.recording.update({
+        where: { id: recording.id },
+        data: {
+          status: "ERROR",
+          errorMessage: openaiError instanceof Error ? openaiError.message : String(openaiError),
         },
+      }).catch(() => {});
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          minutesUsedMonth: beforeDebitMinutesUsed,
+          extraMinutesMonth: beforeDebitExtraMinutes,
+        },
+      }).catch(() => {});
+      return NextResponse.json(
+        { error: "Impossible de générer la transcription. Les minutes n'ont pas été débitées." },
         { status: 500 }
       );
     }
