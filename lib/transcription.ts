@@ -10,6 +10,8 @@ export interface TranscriptionResult {
   transcription: string;
   summary: Summary | null;
   status: "TRANSCRIBED" | "DONE" | "PROCESSING" | "ERROR";
+  aiStatus?: "IDLE" | "GENERATING" | "DONE" | "FAILED";
+  aiError?: string;
   demoMode?: boolean;
   warning?: string;
 }
@@ -117,19 +119,24 @@ export async function transcribeAudio(
 
 /**
  * PHASE B: Génération du résumé (asynchrone)
+ * - 200 + summary → retourne le résumé
+ * - 202 (GENERATING) → retourne null, le polling récupérera le résultat
+ * - erreur → throw
  */
-export async function generateSummary(recordingId: string): Promise<Summary> {
+export async function generateSummary(recordingId: string): Promise<Summary | null> {
   const perfStart = performance.now();
-  console.log("[generateSummary] ⏱️ Début PHASE B", {
-    recordingId,
-    timestamp: Date.now(),
-  });
+  console.log("[generateSummary] Début PHASE B", { recordingId });
 
   const res = await fetch("/api/generate-summary", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ recordingId }),
   });
+
+  if (res.status === 202) {
+    console.log("[generateSummary] 202 — génération déjà en cours, polling prendra le relais");
+    return null;
+  }
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
@@ -139,14 +146,14 @@ export async function generateSummary(recordingId: string): Promise<Summary> {
   const data = await res.json();
   const duration = performance.now() - perfStart;
 
-  console.log("[generateSummary] ⏱️ PHASE B terminée", {
+  console.log("[generateSummary] PHASE B terminée", {
     recordingId: data.recordingId,
     status: data.status,
     hasSummary: !!data.summary,
     durationMs: duration.toFixed(2),
   });
 
-  return data.summary;
+  return data.summary ?? null;
 }
 
 /**
@@ -166,6 +173,8 @@ export async function pollRecordingStatus(recordingId: string): Promise<Transcri
     transcription: data.transcription || "",
     summary: data.summary,
     status: data.status,
+    aiStatus: data.aiStatus,
+    aiError: data.aiError,
   };
 }
 

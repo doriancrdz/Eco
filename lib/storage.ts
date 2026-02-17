@@ -12,8 +12,23 @@ export function getEcos(): Eco[] {
 export function saveEco(eco: Eco): void {
   if (typeof window === "undefined") return;
   const ecos = getEcos();
-  ecos.push(eco);
+  const idx = ecos.findIndex((e) => e.id === eco.id);
+  if (idx >= 0) {
+    ecos[idx] = eco;
+  } else {
+    ecos.push(eco);
+  }
   localStorage.setItem(STORAGE_KEY_ECOS, JSON.stringify(ecos));
+}
+
+export function updateEco(ecoId: string, updates: Partial<Eco>): void {
+  if (typeof window === "undefined") return;
+  const ecos = getEcos();
+  const idx = ecos.findIndex((e) => e.id === ecoId);
+  if (idx >= 0) {
+    ecos[idx] = { ...ecos[idx], ...updates };
+    localStorage.setItem(STORAGE_KEY_ECOS, JSON.stringify(ecos));
+  }
 }
 
 export function getEcoById(id: string): Eco | undefined {

@@ -13,7 +13,7 @@ import EcoView from "@/components/EcoView";
 import RecordButton from "@/components/RecordButton";
 import { useAudioLevel } from "@/hooks/useAudioLevel";
 import { Eco, DEFAULT_FOLDERS } from "@/types";
-import { saveEco, getEcoById, getEcos } from "@/lib/storage";
+import { saveEco, updateEco, getEcoById, getEcos } from "@/lib/storage";
 import { transcribeAudio, generateSummary, pollRecordingStatus } from "@/lib/transcription";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -318,32 +318,22 @@ export default function Home() {
       window.dispatchEvent(new Event("eco-updated"));
 
       // PHASE B: Générer le résumé en arrière-plan (non bloquant)
-      console.log("[processRecording] ⏱️ PHASE B: Génération résumé en arrière-plan...");
+      // Si 200 + summary → mise à jour immédiate. Si 202 → le polling dans EcoView récupérera le résultat.
       generateSummary(phaseAResult.recordingId)
         .then((summary) => {
-          console.log("[processRecording] ⏱️ PHASE B terminée, résumé reçu", {
-            recordingId: phaseAResult.recordingId,
-            summaryTitle: summary.titre,
-          });
-
-          // Mettre à jour l'Eco avec le résumé
-          const updatedEco: Eco = {
-            ...newEco,
+          if (!summary) return; // 202, génération en cours, polling s'en occupe
+          updateEco(newEco.id, {
             title: summary.titre || ecoTitle,
             summary_text: JSON.stringify(summary),
-          };
-          saveEco(updatedEco);
-
-          // Si on est toujours sur cet Eco, mettre à jour l'affichage
+          });
           if (selectedEco === newEco.id) {
-            setCurrentEco(updatedEco);
+            setCurrentEco(getEcoById(newEco.id) || null);
             setRefreshKey((prev) => prev + 1);
             window.dispatchEvent(new Event("eco-updated"));
           }
         })
         .catch((error) => {
           console.error("[processRecording] Erreur PHASE B:", error);
-          // Ne pas bloquer l'UI, l'utilisateur a déjà la transcription
         });
 
       const totalDuration = performance.now() - perfStart;
@@ -646,7 +636,16 @@ export default function Home() {
               exit={{ opacity: 0, y: -16 }}
               transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             >
-              <EcoView eco={currentEco} />
+              <EcoView
+                eco={currentEco}
+                onRefresh={() => {
+                  if (selectedEco) {
+                    setCurrentEco(getEcoById(selectedEco) || null);
+                    setRefreshKey((prev) => prev + 1);
+                    window.dispatchEvent(new Event("eco-updated"));
+                  }
+                }}
+              />
             </motion.div>
           )}
           {isProcessing && (

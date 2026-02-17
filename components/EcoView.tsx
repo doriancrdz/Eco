@@ -1,14 +1,99 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { Eco } from "@/types";
 import { motion } from "framer-motion";
-import { Download } from "lucide-react";
+import { Download, RefreshCw } from "lucide-react";
+import { pollRecordingStatus, generateSummary } from "@/lib/transcription";
+import { updateEco } from "@/lib/storage";
+import type { Summary } from "@/lib/transcription";
+
+const POLL_INTERVAL_MS = 1000;
+
+function RelancerButton({ recordingId, onSuccess }: { recordingId: string; onSuccess?: () => void }) {
+  const [loading, setLoading] = useState(false);
+  const handleClick = async () => {
+    setLoading(true);
+    try {
+      const summary = await generateSummary(recordingId);
+      if (summary) {
+        updateEco(recordingId, {
+          title: summary.titre,
+          summary_text: JSON.stringify(summary),
+        });
+        onSuccess?.();
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={loading}
+      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white/80 border border-gray-200 rounded-xl hover:bg-white transition-colors disabled:opacity-60"
+    >
+      <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+      {loading ? "Relance en cours…" : "Relancer la génération"}
+    </button>
+  );
+}
 
 interface EcoViewProps {
   eco: Eco | null;
+  onRefresh?: () => void;
 }
 
-export default function EcoView({ eco }: EcoViewProps) {
+export default function EcoView({ eco, onRefresh }: EcoViewProps) {
+  const [summaryFromPoll, setSummaryFromPoll] = useState<Summary | null | undefined>(undefined);
+  const [aiStatus, setAiStatus] = useState<string>("IDLE");
+  const [aiError, setAiError] = useState<string | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Polling quand pas de résumé et eco a un id (= recordingId)
+  useEffect(() => {
+    if (!eco?.id || eco.summary_text) {
+      setSummaryFromPoll(undefined);
+      setAiStatus("IDLE");
+      setAiError(null);
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+      return;
+    }
+
+    const poll = async () => {
+      try {
+        const result = await pollRecordingStatus(eco.id);
+        setAiStatus(result.aiStatus ?? "IDLE");
+        setAiError(result.aiError ?? null);
+
+        if (result.aiStatus === "DONE" && result.summary) {
+          setSummaryFromPoll(result.summary);
+          updateEco(eco.id, {
+            title: result.summary.titre || eco.title,
+            summary_text: JSON.stringify(result.summary),
+          });
+          onRefresh?.();
+          if (pollRef.current) {
+            clearInterval(pollRef.current);
+            pollRef.current = null;
+          }
+        }
+      } catch {
+        // Ignore poll errors
+      }
+    };
+
+    poll(); // Premier appel immédiat
+    pollRef.current = setInterval(poll, POLL_INTERVAL_MS);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      pollRef.current = null;
+    };
+  }, [eco?.id, eco?.summary_text, eco?.title, onRefresh]);
   if (!eco) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -85,27 +170,40 @@ export default function EcoView({ eco }: EcoViewProps) {
               <div className="prose prose-base max-w-none">
                 <div className="text-gray-700 leading-relaxed space-y-4">
                   {(() => {
-                    // Si pas de résumé encore, afficher skeleton
-                    if (!eco.summary_text) {
+                    const summaryJson = eco.summary_text || (summaryFromPoll ? JSON.stringify(summaryFromPoll) : null);
+                    const isGenerating = !summaryJson && aiStatus !== "FAILED";
+                    const isFailed = aiStatus === "FAILED";
+
+                    if (isFailed) {
                       return (
-                        <div className="space-y-4 animate-pulse">
-                          <div className="h-6 bg-gray-200 rounded w-3/4"></div>
-                          <div className="h-4 bg-gray-200 rounded w-full"></div>
-                          <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-                          <div className="h-5 bg-gray-200 rounded w-1/2 mt-6"></div>
-                          <div className="space-y-2 ml-6">
-                            <div className="h-4 bg-gray-200 rounded w-full"></div>
-                            <div className="h-4 bg-gray-200 rounded w-4/5"></div>
-                            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                          </div>
-                          <p className="text-sm text-gray-500 mt-4">Génération du résumé en cours...</p>
+                        <div className="space-y-4">
+                          <p className="text-sm text-red-600">{aiError || "Erreur lors de la génération."}</p>
+                          <RelancerButton recordingId={eco.id} onSuccess={onRefresh} />
                         </div>
                       );
                     }
 
-                    // Essayer de parser le JSON (nouveau format structuré)
+                    if (isGenerating) {
+                      return (
+                        <div className="space-y-4 animate-pulse">
+                          <div className="h-6 bg-gray-200 rounded w-3/4" />
+                          <div className="h-4 bg-gray-200 rounded w-full" />
+                          <div className="h-4 bg-gray-200 rounded w-5/6" />
+                          <div className="h-5 bg-gray-200 rounded w-1/2 mt-6" />
+                          <div className="space-y-2 ml-6">
+                            <div className="h-4 bg-gray-200 rounded w-full" />
+                            <div className="h-4 bg-gray-200 rounded w-4/5" />
+                            <div className="h-4 bg-gray-200 rounded w-3/4" />
+                          </div>
+                          <p className="text-sm text-gray-500 mt-4">Génération du résumé en cours…</p>
+                        </div>
+                      );
+                    }
+
+                    if (!summaryJson) return null;
+
                     try {
-                      const summary = JSON.parse(eco.summary_text);
+                      const summary = JSON.parse(summaryJson);
                       if (summary.titre && summary.resume) {
                         // Format JSON structuré
                         return (
@@ -147,10 +245,9 @@ export default function EcoView({ eco }: EcoViewProps) {
                         );
                       }
                     } catch {
-                      // Format markdown legacy (ancien format)
+                      // Format markdown legacy
                     }
-                    // Fallback : affichage markdown legacy
-                    return eco.summary_text.split("\n").map((line, index) => {
+                    return summaryJson.split("\n").map((line, index) => {
                       if (line.startsWith("## ")) {
                         return (
                           <h3 key={index} className="text-xl font-semibold mt-8 mb-4 text-gray-900 first:mt-0">

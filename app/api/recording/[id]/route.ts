@@ -38,6 +38,8 @@ export async function GET(
         transcriptionText: true,
         summaryJson: true,
         errorMessage: true,
+        aiStatus: true,
+        aiError: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -59,9 +61,11 @@ export async function GET(
     return NextResponse.json({
       recordingId: recording.id,
       status: recording.status,
+      aiStatus: recording.aiStatus ?? "IDLE",
       transcription: recording.transcriptionText,
       summary,
       errorMessage: recording.errorMessage,
+      aiError: recording.aiError,
       createdAt: recording.createdAt.toISOString(),
       updatedAt: recording.updatedAt.toISOString(),
     });
