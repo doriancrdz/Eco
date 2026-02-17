@@ -140,16 +140,29 @@ export default function Home() {
       streamRef.current = stream;
 
       // Déterminer le meilleur format audio supporté par Whisper
-      const mimeType = MediaRecorder.isTypeSupported("audio/webm")
-        ? "audio/webm"
-        : MediaRecorder.isTypeSupported("audio/mp4")
-        ? "audio/mp4"
-        : MediaRecorder.isTypeSupported("audio/wav")
-        ? "audio/wav"
-        : "audio/webm"; // Fallback par défaut
+      // PRIORITÉ: audio/mp4 (génère des chunks non vides sur Safari et autres navigateurs)
+      let mimeType: string;
+      if (MediaRecorder.isTypeSupported("audio/mp4")) {
+        mimeType = "audio/mp4";
+      } else if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
+        mimeType = "audio/webm;codecs=opus";
+      } else if (MediaRecorder.isTypeSupported("audio/webm")) {
+        mimeType = "audio/webm";
+      } else if (MediaRecorder.isTypeSupported("audio/wav")) {
+        mimeType = "audio/wav";
+      } else {
+        mimeType = "audio/mp4"; // Fallback par défaut
+      }
       
       mimeTypeRef.current = mimeType;
       console.log("[startRecording] Format audio sélectionné:", mimeType);
+      console.log("[startRecording] Format supporté?", MediaRecorder.isTypeSupported(mimeType));
+      console.log("[startRecording] Formats testés:", {
+        "audio/mp4": MediaRecorder.isTypeSupported("audio/mp4"),
+        "audio/webm;codecs=opus": MediaRecorder.isTypeSupported("audio/webm;codecs=opus"),
+        "audio/webm": MediaRecorder.isTypeSupported("audio/webm"),
+        "audio/wav": MediaRecorder.isTypeSupported("audio/wav"),
+      });
 
       const mediaRecorder = new MediaRecorder(stream, { mimeType });
       console.log("[startRecording] MediaRecorder créé", {
@@ -212,29 +225,37 @@ export default function Home() {
       mediaRecorderRef.current = mediaRecorder;
       console.log("[startRecording] MediaRecorder stocké dans ref");
 
-      // Démarrer le MediaRecorder avec chunks toutes les secondes
-      console.log("[MediaRecorder] Appel de start(1000)...");
+      // Démarrer le MediaRecorder
+      // Pour audio/mp4, utiliser start() sans argument pour éviter les chunks vides
+      // Les chunks seront collectés à la fin lors de stop()
+      console.log("[MediaRecorder] Appel de start()...");
       try {
-        mediaRecorder.start(1000);
-        console.log("[MediaRecorder] start(1000) appelé avec succès, state:", mediaRecorder.state);
-        
-        // Alternative: Si start(1000) ne génère pas de chunks, utiliser requestData() manuellement
-        // Certains navigateurs ne respectent pas l'argument timeslice de start()
-        dataRequestIntervalRef.current = window.setInterval(() => {
-          if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-            console.log("[MediaRecorder] Appel manuel de requestData()");
-            try {
-              mediaRecorderRef.current.requestData();
-            } catch (reqError) {
-              console.warn("[MediaRecorder] Erreur lors de requestData():", reqError);
+        if (mimeType === "audio/mp4") {
+          // Pour mp4, ne pas utiliser timeslice pour éviter les chunks vides
+          mediaRecorder.start();
+          console.log("[MediaRecorder] start() appelé (sans timeslice pour mp4), state:", mediaRecorder.state);
+        } else {
+          // Pour webm, essayer avec timeslice
+          mediaRecorder.start(1000);
+          console.log("[MediaRecorder] start(1000) appelé, state:", mediaRecorder.state);
+          
+          // Alternative: Si start(1000) ne génère pas de chunks, utiliser requestData() manuellement
+          dataRequestIntervalRef.current = window.setInterval(() => {
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+              console.log("[MediaRecorder] Appel manuel de requestData()");
+              try {
+                mediaRecorderRef.current.requestData();
+              } catch (reqError) {
+                console.warn("[MediaRecorder] Erreur lors de requestData():", reqError);
+              }
+            } else {
+              if (dataRequestIntervalRef.current) {
+                clearInterval(dataRequestIntervalRef.current);
+                dataRequestIntervalRef.current = null;
+              }
             }
-          } else {
-            if (dataRequestIntervalRef.current) {
-              clearInterval(dataRequestIntervalRef.current);
-              dataRequestIntervalRef.current = null;
-            }
-          }
-        }, 1000);
+          }, 1000);
+        }
         
         // Vérifier l'état après un court délai
         setTimeout(() => {
@@ -244,7 +265,7 @@ export default function Home() {
           }
         }, 100);
       } catch (startError) {
-        console.error("[MediaRecorder] Erreur lors de start(1000):", startError);
+        console.error("[MediaRecorder] Erreur lors de start():", startError);
         throw startError;
       }
 
