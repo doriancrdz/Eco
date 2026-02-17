@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
 
 export type LogoState = "idle" | "recording" | "paused" | "generating";
 
@@ -22,6 +23,20 @@ export default function Logo({
   isClickable = false,
   showMicroWarning = false,
 }: LogoProps) {
+  // BUG 3 FIX: Ne montrer le warning qu'après 2 secondes si toujours non disponible
+  const [showWarning, setShowWarning] = useState(false);
+
+  useEffect(() => {
+    if (showMicroWarning && state === "recording") {
+      // Attendre 2 secondes avant d'afficher le warning
+      const timer = setTimeout(() => {
+        setShowWarning(true);
+      }, 2000);
+      return () => clearTimeout(timer);
+    } else {
+      setShowWarning(false);
+    }
+  }, [showMicroWarning, state]);
   const scale =
     state === "recording"
       ? 0.97 + (soundLevel - 0.95) * 1.2
@@ -131,10 +146,11 @@ export default function Logo({
           className="bg-transparent block w-full h-full object-contain select-none"
         />
       </motion.div>
-      {showMicroWarning && (
+      {showWarning && (
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.8 }}
           className="absolute bottom-0 right-0 w-4 h-4 text-amber-400"
         >
           <AlertCircle className="w-full h-full" />

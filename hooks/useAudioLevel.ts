@@ -60,10 +60,11 @@ export function useAudioLevel(isPaused: boolean = false): UseAudioLevelResult {
       return;
     }
 
-    // BUG 2 FIX: Vérifier que le stream est actif
+    // BUG 2 FIX: Vérifier que le stream est actif et a des pistes audio actives
     if (!stream || stream.getTracks().length === 0) {
       console.error("[useAudioLevel] Stream invalide ou vide");
       setError("Stream audio invalide");
+      setIsAvailable(false);
       return;
     }
 
@@ -71,11 +72,27 @@ export function useAudioLevel(isPaused: boolean = false): UseAudioLevelResult {
     if (audioTracks.length === 0) {
       console.error("[useAudioLevel] Aucune piste audio dans le stream");
       setError("Aucune piste audio disponible");
+      setIsAvailable(false);
+      return;
+    }
+
+    // Vérifier qu'au moins une piste est active
+    const activeTracks = audioTracks.filter(t => t.enabled && t.readyState === "live");
+    if (activeTracks.length === 0) {
+      console.error("[useAudioLevel] Aucune piste audio active", {
+        tracks: audioTracks.map(t => ({
+          enabled: t.enabled,
+          readyState: t.readyState,
+        })),
+      });
+      setError("Aucune piste audio active");
+      setIsAvailable(false);
       return;
     }
 
     console.log("[useAudioLevel] Démarrage avec stream", {
       trackCount: audioTracks.length,
+      activeTrackCount: activeTracks.length,
       trackEnabled: audioTracks[0]?.enabled,
       trackReadyState: audioTracks[0]?.readyState,
     });

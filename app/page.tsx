@@ -111,18 +111,32 @@ export default function Home() {
 
   const startRecording = async () => {
     setIsPaused(false);
-    // BUG 1 FIX: Changer la vue IMMÉDIATEMENT pour éviter la latence visible
-    setIsFocusMode(true);
-    setIsRecording(true);
     setRecordingElapsedSeconds(0);
 
     try {
-      // Démarrer le micro en arrière-plan pendant que la vue s'affiche
+      console.log("[startRecording] Demande accès micro...");
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
+      
+      console.log("[startRecording] Stream obtenu:", stream.id);
+      const audioTracks = stream.getAudioTracks();
+      console.log("[startRecording] Pistes audio:", audioTracks.length, audioTracks.map(t => ({
+        id: t.id,
+        enabled: t.enabled,
+        readyState: t.readyState,
+        label: t.label,
+      })));
+      
+      if (audioTracks.length === 0) {
+        throw new Error("Aucune piste audio disponible");
+      }
 
-      // Démarrer l'analyse audio
-      await startAudioLevel(stream);
+      // Vérifier que les pistes sont actives
+      const activeTracks = audioTracks.filter(t => t.enabled && t.readyState === "live");
+      if (activeTracks.length === 0) {
+        throw new Error("Aucune piste audio active");
+      }
+
+      streamRef.current = stream;
 
       // Déterminer le meilleur format audio supporté par Whisper
       const mimeType = MediaRecorder.isTypeSupported("audio/webm")
@@ -141,12 +155,14 @@ export default function Home() {
       audioChunksRef.current = [];
 
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
+        if (event.data && event.data.size > 0) {
           audioChunksRef.current.push(event.data);
+          console.log("[MediaRecorder] Chunk reçu:", event.data.size, "bytes");
         }
       };
 
       mediaRecorder.onstop = async () => {
+        console.log("[MediaRecorder] Arrêt, chunks:", audioChunksRef.current.length);
         stopAudioLevel();
         // Utiliser le même mimeType que celui utilisé pour l'enregistrement
         const audioBlob = new Blob(audioChunksRef.current, { type: mimeTypeRef.current });
@@ -167,16 +183,29 @@ export default function Home() {
         }
       };
 
+      // Démarrer le MediaRecorder avec chunks toutes les secondes
+      mediaRecorder.start(1000);
+      console.log("[MediaRecorder] Démarré, state:", mediaRecorder.state);
+
+      // Démarrer l'analyse audio
+      await startAudioLevel(stream);
+      console.log("[startRecording] Analyse audio démarrée");
+
+      // Initialiser le timer
       startTimeRef.current = Date.now();
       totalPausedMsRef.current = 0;
       pausedAtRef.current = null;
-      mediaRecorder.start();
+
+      // SEULEMENT MAINTENANT on peut afficher FocusMode
+      setIsFocusMode(true);
+      setIsRecording(true);
+      console.log("[startRecording] FocusMode activé");
     } catch (error) {
-      console.error("Erreur lors de l'accès au microphone:", error);
+      console.error("[startRecording] Erreur:", error);
       // Réinitialiser l'état en cas d'erreur
       setIsFocusMode(false);
       setIsRecording(false);
-      alert("Impossible d'accéder au microphone. Veuillez vérifier les permissions.");
+      alert("Impossible d'accéder au microphone. Veuillez autoriser l'accès.");
     }
   };
 
@@ -576,7 +605,7 @@ export default function Home() {
         onTogglePause={() => setIsPaused((p) => !p)}
         soundLevel={soundLevel}
         frequencyData={frequencyData}
-        showMicroWarning={!isAvailable}
+        showMicroWarning={false}
         onStartRecording={handleStartRecording}
         onStopRecording={stopRecording}
         showStopConfirm={showStopConfirm}
