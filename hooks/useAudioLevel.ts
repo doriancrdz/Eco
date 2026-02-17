@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback } from "react";
 
 const FREQ_BARS = 32;
 const SMOOTHING = 0.68; // plus réactif : nouvelle valeur pèse plus (ChatGPT-style)
@@ -12,6 +12,8 @@ interface UseAudioLevelResult {
   error: string | null;
   startAudioLevel: (stream: MediaStream) => Promise<void>;
   stopAudioLevel: () => void;
+  /** Ref vers l'AnalyserNode (pour ScrollingWaveformBars canvas). Rempli après startAudioLevel(). */
+  analyserRef: React.RefObject<AnalyserNode | null>;
 }
 
 const ZERO_FREQUENCY_DATA = Array.from({ length: FREQ_BARS }, () => 0);
@@ -148,5 +150,6 @@ export function useAudioLevel(isPaused: boolean = false): UseAudioLevelResult {
     error,
     startAudioLevel,
     stopAudioLevel,
+    analyserRef,
   };
 }

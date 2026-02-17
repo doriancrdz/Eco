@@ -41,7 +41,7 @@ export default function Home() {
   const [viewAllEcos, setViewAllEcos] = useState(false);
   const [recordingElapsedSeconds, setRecordingElapsedSeconds] = useState(0);
 
-  const { soundLevel, frequencyData, isAvailable, startAudioLevel, stopAudioLevel } = useAudioLevel(isPaused);
+  const { soundLevel, frequencyData, isAvailable, startAudioLevel, stopAudioLevel, analyserRef } = useAudioLevel(isPaused);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
@@ -532,6 +532,7 @@ export default function Home() {
         onConfirmStop={confirmStop}
         onCancelStop={() => setShowStopConfirm(false)}
         recordingElapsedSeconds={recordingElapsedSeconds}
+        analyserRef={analyserRef}
       />
 
       <ProfileView

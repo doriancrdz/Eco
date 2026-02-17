@@ -1,8 +1,9 @@
 "use client";
 
+import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Pause, Play } from "lucide-react";
-import AudioWave from "./AudioWave";
+import ScrollingWaveformBars from "./ScrollingWaveformBars";
 import RecordButton from "./RecordButton";
 import Logo from "./Logo";
 
@@ -26,6 +27,7 @@ interface FocusModeProps {
   onConfirmStop?: () => void;
   onCancelStop?: () => void;
   recordingElapsedSeconds?: number;
+  analyserRef?: React.RefObject<AnalyserNode | null>;
 }
 
 export default function FocusMode({
@@ -42,6 +44,7 @@ export default function FocusMode({
   onConfirmStop,
   onCancelStop,
   recordingElapsedSeconds = 0,
+  analyserRef,
 }: FocusModeProps) {
   if (!isActive) return null;
 
@@ -77,7 +80,16 @@ export default function FocusMode({
                 transition={{ delay: 0.2 }}
                 className="flex items-center justify-center gap-4 w-full max-w-md"
               >
-                <AudioWave frequencyData={frequencyData} isPaused={isPaused} />
+                {analyserRef ? (
+                  <ScrollingWaveformBars
+                    analyserRef={analyserRef}
+                    isPaused={isPaused}
+                    width={320}
+                    height={56}
+                  />
+                ) : (
+                  <div className="w-[320px] h-14" aria-hidden />
+                )}
                 <span className="text-sm font-semibold tabular-nums text-gray-700 shrink-0 min-w-[3rem]">
                   {formatTimer(recordingElapsedSeconds)}
                 </span>
