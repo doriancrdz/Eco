@@ -29,6 +29,7 @@ model User {
 
   transactions Transaction[]
   ecos         Eco[]
+  recordings   Recording[]
 
   @@index([clerkUserId])
   @@index([monthKey])
@@ -47,6 +48,26 @@ model Transaction {
 
   @@index([userId])
   @@index([stripeCustomerId])
+}
+
+model Recording {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status            String   @default("PROCESSING") // "PROCESSING" | "TRANSCRIBED" | "DONE" | "ERROR"
+  audioUrl          String?  // URL de l'audio (local ou cloud)
+  audioBlobSize     Int?     // Taille du blob audio en bytes
+  durationSeconds   Float?   // Durée de l'enregistrement
+  mimeType          String?  // Format audio (audio/webm, audio/mp4, etc.)
+  transcriptionText String?  // Texte de transcription (disponible après TRANSCRIBED)
+  summaryJson       String?  // JSON du résumé (disponible après DONE)
+  errorMessage      String?  // Message d'erreur si status = ERROR
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model Eco {

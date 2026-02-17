@@ -3,7 +3,7 @@ export interface Eco {
   title: string;
   audio_url: string;
   transcription_text: string;
-  summary_text: string;
+  summary_text: string | null; // Peut être null si résumé pas encore généré
   folder: string;
   created_at: string;
 }

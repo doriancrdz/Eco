@@ -14,7 +14,7 @@ import RecordButton from "@/components/RecordButton";
 import { useAudioLevel } from "@/hooks/useAudioLevel";
 import { Eco, DEFAULT_FOLDERS } from "@/types";
 import { saveEco, getEcoById, getEcos } from "@/lib/storage";
-import { transcribeAndSummarize } from "@/lib/transcription";
+import { transcribeAudio, generateSummary, pollRecordingStatus } from "@/lib/transcription";
 import { motion, AnimatePresence } from "framer-motion";
 
 export type CurrentView = "home" | "recording" | "generating" | "detail" | "pricing" | "list";
@@ -264,60 +264,92 @@ export default function Home() {
   };
 
   const processRecording = async (audioBlob: Blob, durationSeconds: number, mimeType: string = "audio/webm") => {
+    const perfStart = performance.now();
     try {
-      console.log("[processRecording] Début du traitement", {
+      console.log("[processRecording] ⏱️ Début du traitement", {
         blobSize: audioBlob.size,
         durationSeconds,
         blobType: audioBlob.type,
+        timestamp: Date.now(),
       });
 
       // Créer une URL pour l'audio
       const audioUrl = URL.createObjectURL(audioBlob);
 
-      // Générer la transcription et le résumé via l'API backend
-      console.log("[processRecording] Appel à transcribeAndSummarize...");
-      const { transcription, summary, demoMode } = await transcribeAndSummarize(
-        audioBlob,
-        durationSeconds,
-        mimeType
-      );
-      console.log("[processRecording] Transcription réussie", {
-        transcriptionLength: transcription.length,
-        summaryTitle: summary.titre,
-        demoMode,
+      // PHASE A: Transcription rapide uniquement
+      const apiStart = performance.now();
+      console.log("[processRecording] ⏱️ PHASE A: Appel à transcribeAudio...");
+      const phaseAResult = await transcribeAudio(audioBlob, durationSeconds, mimeType);
+      const apiDuration = performance.now() - apiStart;
+      console.log("[processRecording] ⏱️ PHASE A terminée", {
+        recordingId: phaseAResult.recordingId,
+        transcriptionLength: phaseAResult.transcription.length,
+        status: phaseAResult.status,
+        apiDurationMs: apiDuration.toFixed(2),
       });
 
-      // Mettre à jour le mode démo si activé
-      if (demoMode) {
-        setIsDemoMode(true);
-      }
-
-      // Créer l'Eco
-      // Utiliser le titre du résumé si disponible, sinon titre par défaut
-      const ecoTitle = summary.titre || `Eco du ${new Date().toLocaleDateString("fr-FR")}`;
+      // Créer l'Eco IMMÉDIATEMENT avec la transcription (sans attendre le résumé)
+      const ecoTitle = `Eco du ${new Date().toLocaleDateString("fr-FR")}`;
       const newEco: Eco = {
-        id: Date.now().toString(),
+        id: phaseAResult.recordingId, // Utiliser recordingId comme ID temporaire
         title: ecoTitle,
         audio_url: audioUrl,
-        transcription_text: transcription,
-        summary_text: JSON.stringify(summary), // Sérialiser l'objet Summary en JSON string
-        folder: DEFAULT_FOLDERS[0].id, // Par défaut dans "Travail"
+        transcription_text: phaseAResult.transcription,
+        summary_text: null, // Pas encore disponible
+        folder: DEFAULT_FOLDERS[0].id,
         created_at: new Date().toISOString(),
       };
 
-      // Sauvegarder
+      // Sauvegarder l'Eco avec transcription uniquement
+      const saveStart = performance.now();
       saveEco(newEco);
-      console.log("[processRecording] Eco créé et sauvegardé", { ecoId: newEco.id });
+      const saveDuration = performance.now() - saveStart;
+      console.log("[processRecording] ⏱️ Eco créé avec transcription", {
+        ecoId: newEco.id,
+        saveDurationMs: saveDuration.toFixed(2),
+      });
 
-      // Mettre à jour l'interface
+      // Afficher IMMÉDIATEMENT la page résultat avec la transcription
       setIsFocusMode(false);
       setIsProcessing(false);
       setSelectedEco(newEco.id);
       setSelectedFolder(newEco.folder);
-      setRefreshKey((prev) => prev + 1); // Force le rafraîchissement de la sidebar
-      
-      // Déclencher un événement pour mettre à jour la sidebar
+      setRefreshKey((prev) => prev + 1);
       window.dispatchEvent(new Event("eco-updated"));
+
+      // PHASE B: Générer le résumé en arrière-plan (non bloquant)
+      console.log("[processRecording] ⏱️ PHASE B: Génération résumé en arrière-plan...");
+      generateSummary(phaseAResult.recordingId)
+        .then((summary) => {
+          console.log("[processRecording] ⏱️ PHASE B terminée, résumé reçu", {
+            recordingId: phaseAResult.recordingId,
+            summaryTitle: summary.titre,
+          });
+
+          // Mettre à jour l'Eco avec le résumé
+          const updatedEco: Eco = {
+            ...newEco,
+            title: summary.titre || ecoTitle,
+            summary_text: JSON.stringify(summary),
+          };
+          saveEco(updatedEco);
+
+          // Si on est toujours sur cet Eco, mettre à jour l'affichage
+          if (selectedEco === newEco.id) {
+            setCurrentEco(updatedEco);
+            setRefreshKey((prev) => prev + 1);
+            window.dispatchEvent(new Event("eco-updated"));
+          }
+        })
+        .catch((error) => {
+          console.error("[processRecording] Erreur PHASE B:", error);
+          // Ne pas bloquer l'UI, l'utilisateur a déjà la transcription
+        });
+
+      const totalDuration = performance.now() - perfStart;
+      console.log("[processRecording] ⏱️ Traitement initial terminé", {
+        totalDurationMs: totalDuration.toFixed(2),
+      });
     } catch (error) {
       console.error("[processRecording] Erreur lors du traitement:", error);
       console.error("[processRecording] Détails de l'erreur:", {

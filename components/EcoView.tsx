@@ -85,6 +85,24 @@ export default function EcoView({ eco }: EcoViewProps) {
               <div className="prose prose-base max-w-none">
                 <div className="text-gray-700 leading-relaxed space-y-4">
                   {(() => {
+                    // Si pas de résumé encore, afficher skeleton
+                    if (!eco.summary_text) {
+                      return (
+                        <div className="space-y-4 animate-pulse">
+                          <div className="h-6 bg-gray-200 rounded w-3/4"></div>
+                          <div className="h-4 bg-gray-200 rounded w-full"></div>
+                          <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+                          <div className="h-5 bg-gray-200 rounded w-1/2 mt-6"></div>
+                          <div className="space-y-2 ml-6">
+                            <div className="h-4 bg-gray-200 rounded w-full"></div>
+                            <div className="h-4 bg-gray-200 rounded w-4/5"></div>
+                            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                          </div>
+                          <p className="text-sm text-gray-500 mt-4">Génération du résumé en cours...</p>
+                        </div>
+                      );
+                    }
+
                     // Essayer de parser le JSON (nouveau format structuré)
                     try {
                       const summary = JSON.parse(eco.summary_text);
