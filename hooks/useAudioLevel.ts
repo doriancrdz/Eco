@@ -36,6 +36,7 @@ export function useAudioLevel(isPaused: boolean = false): UseAudioLevelResult {
   isPausedRef.current = isPaused;
 
   const stopAudioLevel = useCallback(() => {
+    console.log("[useAudioLevel] Arrêt de l'analyse audio");
     isStoppedRef.current = true;
     if (animationRef.current !== null) {
       cancelAnimationFrame(animationRef.current);
@@ -59,6 +60,26 @@ export function useAudioLevel(isPaused: boolean = false): UseAudioLevelResult {
       return;
     }
 
+    // BUG 2 FIX: Vérifier que le stream est actif
+    if (!stream || stream.getTracks().length === 0) {
+      console.error("[useAudioLevel] Stream invalide ou vide");
+      setError("Stream audio invalide");
+      return;
+    }
+
+    const audioTracks = stream.getAudioTracks();
+    if (audioTracks.length === 0) {
+      console.error("[useAudioLevel] Aucune piste audio dans le stream");
+      setError("Aucune piste audio disponible");
+      return;
+    }
+
+    console.log("[useAudioLevel] Démarrage avec stream", {
+      trackCount: audioTracks.length,
+      trackEnabled: audioTracks[0]?.enabled,
+      trackReadyState: audioTracks[0]?.readyState,
+    });
+
     isStoppedRef.current = false;
     setError(null);
 
@@ -79,8 +100,14 @@ export function useAudioLevel(isPaused: boolean = false): UseAudioLevelResult {
       source.connect(analyser);
       sourceRef.current = source;
 
+      console.log("[useAudioLevel] Source connectée à l'analyser", {
+        audioContextState: audioContext.state,
+        analyserFftSize: analyser.fftSize,
+        frequencyBinCount: analyser.frequencyBinCount,
+      });
+
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      dataArrayRef.current = dataArray;
+      dataArrayRef.current = dataArray as Uint8Array;
 
       setIsAvailable(true);
       smoothedRef.current = Array.from({ length: FREQ_BARS }, () => 0);
@@ -90,21 +117,48 @@ export function useAudioLevel(isPaused: boolean = false): UseAudioLevelResult {
       const curve = (v: number) =>
         Math.min(255, Math.pow(Math.min(v / 255, 1), 0.5) * 255 * gain);
 
+      let frameCount = 0;
       const runLoop = () => {
-        if (isStoppedRef.current) return;
+        if (isStoppedRef.current) {
+          console.log("[useAudioLevel] RAF loop arrêtée (isStopped)");
+          return;
+        }
 
         const ctx = audioContextRef.current;
         const analyserNode = analyserRef.current;
         const data = dataArrayRef.current;
 
-        if (!ctx || !analyserNode || !data) return;
+        if (!ctx || !analyserNode || !data) {
+          console.warn("[useAudioLevel] Références manquantes dans RAF loop", {
+            hasContext: !!ctx,
+            hasAnalyser: !!analyserNode,
+            hasData: !!data,
+          });
+          animationRef.current = requestAnimationFrame(runLoop);
+          return;
+        }
 
         if (ctx.state === "suspended") {
           ctx.resume();
         }
 
-        // @ts-expect-error - typage strict Web API, compatible à l'exécution
+        // BUG 2 FIX: S'assurer que getByteFrequencyData est appelé et que les données sont valides
+        // @ts-expect-error - Type compatibility issue between ArrayBuffer and ArrayBufferLike
         analyserNode.getByteFrequencyData(data);
+
+        // Vérifier que les données ne sont pas toutes à zéro (debug)
+        const dataSum = data.reduce((a, b) => a + b, 0);
+        if (frameCount % 60 === 0) {
+          // Log toutes les secondes environ (60 frames à ~60fps)
+          console.log("[useAudioLevel] Données audio", {
+            frameCount,
+            dataSum,
+            maxValue: Math.max(...Array.from(data)),
+            audioContextState: ctx.state,
+            isPaused: isPausedRef.current,
+          });
+        }
+        frameCount++;
 
         if (isPausedRef.current) {
           setSoundLevel(1);
@@ -134,8 +188,11 @@ export function useAudioLevel(isPaused: boolean = false): UseAudioLevelResult {
         animationRef.current = requestAnimationFrame(runLoop);
       };
 
+      // BUG 2 FIX: Démarrer le loop immédiatement
+      console.log("[useAudioLevel] Démarrage du RAF loop");
       runLoop();
     } catch (err) {
+      console.error("[useAudioLevel] Erreur lors du démarrage:", err);
       setError(err instanceof Error ? err.message : "Permission refusée");
       setIsAvailable(false);
       setSoundLevel(1);

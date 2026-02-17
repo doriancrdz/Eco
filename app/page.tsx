@@ -110,10 +110,17 @@ export default function Home() {
 
   const startRecording = async () => {
     setIsPaused(false);
+    // BUG 1 FIX: Changer la vue IMMÉDIATEMENT pour éviter la latence visible
+    setIsFocusMode(true);
+    setIsRecording(true);
+    setRecordingElapsedSeconds(0);
+
     try {
+      // Démarrer le micro en arrière-plan pendant que la vue s'affiche
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
+      // Démarrer l'analyse audio
       await startAudioLevel(stream);
 
       const mediaRecorder = new MediaRecorder(stream);
@@ -145,11 +152,11 @@ export default function Home() {
       totalPausedMsRef.current = 0;
       pausedAtRef.current = null;
       mediaRecorder.start();
-      setIsRecording(true);
-      setIsFocusMode(true);
-      setRecordingElapsedSeconds(0);
     } catch (error) {
       console.error("Erreur lors de l'accès au microphone:", error);
+      // Réinitialiser l'état en cas d'erreur
+      setIsFocusMode(false);
+      setIsRecording(false);
       alert("Impossible d'accéder au microphone. Veuillez vérifier les permissions.");
     }
   };
@@ -171,14 +178,26 @@ export default function Home() {
 
   const processRecording = async (audioBlob: Blob, durationSeconds: number) => {
     try {
+      console.log("[processRecording] Début du traitement", {
+        blobSize: audioBlob.size,
+        durationSeconds,
+        blobType: audioBlob.type,
+      });
+
       // Créer une URL pour l'audio
       const audioUrl = URL.createObjectURL(audioBlob);
 
       // Générer la transcription et le résumé via l'API backend
+      console.log("[processRecording] Appel à transcribeAndSummarize...");
       const { transcription, summary, demoMode } = await transcribeAndSummarize(
         audioBlob,
         durationSeconds
       );
+      console.log("[processRecording] Transcription réussie", {
+        transcriptionLength: transcription.length,
+        summaryTitle: summary.titre,
+        demoMode,
+      });
 
       // Mettre à jour le mode démo si activé
       if (demoMode) {
@@ -200,6 +219,7 @@ export default function Home() {
 
       // Sauvegarder
       saveEco(newEco);
+      console.log("[processRecording] Eco créé et sauvegardé", { ecoId: newEco.id });
 
       // Mettre à jour l'interface
       setIsFocusMode(false);
@@ -211,10 +231,19 @@ export default function Home() {
       // Déclencher un événement pour mettre à jour la sidebar
       window.dispatchEvent(new Event("eco-updated"));
     } catch (error) {
-      console.error("Erreur lors du traitement:", error);
+      console.error("[processRecording] Erreur lors du traitement:", error);
+      console.error("[processRecording] Détails de l'erreur:", {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        name: error instanceof Error ? error.name : typeof error,
+      });
       setIsProcessing(false);
       setIsFocusMode(false);
-      alert("Une erreur est survenue lors du traitement de l'enregistrement.");
+      const errorMessage =
+        error instanceof Error
+          ? `Erreur lors du traitement: ${error.message}`
+          : "Une erreur est survenue lors du traitement de l'enregistrement.";
+      alert(errorMessage);
     }
   };
 

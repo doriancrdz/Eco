@@ -33,9 +33,28 @@ export async function POST(req: NextRequest) {
     const audioFile = formData.get("audio");
     const durationSecondsStr = formData.get("durationSeconds");
 
+    console.log("[transcribe] FormData reçu", {
+      hasAudioFile: !!audioFile,
+      audioFileType: audioFile && typeof audioFile === "object" && "type" in audioFile ? (audioFile as File).type : typeof audioFile,
+      audioFileSize: audioFile && typeof audioFile === "object" && "size" in audioFile ? (audioFile as File).size : null,
+      durationSecondsStr,
+    });
+
     if (!audioFile || !(audioFile instanceof File)) {
+      console.error("[transcribe] Fichier audio invalide", {
+        audioFileType: typeof audioFile,
+        audioFileValue: audioFile ? String(audioFile).substring(0, 100) : null,
+      });
       return NextResponse.json(
         { error: "Aucun fichier audio valide fourni." },
+        { status: 400 }
+      );
+    }
+
+    if (audioFile.size === 0) {
+      console.error("[transcribe] Fichier audio vide");
+      return NextResponse.json(
+        { error: "Le fichier audio est vide." },
         { status: 400 }
       );
     }
@@ -126,6 +145,12 @@ export async function POST(req: NextRequest) {
     const beforeDebitExtraMinutes = user.extraMinutesMonth;
 
     try {
+      console.log("[transcribe] Appel à OpenAI Whisper...", {
+        fileSize: audioFile.size,
+        fileType: audioFile.type,
+        fileName: audioFile.name,
+      });
+
       // 7. Appeler OpenAI Whisper pour transcription
       const transcriptionResponse = await openai.audio.transcriptions.create({
         file: audioFile,
@@ -134,8 +159,12 @@ export async function POST(req: NextRequest) {
       });
 
       const transcription = transcriptionResponse.text;
+      console.log("[transcribe] Transcription réussie", {
+        transcriptionLength: transcription.length,
+      });
 
       // 8. Appeler gpt-4o-mini pour générer résumé structuré (format JSON strict)
+      console.log("[transcribe] Appel à GPT-4o-mini pour résumé...");
       const completion = await openai.chat.completions.create({
         model: "gpt-4o-mini",
         messages: [
@@ -181,8 +210,15 @@ Transcription :
       let summary;
       try {
         summary = JSON.parse(summaryContent);
+        console.log("[transcribe] Résumé parsé avec succès", {
+          hasTitre: !!summary.titre,
+          hasResume: !!summary.resume,
+          pointsClesCount: summary.pointsCles?.length || 0,
+          notionsCount: summary.notions?.length || 0,
+        });
       } catch (parseError) {
-        console.error("Erreur parsing JSON summary:", parseError);
+        console.error("[transcribe] Erreur parsing JSON summary:", parseError);
+        console.error("[transcribe] Contenu reçu:", summaryContent.substring(0, 500));
         // Fallback si le JSON est invalide
         summary = {
           titre: "Résumé",
@@ -193,6 +229,7 @@ Transcription :
       }
 
       // 10. Retourner JSON avec transcription + résumé
+      console.log("[transcribe] Succès complet, retour de la réponse");
       return NextResponse.json(
         {
           transcription,
@@ -201,9 +238,17 @@ Transcription :
         { status: 200 }
       );
     } catch (openaiError) {
+      console.error("[transcribe] Erreur API OpenAI:", openaiError);
+      console.error("[transcribe] Détails de l'erreur OpenAI:", {
+        message: openaiError instanceof Error ? openaiError.message : String(openaiError),
+        name: openaiError instanceof Error ? openaiError.name : typeof openaiError,
+        stack: openaiError instanceof Error ? openaiError.stack : undefined,
+      });
+
       // Rollback : remettre les valeurs d'avant le débit si OpenAI a échoué
       if (debitSuccess) {
         try {
+          console.log("[transcribe] Rollback des minutes...");
           await prisma.user.update({
             where: { id: user.id },
             data: {
@@ -211,17 +256,22 @@ Transcription :
               extraMinutesMonth: beforeDebitExtraMinutes,
             },
           });
+          console.log("[transcribe] Rollback réussi");
         } catch (rollbackError) {
-          console.error("Erreur lors du rollback des minutes:", rollbackError);
+          console.error("[transcribe] Erreur lors du rollback des minutes:", rollbackError);
         }
       }
 
-      console.error("Erreur API OpenAI:", openaiError);
+      const errorMessage =
+        openaiError instanceof Error
+          ? `Erreur OpenAI: ${openaiError.message}`
+          : "Erreur inconnue lors de l'appel OpenAI";
 
       return NextResponse.json(
         {
           error:
             "Impossible de générer la transcription ou le résumé. Les minutes n'ont pas été débitées. Veuillez réessayer ultérieurement.",
+          details: process.env.NODE_ENV === "development" ? errorMessage : undefined,
         },
         { status: 500 }
       );
