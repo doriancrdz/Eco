@@ -7,14 +7,15 @@ const BAR_WIDTH = 2;
 const GAP = 1;
 const BAR_STEP = BAR_WIDTH + GAP;
 const SCROLL_SPEED = BAR_STEP;
-const MIN_HEIGHT_RATIO = 0.06;
+const MIN_HEIGHT_RATIO = 0.02;
 const MAX_HEIGHT_RATIO = 0.95;
-const IDLE_AMP = 0.05;
-const IDLE_WAVE = 0.03;
-const GAIN = 2.6;
-const POW_CURVE = 0.55;
-const EMA_ALPHA = 0.35;
-const NOISE_FLOOR = 0.012;
+const GATE_THRESHOLD = 0.018;
+const GAIN = 2.4;
+const POW_CURVE = 0.52;
+const ATTACK_ALPHA = 0.5;
+const RELEASE_ALPHA = 0.07;
+const TEXTURE_AMP = 0.12;
+const TEXTURE_SPEED = 0.0022;
 
 interface ScrollingWaveformBarsProps {
   analyserRef: React.RefObject<AnalyserNode | null>;
@@ -58,10 +59,9 @@ export default function ScrollingWaveformBars({
     let ema = 0;
 
     function getAmplitude(): number {
+      if (isPausedRef.current) return 0;
       const analyser = analyserRef.current;
-      if (!analyser || isPausedRef.current) {
-        return IDLE_AMP + IDLE_WAVE * Math.sin(Date.now() / 280);
-      }
+      if (!analyser) return 0;
       if (!timeDomainData || timeDomainData.length !== analyser.fftSize) {
         timeDomainData = new Uint8Array(analyser.fftSize);
       }
@@ -74,11 +74,30 @@ export default function ScrollingWaveformBars({
         sum += v * v;
       }
       const rms = Math.sqrt(sum / len);
-      const boosted = Math.min(1, Math.pow(rms, POW_CURVE) * GAIN);
-      const jitter = boosted < 0.15 ? NOISE_FLOOR * (Math.random() * 2 - 1) : 0;
-      const withNoise = Math.min(1, Math.max(0, boosted + jitter));
-      ema = EMA_ALPHA * withNoise + (1 - EMA_ALPHA) * ema;
+      if (rms < GATE_THRESHOLD) return 0;
+      const raw = Math.min(1, Math.pow(rms, POW_CURVE) * GAIN);
+      const alpha = raw > ema ? ATTACK_ALPHA : RELEASE_ALPHA;
+      ema = alpha * raw + (1 - alpha) * ema;
       return ema;
+    }
+
+    function drawFlat() {
+      if (!ctx) return;
+      ctx.clearRect(0, 0, w, h);
+      const centerY = h / 2;
+      const halfH = MIN_HEIGHT_RATIO * (h / 2);
+      const gradient = ctx.createLinearGradient(0, h, 0, 0);
+      gradient.addColorStop(0, "rgba(34, 211, 238, 0.92)");
+      gradient.addColorStop(0.5, "rgba(139, 92, 246, 0.92)");
+      gradient.addColorStop(1, "rgba(34, 211, 238, 0.92)");
+      ctx.fillStyle = gradient;
+      for (let i = 0; i < BAR_COUNT; i++) {
+        const x = w - (BAR_COUNT - 1 - i) * BAR_STEP;
+        if (x + BAR_WIDTH < 0 || x > w) continue;
+        ctx.beginPath();
+        ctx.roundRect(x, centerY - halfH, BAR_WIDTH, halfH * 2, BAR_WIDTH / 2);
+        ctx.fill();
+      }
     }
 
     function draw() {
@@ -103,8 +122,13 @@ export default function ScrollingWaveformBars({
       gradient.addColorStop(1, "rgba(34, 211, 238, 0.92)");
 
       const centerY = h / 2;
+      const t = Date.now();
       for (let i = 0; i < BAR_COUNT; i++) {
-        const raw = buffer[i] ?? 0;
+        let raw = buffer[i] ?? 0;
+        if (raw > 0) {
+          const texture = 1 + TEXTURE_AMP * Math.sin(i * 0.2 + t * TEXTURE_SPEED);
+          raw = Math.min(1, raw * texture);
+        }
         const halfH = (MIN_HEIGHT_RATIO + raw * (MAX_HEIGHT_RATIO - MIN_HEIGHT_RATIO)) * (h / 2);
         const y1 = centerY - halfH;
         const y2 = centerY + halfH;
@@ -119,9 +143,13 @@ export default function ScrollingWaveformBars({
       rafId = requestAnimationFrame(draw);
     }
 
+    if (isPaused) {
+      drawFlat();
+      return () => {};
+    }
     draw();
     return () => cancelAnimationFrame(rafId);
-  }, [analyserRef, width, height]);
+  }, [analyserRef, width, height, isPaused]);
 
   return (
     <canvas
