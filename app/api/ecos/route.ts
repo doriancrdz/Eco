@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
         title: true,
         audioUrl: true,
         transcriptionText: true,
-        summaryText: true,
+        content: true,
         folderId: true,
         createdAt: true,
         updatedAt: true,
@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
       title: eco.title,
       audio_url: eco.audioUrl || "",
       transcription_text: eco.transcriptionText || "",
-      summary_text: eco.summaryText || null,
+      summary_text: eco.content || null, // Utiliser content pour summary_text
       folder: eco.folderId || "",
       created_at: eco.createdAt.toISOString(),
     }));
