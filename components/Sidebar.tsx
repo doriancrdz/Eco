@@ -54,7 +54,8 @@ export default function Sidebar({
 
   const handleEcoClick = (eco: { id: string; folder: string }) => {
     onSelectEco(eco.id);
-    onSelectFolder(eco.folder);
+    // Normaliser : folder vide => null (unfiled)
+    onSelectFolder(eco.folder && eco.folder !== "" ? eco.folder : null);
     onClose?.();
   };
 
@@ -148,6 +149,7 @@ export default function Sidebar({
                     selectedFolderId={selectedFolder}
                     selectedEcoId={selectedEco}
                     onSelectEco={handleEcoClick}
+                    onSelectFolder={onSelectFolder}
                     onClose={onClose}
                     refreshKey={refreshKey}
                   />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FolderPlus } from "lucide-react";
+import { FolderPlus, Inbox } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Folder as FolderType } from "@/types";
 import FolderItem from "./FolderItem";
@@ -140,6 +140,21 @@ export default function FolderList({ selectedFolderId, onSelectFolder }: FolderL
         )}
       </AnimatePresence>
       <div className="space-y-0.5">
+        {/* Unclassés : ECOs sans dossier (folderId = null) */}
+        <motion.button
+          type="button"
+          whileHover={{ x: 2 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => onSelectFolder(null)}
+          className={`w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+            selectedFolderId === null
+              ? "bg-white/25 text-gray-900"
+              : "text-gray-700 hover:bg-white/20"
+          }`}
+        >
+          <Inbox className="w-4 h-4 shrink-0" />
+          <span className="truncate">Unclassés</span>
+        </motion.button>
         {isLoading ? (
           <p className="px-4 py-3 text-gray-500 text-xs">Chargement...</p>
         ) : (

@@ -8,6 +8,7 @@ interface EcoHistoryProps {
   selectedFolderId: string | null;
   selectedEcoId: string | null;
   onSelectEco: (eco: Eco) => void;
+  onSelectFolder?: (folderId: string | null) => void;
   onClose?: () => void;
   refreshKey?: number;
 }
@@ -16,6 +17,7 @@ export default function EcoHistory({
   selectedFolderId,
   selectedEcoId,
   onSelectEco,
+  onSelectFolder,
   onClose,
   refreshKey = 0,
 }: EcoHistoryProps) {
@@ -26,12 +28,12 @@ export default function EcoHistory({
   const loadEcos = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Construire l'URL avec le paramètre folderId
-      // Si selectedFolderId est null → ne pas passer folderId (retourne tous les ECOs)
-      // Si selectedFolderId est un ID → passer cet ID
+      // Règle type ChatGPT :
+      // - selectedFolderId === null => afficher UNFILED (folderId = null)
+      // - selectedFolderId !== null => afficher les ECOs du dossier
       const url = selectedFolderId
         ? `/api/ecos?folderId=${selectedFolderId}`
-        : `/api/ecos`;
+        : `/api/ecos?folderId=null`;
       
       const response = await fetch(url);
       
@@ -72,9 +74,18 @@ export default function EcoHistory({
 
   return (
     <div className="mt-6 flex flex-col min-h-0">
-      <p className="text-xs font-black uppercase tracking-widest text-gray-400 px-4 mb-2">
+      <button
+        type="button"
+        onClick={() => selectedFolderId !== null && onSelectFolder?.(null)}
+        className={`text-left text-xs font-black uppercase tracking-widest px-4 mb-2 transition-colors ${
+          selectedFolderId === null
+            ? "text-gray-900"
+            : "text-gray-400 hover:text-gray-600 cursor-pointer"
+        }`}
+        title={selectedFolderId !== null ? "Revenir aux ECOs non classés" : undefined}
+      >
         Vos ECOs
-      </p>
+      </button>
       <input
         type="text"
         value={search}

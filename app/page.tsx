@@ -418,7 +418,7 @@ export default function Home() {
       setIsFocusMode(false);
       setIsProcessing(false);
       setSelectedEco(newEco.id);
-      setSelectedFolder(newEco.folder);
+      setSelectedFolder(newEco.folder && newEco.folder !== "" ? newEco.folder : null);
       setRefreshKey((prev) => prev + 1);
       window.dispatchEvent(new Event("eco-updated"));
       console.log("[processRecording] T5 navigation → EcoView", { elapsed: Date.now() - t0, ts: Date.now() });
@@ -492,7 +492,7 @@ export default function Home() {
 
   const handleEcoClick = (eco: Eco) => {
     setSelectedEco(eco.id);
-    setSelectedFolder(eco.folder);
+    setSelectedFolder(eco.folder && eco.folder !== "" ? eco.folder : null);
     setViewAllEcos(false);
   };
 
