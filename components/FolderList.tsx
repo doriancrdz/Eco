@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FolderPlus, Folder } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Folder as FolderType } from "@/types";
 import { DEFAULT_FOLDERS } from "@/types";
+import { getFolders } from "@/lib/storage";
 
 interface FolderListProps {
   selectedFolderId: string | null;
@@ -12,9 +13,19 @@ interface FolderListProps {
 }
 
 export default function FolderList({ selectedFolderId, onSelectFolder }: FolderListProps) {
-  const [folders, setFolders] = useState<FolderType[]>(DEFAULT_FOLDERS);
+  const [folders, setFolders] = useState<FolderType[]>(getFolders());
   const [isAdding, setIsAdding] = useState(false);
   const [newName, setNewName] = useState("");
+
+  useEffect(() => {
+    const loadFolders = () => {
+      setFolders(getFolders());
+    };
+    
+    loadFolders();
+    window.addEventListener("folders-updated", loadFolders);
+    return () => window.removeEventListener("folders-updated", loadFolders);
+  }, []);
 
   const handleAdd = () => {
     const name = newName.trim();

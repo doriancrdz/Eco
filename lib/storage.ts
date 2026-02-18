@@ -53,3 +53,16 @@ export function deleteEco(ecoId: string): void {
   const filtered = ecos.filter((e) => e.id !== ecoId);
   localStorage.setItem(STORAGE_KEY_ECOS, JSON.stringify(filtered));
 }
+
+export function saveFolder(folder: Folder): void {
+  if (typeof window === "undefined") return;
+  const folders = getFolders();
+  const idx = folders.findIndex((f) => f.id === folder.id);
+  if (idx >= 0) {
+    folders[idx] = folder;
+  } else {
+    folders.push(folder);
+  }
+  localStorage.setItem(STORAGE_KEY_FOLDERS, JSON.stringify(folders));
+  window.dispatchEvent(new Event("folders-updated"));
+}

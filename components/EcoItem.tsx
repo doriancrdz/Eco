@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { MoreHorizontal } from "lucide-react";
+import { MoreHorizontal, FolderPlus } from "lucide-react";
 import { motion } from "framer-motion";
 import { Eco, Folder as FolderType, DEFAULT_FOLDERS } from "@/types";
-import { updateEco, deleteEco, getFolders } from "@/lib/storage";
+import { updateEco, deleteEco, getFolders, saveFolder } from "@/lib/storage";
 import DropdownMenu from "./ui/DropdownMenu";
 import Dialog from "./ui/Dialog";
 
@@ -21,8 +21,22 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
   const [renameValue, setRenameValue] = useState(eco.title);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
   const renameInputRef = useRef<HTMLInputElement>(null);
-  const folders = getFolders();
+  const folderInputRef = useRef<HTMLInputElement>(null);
+  const [folders, setFolders] = useState(getFolders());
+
+  useEffect(() => {
+    const loadFolders = () => {
+      setFolders(getFolders());
+    };
+    
+    loadFolders();
+    window.addEventListener("folders-updated", loadFolders);
+    return () => window.removeEventListener("folders-updated", loadFolders);
+  }, []);
 
   useEffect(() => {
     if (isRenaming && renameInputRef.current) {
@@ -78,6 +92,61 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
     }
   };
 
+  const handleCreateFolder = async () => {
+    const trimmed = newFolderName.trim();
+    if (!trimmed || isCreating) return;
+
+    setIsCreating(true);
+    try {
+      // Appel API pour créer le dossier
+      const response = await fetch("/api/folders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmed }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Erreur lors de la création du dossier");
+      }
+
+      const newFolder = await response.json();
+      
+      // Sauvegarder le dossier dans localStorage
+      saveFolder(newFolder);
+      
+      // Déplacer l'ECO dans le nouveau dossier
+      updateEco(eco.id, { folder: newFolder.id });
+      window.dispatchEvent(new Event("eco-updated"));
+      window.dispatchEvent(new Event("folders-updated"));
+      onUpdate?.();
+      
+      // Réinitialiser l'état
+      setIsCreatingFolder(false);
+      setNewFolderName("");
+    } catch (error) {
+      console.error("Erreur lors de la création du dossier:", error);
+      alert("Erreur lors de la création du dossier.");
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleCreateFolderKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleCreateFolder();
+    } else if (e.key === "Escape") {
+      setIsCreatingFolder(false);
+      setNewFolderName("");
+    }
+  };
+
+  useEffect(() => {
+    if (isCreatingFolder && folderInputRef.current) {
+      folderInputRef.current.focus();
+    }
+  }, [isCreatingFolder]);
+
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
@@ -93,6 +162,58 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
     }
   };
 
+  // Construire les items du sous-menu "Déplacer vers…"
+  const moveToFolderSubmenu = [
+    ...(isCreatingFolder
+      ? [
+          {
+            label: "",
+            onClick: undefined,
+            customContent: (
+              <div className="px-4 py-2 flex items-center gap-2">
+                <FolderPlus className="w-4 h-4 text-gray-600 shrink-0" />
+                <input
+                  ref={folderInputRef}
+                  type="text"
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                  onKeyDown={handleCreateFolderKeyDown}
+                  onBlur={() => {
+                    // Ne pas fermer si on clique ailleurs dans le menu
+                    setTimeout(() => {
+                      if (!folderInputRef.current?.matches(":focus")) {
+                        setIsCreatingFolder(false);
+                        setNewFolderName("");
+                      }
+                    }, 200);
+                  }}
+                  placeholder="Nom du dossier"
+                  disabled={isCreating}
+                  className="flex-1 bg-white/30 border border-white/40 rounded-lg px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-white/40 text-gray-800 disabled:opacity-50"
+                  onClick={(e) => e.stopPropagation()}
+                />
+                {isCreating && (
+                  <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin shrink-0" />
+                )}
+              </div>
+            ),
+          },
+        ]
+      : [
+          {
+            label: "Nouveau dossier…",
+            onClick: () => {
+              setIsCreatingFolder(true);
+            },
+            icon: <FolderPlus className="w-4 h-4" />,
+          },
+        ]),
+    ...folders.map((folder) => ({
+      label: folder.name,
+      onClick: () => handleMoveToFolder(folder.id),
+    })),
+  ];
+
   const menuItems = [
     {
       label: "Renommer",
@@ -102,16 +223,7 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
     },
     {
       label: "Déplacer vers…",
-      submenu: [
-        {
-          label: "Aucun dossier",
-          onClick: () => handleMoveToFolder(null),
-        },
-        ...folders.map((folder) => ({
-          label: folder.name,
-          onClick: () => handleMoveToFolder(folder.id),
-        })),
-      ],
+      submenu: moveToFolderSubmenu,
     },
     {
       label: "Supprimer",

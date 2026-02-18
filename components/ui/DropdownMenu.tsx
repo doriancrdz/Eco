@@ -11,6 +11,8 @@ interface DropdownMenuItem {
   danger?: boolean;
   disabled?: boolean;
   submenu?: DropdownMenuItem[];
+  customContent?: React.ReactNode;
+  icon?: React.ReactNode;
 }
 
 interface DropdownMenuProps {
@@ -113,17 +115,18 @@ export default function DropdownMenu({ items, children, align = "right" }: Dropd
 
   // Gérer les clics extérieurs
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
+    const handleClickOutside = (event: PointerEvent | MouseEvent) => {
+      if (!isOpen) return;
+
       const target = event.target as Node;
-      if (
-        isOpen &&
-        menuRef.current &&
-        !menuRef.current.contains(target) &&
-        submenuRef.current &&
-        !submenuRef.current.contains(target) &&
-        triggerRef.current &&
-        !triggerRef.current.contains(target)
-      ) {
+      
+      // Vérifier si le clic est dans le menu, le sous-menu ou le trigger
+      const isClickInMenu = menuRef.current?.contains(target);
+      const isClickInSubmenu = submenuRef.current?.contains(target);
+      const isClickInTrigger = triggerRef.current?.contains(target);
+
+      // Si le clic n'est dans aucun de ces éléments, fermer le menu
+      if (!isClickInMenu && !isClickInSubmenu && !isClickInTrigger) {
         handleClose();
       }
     };
@@ -135,12 +138,15 @@ export default function DropdownMenu({ items, children, align = "right" }: Dropd
     };
 
     if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
+      // Utiliser pointerdown avec capture pour être prioritaire
+      document.addEventListener("pointerdown", handleClickOutside, { capture: true });
+      document.addEventListener("mousedown", handleClickOutside, { capture: true });
       document.addEventListener("keydown", handleEscape);
     }
 
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("pointerdown", handleClickOutside, { capture: true });
+      document.removeEventListener("mousedown", handleClickOutside, { capture: true });
       document.removeEventListener("keydown", handleEscape);
     };
   }, [isOpen]);
@@ -347,29 +353,42 @@ export default function DropdownMenu({ items, children, align = "right" }: Dropd
                   >
                     <div className="bg-white/20 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl ring-1 ring-white/10 overflow-hidden">
                       <div className="py-1">
-                        {items[submenuOpen].submenu!.map((subItem, subIndex) => (
-                          <button
-                            key={subIndex}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleSubmenuItemClick(subItem);
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter" || e.key === " ") {
-                                e.preventDefault();
+                        {items[submenuOpen].submenu!.map((subItem, subIndex) => {
+                          // Si l'item a un contenu personnalisé, le rendre directement
+                          if (subItem.customContent) {
+                            return (
+                              <div key={subIndex} onClick={(e) => e.stopPropagation()}>
+                                {subItem.customContent}
+                              </div>
+                            );
+                          }
+
+                          // Sinon, rendre un bouton normal
+                          return (
+                            <button
+                              key={subIndex}
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 handleSubmenuItemClick(subItem);
-                              }
-                            }}
-                            className={`w-full text-left px-4 py-2 text-sm transition-colors focus:outline-none focus:bg-white/30 disabled:opacity-50 disabled:cursor-not-allowed ${
-                              subItem.danger
-                                ? "text-red-600 hover:bg-red-500/20 hover:text-red-700"
-                                : "text-gray-800 hover:bg-white/30"
-                            }`}
-                            disabled={subItem.disabled}
-                          >
-                            {subItem.label}
-                          </button>
-                        ))}
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
+                                  handleSubmenuItemClick(subItem);
+                                }
+                              }}
+                              className={`w-full text-left px-4 py-2 text-sm transition-colors focus:outline-none focus:bg-white/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 ${
+                                subItem.danger
+                                  ? "text-red-600 hover:bg-red-500/20 hover:text-red-700"
+                                  : "text-gray-800 hover:bg-white/30"
+                              }`}
+                              disabled={subItem.disabled}
+                            >
+                              {subItem.icon && <span className="shrink-0">{subItem.icon}</span>}
+                              <span>{subItem.label}</span>
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   </motion.div>
