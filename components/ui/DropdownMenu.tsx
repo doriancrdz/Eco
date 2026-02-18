@@ -6,7 +6,7 @@ import { ChevronRight } from "lucide-react";
 
 interface DropdownMenuItem {
   label: string;
-  onClick: () => void;
+  onClick?: () => void;
   danger?: boolean;
   submenu?: DropdownMenuItem[];
 }
@@ -59,7 +59,9 @@ export default function DropdownMenu({ items, children, align = "right" }: Dropd
       // Ne pas fermer si sous-menu
       return;
     }
-    item.onClick();
+    if (item.onClick) {
+      item.onClick();
+    }
     setIsOpen(false);
     setSubmenuOpen(null);
   };
