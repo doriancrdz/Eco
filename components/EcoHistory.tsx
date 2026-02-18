@@ -5,19 +5,15 @@ import { Eco } from "@/types";
 import EcoItem from "./EcoItem";
 
 interface EcoHistoryProps {
-  selectedFolderId: string | null;
   selectedEcoId: string | null;
   onSelectEco: (eco: Eco) => void;
-  onSelectFolder?: (folderId: string | null) => void;
   onClose?: () => void;
   refreshKey?: number;
 }
 
 export default function EcoHistory({
-  selectedFolderId,
   selectedEcoId,
   onSelectEco,
-  onSelectFolder,
   onClose,
   refreshKey = 0,
 }: EcoHistoryProps) {
@@ -28,22 +24,11 @@ export default function EcoHistory({
   const loadEcos = useCallback(async () => {
     setIsLoading(true);
     try {
-      // Règle type ChatGPT :
-      // - selectedFolderId === null => afficher UNFILED (folderId = null)
-      // - selectedFolderId !== null => afficher les ECOs du dossier
-      const url = selectedFolderId
-        ? `/api/ecos?folderId=${selectedFolderId}`
-        : `/api/ecos?folderId=null`;
-      
-      const response = await fetch(url);
-      
+      const response = await fetch("/api/ecos?limit=30");
       if (!response.ok) {
         throw new Error("Erreur lors du chargement des ECOs");
       }
-
       const data = await response.json();
-      
-      // REMPLACER le state, pas append
       setEcos(data.ecos || []);
     } catch (error) {
       console.error("Erreur lors du chargement des ECOs:", error);
@@ -51,17 +36,14 @@ export default function EcoHistory({
     } finally {
       setIsLoading(false);
     }
-  }, [selectedFolderId]);
+  }, []);
 
   useEffect(() => {
     loadEcos();
   }, [loadEcos, refreshKey]);
 
   useEffect(() => {
-    const handleEcoUpdated = () => {
-      loadEcos();
-    };
-    
+    const handleEcoUpdated = () => loadEcos();
     window.addEventListener("eco-updated", handleEcoUpdated);
     return () => window.removeEventListener("eco-updated", handleEcoUpdated);
   }, [loadEcos]);
@@ -74,18 +56,9 @@ export default function EcoHistory({
 
   return (
     <div className="mt-6 flex flex-col min-h-0">
-      <button
-        type="button"
-        onClick={() => selectedFolderId !== null && onSelectFolder?.(null)}
-        className={`text-left text-xs font-black uppercase tracking-widest px-4 mb-2 transition-colors ${
-          selectedFolderId === null
-            ? "text-gray-900"
-            : "text-gray-400 hover:text-gray-600 cursor-pointer"
-        }`}
-        title={selectedFolderId !== null ? "Revenir aux ECOs non classés" : undefined}
-      >
+      <p className="text-xs font-black uppercase tracking-widest text-gray-400 px-4 mb-2">
         Vos ECOs
-      </button>
+      </p>
       <input
         type="text"
         value={search}

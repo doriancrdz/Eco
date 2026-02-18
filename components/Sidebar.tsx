@@ -140,16 +140,16 @@ export default function Sidebar({
                 </div>
 
                 <FolderList
-                  selectedFolderId={selectedFolder}
-                  onSelectFolder={onSelectFolder}
+                  onSelectEco={handleEcoClick}
+                  onClose={onClose}
+                  selectedEcoId={selectedEco}
+                  expandFolderId={selectedFolder}
                 />
 
                 <div className="flex-1 min-h-0 flex flex-col">
                   <EcoHistory
-                    selectedFolderId={selectedFolder}
                     selectedEcoId={selectedEco}
                     onSelectEco={handleEcoClick}
-                    onSelectFolder={onSelectFolder}
                     onClose={onClose}
                     refreshKey={refreshKey}
                   />
