@@ -246,8 +246,8 @@ export default function PricingPage() {
             variants={{
               visible: {
                 transition: {
-                  staggerChildren: 0.08,
-                  delayChildren: 0.3,
+                  staggerChildren: 0.05,
+                  delayChildren: 0.2,
                 },
               },
             }}
@@ -326,8 +326,8 @@ export default function PricingPage() {
             variants={{
               visible: {
                 transition: {
-                  staggerChildren: 0.1,
-                  delayChildren: 0.6,
+                  staggerChildren: 0.05,
+                  delayChildren: 0.4,
                 },
               },
             }}

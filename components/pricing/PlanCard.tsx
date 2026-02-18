@@ -1,5 +1,6 @@
 "use client";
 
+import { memo, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Check, Sparkles } from "lucide-react";
 import { PlanConfig } from "@/lib/billingConfig";
@@ -14,7 +15,7 @@ interface PlanCardProps {
   index?: number;
 }
 
-export default function PlanCard({
+function PlanCard({
   plan,
   planKey,
   isYearly,
@@ -23,6 +24,17 @@ export default function PlanCard({
   isLoading = false,
   index = 0,
 }: PlanCardProps) {
+  const [isMobile, setIsMobile] = useState(false);
+  
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   const price = isYearly ? plan.priceYearly : plan.priceMonthly;
   const isFree = planKey === "free";
   // Vue annuelle : prix mensuel effectif (total/12), format FR 1 décimale
@@ -45,17 +57,18 @@ export default function PlanCard({
           y: 0,
           scale: 1,
           transition: {
-            duration: 0.5,
-            delay: index * 0.1,
+            duration: 0.4,
+            delay: index * 0.05,
             ease: [0.22, 1, 0.36, 1],
           },
         },
       }}
-      whileHover={{
+      whileHover={isMobile ? {} : {
         y: isMostPopular ? -8 : -6,
         scale: isMostPopular ? 1.03 : 1.02,
-        transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] },
+        transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] },
       }}
+      style={{ willChange: isMobile ? 'auto' : 'transform' }}
       className={`relative ${
         isMostPopular
           ? "md:scale-105 z-10"
@@ -64,18 +77,18 @@ export default function PlanCard({
     >
       {isMostPopular && (
         <>
-          {/* Glow animé derrière la carte */}
+          {/* Glow animé derrière la carte - optimisé */}
           <motion.div
-            animate={{
-              opacity: [0.4, 0.6, 0.4],
-              scale: [1, 1.05, 1],
+            animate={isMobile ? { opacity: 0.5 } : {
+              opacity: [0.5, 0.6, 0.5],
             }}
-            transition={{
-              duration: 3,
+            transition={isMobile ? {} : {
+              duration: 4,
               repeat: Infinity,
               ease: "easeInOut",
             }}
             className="absolute inset-0 bg-gradient-to-r from-aura-emerald/30 via-aura-blue/30 to-aura-sand/30 rounded-card blur-2xl -z-10"
+            style={{ willChange: isMobile ? 'auto' : 'opacity' }}
           />
           <div className="absolute inset-0 bg-gradient-to-r from-aura-emerald/20 via-aura-blue/20 to-aura-sand/20 rounded-card blur-xl -z-10 opacity-60"></div>
           
@@ -230,8 +243,9 @@ export default function PlanCard({
                   className="flex items-start gap-3 group"
                 >
                   <motion.div
-                    whileHover={{ scale: 1.2, rotate: 5 }}
-                    transition={{ type: "spring", stiffness: 400 }}
+                    whileHover={isMobile ? {} : { scale: 1.1, rotate: 3 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 15 }}
+                    style={{ willChange: isMobile ? 'auto' : 'transform' }}
                   >
                     <Check className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5 group-hover:text-emerald-700 transition-colors" />
                   </motion.div>
@@ -245,14 +259,15 @@ export default function PlanCard({
 
           {!isFree && (
             <motion.button
-              whileHover={{
-                scale: isLoading ? 1 : 1.02,
-                y: isLoading ? 0 : -2,
+              whileHover={isMobile || isLoading ? {} : {
+                scale: 1.02,
+                y: -2,
               }}
               whileTap={{ scale: 0.98 }}
               onClick={onSelect}
               disabled={isLoading}
-              className={`w-full py-3.5 px-4 rounded-xl font-semibold text-sm transition-all duration-250 relative overflow-hidden ${
+              style={{ willChange: isMobile ? 'auto' : 'transform' }}
+              className={`w-full py-3.5 px-4 rounded-xl font-semibold text-sm transition-all duration-200 relative overflow-hidden ${
                 isMostPopular
                   ? "bg-gradient-to-r from-gray-900 to-gray-800 text-white hover:from-gray-800 hover:to-gray-700 shadow-xl hover:shadow-[0_10px_30px_rgba(0,0,0,0.3)] hover:shadow-emerald-500/20"
                   : "bg-gradient-to-r from-gray-800 to-gray-700 text-white hover:from-gray-700 hover:to-gray-600 shadow-lg"
@@ -291,3 +306,5 @@ export default function PlanCard({
     </motion.div>
   );
 }
+
+export default memo(PlanCard);
