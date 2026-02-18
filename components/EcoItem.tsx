@@ -101,22 +101,23 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
 
   const handleMoveToFolder = async (folderId: string | null) => {
     try {
+      const payload = { folderId: folderId && folderId !== "" ? folderId : null };
       const response = await fetch(`/api/eco/${eco.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ folderId: folderId || null }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
-        throw new Error("Erreur lors du déplacement");
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || "Erreur lors du déplacement");
       }
 
       window.dispatchEvent(new Event("eco-updated"));
       onUpdate?.();
-      // Le menu se fermera via le click outside handler après le succès
     } catch (error) {
       console.error("Erreur lors du déplacement:", error);
-      alert("Erreur lors du déplacement de l'ECO.");
+      alert(error instanceof Error ? error.message : "Erreur lors du déplacement de l'ECO.");
     }
   };
 
@@ -253,10 +254,13 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
             icon: <FolderPlus className="w-4 h-4" />,
           },
         ]),
-    ...folders.map((folder) => ({
-      label: folder.name,
-      onClick: () => handleMoveToFolder(folder.id),
-    })),
+    ...(eco.folder ? [{ label: "Aucun dossier", onClick: () => handleMoveToFolder(null) }] : []),
+    ...folders
+      .filter((f) => f.id !== eco.folder)
+      .map((folder) => ({
+        label: folder.name,
+        onClick: () => handleMoveToFolder(folder.id),
+      })),
   ];
 
   const menuItems = [

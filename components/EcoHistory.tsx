@@ -24,7 +24,7 @@ export default function EcoHistory({
   const loadEcos = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await fetch("/api/ecos?limit=30");
+      const response = await fetch("/api/ecos?folderId=null&limit=30");
       if (!response.ok) {
         throw new Error("Erreur lors du chargement des ECOs");
       }

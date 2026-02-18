@@ -108,7 +108,6 @@ export async function PATCH(
       return NextResponse.json({ error: "ECO introuvable" }, { status: 404 });
     }
 
-    // Mettre à jour uniquement les champs fournis
     const updateData: { title?: string; folderId?: string | null; content?: string | null } = {};
     if (title !== undefined) {
       updateData.title = title;
@@ -116,16 +115,13 @@ export async function PATCH(
     if (summary_text !== undefined) {
       updateData.content = summary_text || null;
     }
-    // Support folderId (nouveau) ou folder (ancien pour compatibilité)
+    // folderId prioritaire (frontend envoie { folderId }), sinon folder pour compatibilité
     const targetFolderId = folderId !== undefined ? folderId : folder;
     if (targetFolderId !== undefined) {
-      // Si folderId est fourni et non null, vérifier qu'il existe et appartient à l'utilisateur
-      if (targetFolderId && targetFolderId !== "") {
+      const finalFolderId = targetFolderId === null || targetFolderId === "" ? null : targetFolderId;
+      if (finalFolderId) {
         const folderExists = await prisma.folder.findFirst({
-          where: {
-            id: targetFolderId,
-            userId: user.id,
-          },
+          where: { id: finalFolderId, userId: user.id },
         });
         if (!folderExists) {
           return NextResponse.json(
@@ -134,7 +130,7 @@ export async function PATCH(
           );
         }
       }
-      updateData.folderId = targetFolderId || null;
+      updateData.folderId = finalFolderId ?? null;
     }
 
     const updatedEco = await prisma.eco.update({
@@ -143,13 +139,25 @@ export async function PATCH(
       select: {
         id: true,
         title: true,
+        audioUrl: true,
+        transcriptionText: true,
+        content: true,
         folderId: true,
         createdAt: true,
         updatedAt: true,
       },
     });
 
-    return NextResponse.json({ eco: updatedEco });
+    const formattedEco = {
+      id: updatedEco.id,
+      title: updatedEco.title,
+      audio_url: updatedEco.audioUrl || "",
+      transcription_text: updatedEco.transcriptionText || "",
+      summary_text: updatedEco.content || null,
+      folder: updatedEco.folderId || "",
+      created_at: updatedEco.createdAt.toISOString(),
+    };
+    return NextResponse.json({ eco: formattedEco });
   } catch (error) {
     console.error("[eco PATCH] Erreur:", error);
     return NextResponse.json(

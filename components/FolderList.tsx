@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { FolderPlus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Folder as FolderType } from "@/types";
@@ -29,6 +29,8 @@ export default function FolderList({
   const [expandedFolderId, setExpandedFolderId] = useState<string | null>(null);
   const [folderEcos, setFolderEcos] = useState<Record<string, Eco[]>>({});
   const [loadingFolderId, setLoadingFolderId] = useState<string | null>(null);
+  const folderEcosRef = useRef<Record<string, Eco[]>>({});
+  folderEcosRef.current = folderEcos;
 
   const loadFolders = useCallback(async () => {
     setIsLoading(true);
@@ -92,15 +94,16 @@ export default function FolderList({
     }
   }, [expandFolderId, loadFolderEcos]);
 
+  // Rafraîchir les sous-listes des dossiers (accordéon) après move/update
   useEffect(() => {
     const handleEcoUpdated = () => {
-      if (expandedFolderId && folderEcos[expandedFolderId]) {
-        loadFolderEcos(expandedFolderId);
-      }
+      Object.keys(folderEcosRef.current).forEach((folderId) => {
+        loadFolderEcos(folderId);
+      });
     };
     window.addEventListener("eco-updated", handleEcoUpdated);
     return () => window.removeEventListener("eco-updated", handleEcoUpdated);
-  }, [expandedFolderId, folderEcos, loadFolderEcos]);
+  }, [loadFolderEcos]);
 
   const handleAdd = async () => {
     const name = newName.trim();
