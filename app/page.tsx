@@ -619,9 +619,14 @@ export default function Home() {
   };
 
   const handleBackToHome = () => {
+    // Réinitialiser tous les états pour garantir le retour à l'accueil
     setSelectedEco(null);
     setSelectedFolder(null);
     setViewAllEcos(false);
+    setIsProcessing(false);
+    setIsFocusMode(false);
+    // Forcer un refresh pour s'assurer que la vue home s'affiche
+    setRefreshKey((prev) => prev + 1);
   };
 
   const handleEcoClick = (eco: Eco) => {
@@ -954,6 +959,19 @@ export default function Home() {
               </div>
             </motion.div>
           )}
+            {/* Fallback : si aucune vue ne correspond, afficher la vue home pour éviter écran vide */}
+            {!selectedEco && !isFocusMode && !viewAllEcos && isProcessing && (
+              <motion.div
+                key="home-fallback"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex-1 flex flex-col items-center justify-center min-h-[60vh] p-4 md:p-8"
+              >
+                <div className="text-center">
+                  <p className="text-gray-500">Chargement...</p>
+                </div>
+              </motion.div>
+            )}
             </AnimatePresence>
           </div>
         </main>
