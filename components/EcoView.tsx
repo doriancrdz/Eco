@@ -214,36 +214,19 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [needsPolling, eco?.id]);
 
-  if (!eco) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-gray-500 text-lg">Sélectionnez un Eco pour voir les détails</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Parse summary data
-  const summaryJson = eco.summary_text || (summaryFromPoll ? JSON.stringify(summaryFromPoll) : null);
-  let summary: Summary | null = null;
-  if (summaryJson) {
-    try {
-      summary = JSON.parse(summaryJson);
-    } catch {
-      // Legacy format, handled below
-    }
-  }
-
-  const transcription = eco.transcription_text || transcriptionFromPoll || "";
-  // isTranscribing: pas de transcription ET (status PROCESSING ou pas encore de status)
+  // Parse summary data (calculs avant le return conditionnel pour pouvoir les utiliser dans les hooks)
+  const summaryJson = eco?.summary_text || (summaryFromPoll ? JSON.stringify(summaryFromPoll) : null);
+  const transcription = eco?.transcription_text || transcriptionFromPoll || "";
+  
+  // Calculs d'état (avant le return conditionnel)
   const isTranscribing = !transcription && (recordingStatus === "PROCESSING" || recordingStatus === "" || !recordingStatus);
-  // isGenerating: pas de résumé ET (status GENERATING ou IDLE mais transcription terminée)
   const isGenerating = !summaryJson && (aiStatus === "GENERATING" || (aiStatus === "IDLE" && recordingStatus === "TRANSCRIBED"));
   const isFailed = aiStatus === "FAILED";
   
-  // Log pour debug (seulement si changement d'état)
+  // Log pour debug (seulement si changement d'état) - HOOK INCONDITIONNEL avant le return
   useEffect(() => {
+    if (!eco) return; // Condition dans le corps du hook, pas avant le hook
+    
     console.log("[EcoView] État affichage:", {
       hasTranscription: !!transcription && transcription.length > 0,
       transcriptionLength: transcription.length,
@@ -256,7 +239,27 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
       isFailed,
       needsPolling,
     });
-  }, [transcription, summaryJson, recordingStatus, aiStatus, isTranscribing, isGenerating, isFailed, needsPolling]);
+  }, [eco, transcription, summaryJson, recordingStatus, aiStatus, isTranscribing, isGenerating, isFailed, needsPolling]);
+
+  if (!eco) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-500 text-lg">Sélectionnez un Eco pour voir les détails</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Parse summary object (après le return conditionnel, pour le rendu uniquement)
+  let summary: Summary | null = null;
+  if (summaryJson) {
+    try {
+      summary = JSON.parse(summaryJson);
+    } catch {
+      // Legacy format, handled below
+    }
+  }
 
   // Tab 1: Résumé structuré (default)
   const summaryContent = (
