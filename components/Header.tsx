@@ -29,13 +29,17 @@ export default function Header({
       {/* Left: logo ECO seul (sans texte) + toggle */}
       <div className="flex items-center gap-2 min-w-[44px] shrink-0">
         <motion.button
+          type="button"
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          onClick={() => onGoHome("logo")}
-          className="p-0 bg-transparent border-0 rounded-none hover:opacity-90 transition-opacity shrink-0"
+          onClick={() => {
+            if (process.env.NODE_ENV !== "production") console.log("[NAV] logo click -> goHome", { location: "header-left" });
+            onGoHome("logo");
+          }}
+          className="p-0 bg-transparent border-0 rounded-none hover:opacity-90 transition-opacity shrink-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/30 focus-visible:ring-offset-2"
           aria-label="Retour à l'accueil"
         >
-          <Image src="/logo-eco.png" alt="" width={40} height={40} className="bg-transparent block h-10 w-10 object-contain select-none" />
+          <Image src="/logo-eco.png" alt="" width={40} height={40} className="bg-transparent block h-10 w-10 object-contain select-none pointer-events-none" />
         </motion.button>
         {onToggleSidebar && (
           <motion.button
@@ -74,16 +78,20 @@ export default function Header({
         )}
       </div>
 
-      {/* Center: logo h-9 w-9 + texte ECO, bg-transparent */}
+      {/* Center: logo h-9 w-9 + texte ECO, cliquable comme la flèche retour */}
       <motion.button
+        type="button"
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
-        onClick={() => onGoHome("logo")}
-        className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 bg-transparent p-0 border-0 z-10"
+        onClick={() => {
+          if (process.env.NODE_ENV !== "production") console.log("[NAV] logo click -> goHome", { location: "header-center" });
+          onGoHome("logo");
+        }}
+        className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 bg-transparent p-0 border-0 z-[25] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/30 focus-visible:ring-offset-2 min-w-[100px] justify-center"
         aria-label="Retour à l'accueil"
       >
-        <Image src="/logo-eco.png" alt="" width={36} height={36} className="bg-transparent block h-9 w-9 object-contain select-none" />
-        <span className="font-bold text-gray-900 text-lg">ECO</span>
+        <Image src="/logo-eco.png" alt="" width={36} height={36} className="bg-transparent block h-9 w-9 object-contain select-none pointer-events-none" />
+        <span className="font-bold text-gray-900 text-lg pointer-events-none">ECO</span>
       </motion.button>
 
       {/* Right: PlanBadge + avatar */}

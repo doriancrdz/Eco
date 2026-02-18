@@ -94,17 +94,21 @@ export default function Sidebar({
                 transition={{ duration: 0.2 }}
                 className="flex flex-col h-full min-w-[280px]"
               >
-                {/* Logo ECO -> Accueil */}
+                {/* Logo ECO -> Accueil (même action que flèche retour) */}
                 <button
                   type="button"
-                  onClick={() => { onNavigateHome?.("sidebar"); onClose?.(); }}
-                  className="w-full px-4 py-4 flex items-center gap-2 shrink-0 bg-transparent border-0 cursor-pointer hover:opacity-90 transition-opacity text-left"
+                  onClick={() => {
+                    if (process.env.NODE_ENV !== "production") console.log("[NAV] logo click -> goHome", { location: "sidebar" });
+                    onNavigateHome?.("logo");
+                    onClose?.();
+                  }}
+                  className="w-full px-4 py-4 flex items-center gap-2 shrink-0 bg-transparent border-0 cursor-pointer hover:opacity-90 transition-opacity text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/30 focus-visible:ring-inset"
                   aria-label="Retour à l'accueil"
                 >
-                  <div className="w-5 h-5 relative shrink-0 bg-transparent border-0">
-                    <Image src="/logo-eco.png" alt="" width={20} height={20} className="bg-transparent block object-contain" />
+                  <div className="w-5 h-5 relative shrink-0 bg-transparent border-0 pointer-events-none">
+                    <Image src="/logo-eco.png" alt="" width={20} height={20} className="bg-transparent block object-contain pointer-events-none" />
                   </div>
-                  <span className="font-bold text-gray-900">ECO</span>
+                  <span className="font-bold text-gray-900 pointer-events-none">ECO</span>
                 </button>
 
                 {/* Nav */}
