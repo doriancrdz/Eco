@@ -319,17 +319,46 @@ export default function Home() {
       });
 
       const ecoTitle = `Eco du ${new Date().toLocaleDateString("fr-FR")}`;
+      
+      // Récupérer le premier dossier par défaut depuis la DB (ou null)
+      let defaultFolderId: string | null = null;
+      try {
+        const foldersRes = await fetch("/api/folders");
+        if (foldersRes.ok) {
+          const foldersData = await foldersRes.json();
+          const defaultFolder = foldersData.folders?.find((f: { isDefault: boolean }) => f.isDefault);
+          if (defaultFolder) {
+            defaultFolderId = defaultFolder.id;
+          }
+        }
+      } catch (error) {
+        console.error("Erreur lors de la récupération des dossiers:", error);
+      }
+      
       const newEco: Eco = {
         id: phaseAResult.recordingId,
         title: ecoTitle,
         audio_url: audioUrl,
         transcription_text: phaseAResult.transcription,
         summary_text: null,
-        folder: DEFAULT_FOLDERS[0].id,
+        folder: defaultFolderId || "",
         created_at: new Date().toISOString(),
       };
 
+      // Sauvegarder dans localStorage (pour compatibilité)
       saveEco(newEco);
+
+      // Créer l'ECO en DB
+      try {
+        await fetch("/api/ecos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(newEco),
+        });
+      } catch (error) {
+        console.error("Erreur lors de la création de l'ECO en DB:", error);
+        // Ne pas bloquer le flux si la création DB échoue
+      }
 
       // T5: navigation immédiate vers page résultat (plus de blocage sur "Traitement en cours…")
       setIsFocusMode(false);
@@ -343,17 +372,39 @@ export default function Home() {
       // PHASE B: generate-summary en fire-and-forget (EcoView poll pour récupérer)
       if (phaseAResult.status === "TRANSCRIBED") {
         generateSummary(phaseAResult.recordingId)
-          .then((summary) => {
+          .then(async (summary) => {
             if (!summary) return;
-            updateEco(newEco.id, {
+            const updatedEco = {
+              ...newEco,
               title: summary.titre || ecoTitle,
               summary_text: JSON.stringify(summary),
+            };
+            
+            // Mettre à jour dans localStorage
+            updateEco(newEco.id, {
+              title: updatedEco.title,
+              summary_text: updatedEco.summary_text,
             });
+            
+            // Mettre à jour en DB
+            try {
+              await fetch(`/api/eco/${newEco.id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  title: updatedEco.title,
+                  summary_text: updatedEco.summary_text,
+                }),
+              });
+            } catch (error) {
+              console.error("Erreur lors de la mise à jour de l'ECO en DB:", error);
+            }
+            
             if (selectedEco === newEco.id) {
               setCurrentEco(getEcoById(newEco.id) || null);
               setRefreshKey((prev) => prev + 1);
-              window.dispatchEvent(new Event("eco-updated"));
             }
+            window.dispatchEvent(new Event("eco-updated"));
           })
           .catch((error) => console.error("[processRecording] Erreur PHASE B:", error));
       }

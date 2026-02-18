@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Eco } from "@/types";
+import { getEcos } from "@/lib/storage";
 import EcoItem from "./EcoItem";
 
 interface EcoHistoryProps {
@@ -40,6 +41,7 @@ export default function EcoHistory({
       }
 
       const data = await response.json();
+      
       // REMPLACER le state, pas append
       setEcos(data.ecos || []);
     } catch (error) {
@@ -49,6 +51,25 @@ export default function EcoHistory({
       setIsLoading(false);
     }
   }, [selectedFolderId]);
+
+  // Migration des ECOs de localStorage vers DB au premier chargement
+  useEffect(() => {
+    const migrateEcos = async () => {
+      const localEcos = getEcos();
+      if (localEcos.length > 0) {
+        try {
+          await fetch("/api/ecos/migrate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ecos: localEcos }),
+          });
+        } catch (error) {
+          console.error("Erreur lors de la migration des ECOs:", error);
+        }
+      }
+    };
+    migrateEcos();
+  }, []);
 
   useEffect(() => {
     loadEcos();

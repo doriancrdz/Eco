@@ -28,7 +28,7 @@ export async function PATCH(
     }
 
     const body = await req.json();
-    const { title, folder, folderId } = body;
+    const { title, folder, folderId, summary_text } = body;
 
     // Vérifier que l'ECO existe et appartient à l'utilisateur
     const eco = await prisma.eco.findFirst({
@@ -43,9 +43,12 @@ export async function PATCH(
     }
 
     // Mettre à jour uniquement les champs fournis
-    const updateData: { title?: string; folderId?: string | null } = {};
+    const updateData: { title?: string; folderId?: string | null; content?: string | null } = {};
     if (title !== undefined) {
       updateData.title = title;
+    }
+    if (summary_text !== undefined) {
+      updateData.content = summary_text || null;
     }
     // Support folderId (nouveau) ou folder (ancien pour compatibilité)
     const targetFolderId = folderId !== undefined ? folderId : folder;
