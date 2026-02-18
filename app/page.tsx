@@ -12,7 +12,7 @@ import RecordButton from "@/components/RecordButton";
 import { useAudioLevel } from "@/hooks/useAudioLevel";
 import { Eco } from "@/types";
 import { getEcos } from "@/lib/storage";
-import { transcribeAudio, generateSummary, pollRecordingStatus } from "@/lib/transcription";
+import { transcribeAudio } from "@/lib/transcription";
 import { motion, AnimatePresence } from "framer-motion";
 
 // Lazy load components non critiques
@@ -61,7 +61,7 @@ export default function Home() {
   // Charger les ECOs depuis l'API (source unique)
   const loadEcos = useCallback(async () => {
     try {
-      const res = await fetch("/api/ecos");
+      const res = await fetch("/api/ecos?limit=30");
       if (res.ok) {
         const data = await res.json();
         setEcos(data.ecos || []);
@@ -362,104 +362,61 @@ export default function Home() {
 
   const processRecording = async (audioBlob: Blob, durationSeconds: number, mimeType: string = "audio/webm") => {
     const t0 = Date.now();
+    let recordingId: string | null = null;
     try {
-      console.log("[processRecording] T1 upload start", { ts: t0 });
       const audioUrl = URL.createObjectURL(audioBlob);
 
       const phaseAResult = await transcribeAudio(audioBlob, durationSeconds, mimeType);
+      recordingId = phaseAResult.recordingId;
       const t4 = Date.now();
-      console.log("[processRecording] T4 transcribe response", {
-        status: phaseAResult.status,
-        recordingId: phaseAResult.recordingId,
-        elapsed: t4 - t0,
-        ts: t4,
-      });
 
       const ecoTitle = `Eco du ${new Date().toLocaleDateString("fr-FR")}`;
-      
-      // Récupérer le premier dossier par défaut depuis la DB (ou null)
-      let defaultFolderId: string | null = null;
-      try {
-        const foldersRes = await fetch("/api/folders");
-        if (foldersRes.ok) {
-          const foldersData = await foldersRes.json();
-          const defaultFolder = foldersData.folders?.find((f: { isDefault: boolean }) => f.isDefault);
-          if (defaultFolder) {
-            defaultFolderId = defaultFolder.id;
-          }
-        }
-      } catch (error) {
-        console.error("Erreur lors de la récupération des dossiers:", error);
-      }
-      
-      const newEco: Eco = {
-        id: phaseAResult.recordingId,
+
+      // Garantie : créer l'ECO en DB immédiatement (folderId=null, statut minimal)
+      const minimalEco = {
+        id: recordingId,
         title: ecoTitle,
         audio_url: audioUrl,
-        transcription_text: phaseAResult.transcription,
+        transcription_text: "",
         summary_text: null,
-        folder: defaultFolderId || "",
+        folder: null,
         created_at: new Date().toISOString(),
       };
 
-      // Créer l'ECO en DB
-      try {
-        await fetch("/api/ecos", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(newEco),
-        });
-      } catch (error) {
-        console.error("Erreur lors de la création de l'ECO en DB:", error);
-        // Ne pas bloquer le flux si la création DB échoue
+      const createEcoInDb = async (): Promise<boolean> => {
+        for (let attempt = 0; attempt < 2; attempt++) {
+          const res = await fetch("/api/ecos", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(minimalEco),
+          });
+          if (res.ok) return true;
+          const err = await res.json().catch(() => ({}));
+          console.error("[processRecording] Création ECO DB échec", { attempt, status: res.status, error: err });
+        }
+        return false;
+      };
+
+      const created = await createEcoInDb();
+      if (!created) {
+        alert("Erreur de sauvegarde, réessayer.");
+        setIsProcessing(false);
+        setIsFocusMode(false);
+        return;
       }
 
-      // T5: navigation immédiate vers page résultat (plus de blocage sur "Traitement en cours…")
+      const newEco: Eco = {
+        ...minimalEco,
+        transcription_text: minimalEco.transcription_text || "",
+        summary_text: minimalEco.summary_text ?? null,
+        folder: "",
+      };
       setIsFocusMode(false);
       setIsProcessing(false);
       setSelectedEco(newEco.id);
-      setSelectedFolder(newEco.folder && newEco.folder !== "" ? newEco.folder : null);
+      setSelectedFolder(null);
       setRefreshKey((prev) => prev + 1);
       window.dispatchEvent(new Event("eco-updated"));
-      console.log("[processRecording] T5 navigation → EcoView", { elapsed: Date.now() - t0, ts: Date.now() });
-
-      // PHASE B: generate-summary en fire-and-forget (EcoView poll pour récupérer)
-      if (phaseAResult.status === "TRANSCRIBED") {
-        generateSummary(phaseAResult.recordingId)
-          .then(async (summary) => {
-            if (!summary) return;
-            const updatedEco = {
-              ...newEco,
-              title: summary.titre || ecoTitle,
-              summary_text: JSON.stringify(summary),
-            };
-            
-            // Mettre à jour en DB
-            try {
-              await fetch(`/api/eco/${newEco.id}`, {
-                method: "PATCH",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  title: updatedEco.title,
-                  summary_text: updatedEco.summary_text,
-                }),
-              });
-            } catch (error) {
-              console.error("Erreur lors de la mise à jour de l'ECO en DB:", error);
-            }
-            
-            if (selectedEco === newEco.id) {
-              const res = await fetch(`/api/eco/${newEco.id}`);
-              if (res.ok) {
-                const data = await res.json();
-                setCurrentEco(data.eco || null);
-              }
-              setRefreshKey((prev) => prev + 1);
-            }
-            window.dispatchEvent(new Event("eco-updated"));
-          })
-          .catch((error) => console.error("[processRecording] Erreur PHASE B:", error));
-      }
     } catch (error) {
       console.error("[processRecording] Erreur lors du traitement:", error);
       console.error("[processRecording] Détails de l'erreur:", {

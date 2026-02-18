@@ -5,7 +5,6 @@ import { Eco } from "@/types";
 import { motion } from "framer-motion";
 import { Download, RefreshCw } from "lucide-react";
 import { pollRecordingStatus, generateSummary } from "@/lib/transcription";
-import { updateEco } from "@/lib/storage";
 import type { Summary } from "@/lib/transcription";
 
 const POLL_INTERVAL_MS = 1000;
@@ -17,11 +16,15 @@ function RelancerButton({ recordingId, onSuccess }: { recordingId: string; onSuc
     try {
       const summary = await generateSummary(recordingId);
       if (summary) {
-        updateEco(recordingId, {
-          title: summary.titre,
-          summary_text: JSON.stringify(summary),
+        const res = await fetch(`/api/eco/${recordingId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: summary.titre, summary_text: JSON.stringify(summary) }),
         });
-        onSuccess?.();
+        if (res.ok) {
+          window.dispatchEvent(new Event("eco-updated"));
+          onSuccess?.();
+        }
       }
     } finally {
       setLoading(false);
@@ -59,12 +62,6 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
   const needsPolling = eco?.id && (!hasTranscription || !hasSummary);
 
   useEffect(() => {
-    if (eco?.id && needsPolling) {
-      console.log("[EcoView] T6 mounted, polling start", { ecoId: eco.id, ts: Date.now() });
-    }
-  }, [eco?.id, needsPolling]);
-
-  useEffect(() => {
     if (!needsPolling) {
       setTranscriptionFromPoll(null);
       setSummaryFromPoll(undefined);
@@ -79,21 +76,20 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
       return;
     }
 
-    let firstPoll = true;
     const poll = async () => {
       try {
         const result = await pollRecordingStatus(eco!.id);
-        if (firstPoll) {
-          console.log("[EcoView] T7 first recording GET", { status: result.status, aiStatus: result.aiStatus, ts: Date.now() });
-          firstPoll = false;
-        }
         setRecordingStatus(result.status);
         setAiStatus(result.aiStatus ?? "IDLE");
         setAiError(result.aiError ?? null);
 
         if (result.transcription) {
           setTranscriptionFromPoll(result.transcription);
-          updateEco(eco!.id, { transcription_text: result.transcription });
+          fetch(`/api/eco/${eco!.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ transcription_text: result.transcription }),
+          }).then((r) => r.ok && window.dispatchEvent(new Event("eco-updated")));
           onRefresh?.();
         }
 
@@ -103,12 +99,15 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
         }
 
         if (result.aiStatus === "DONE" && result.summary) {
-          console.log("[EcoView] T8 summary displayed", { ecoId: eco!.id, ts: Date.now() });
           setSummaryFromPoll(result.summary);
-          updateEco(eco!.id, {
-            title: result.summary.titre || eco!.title,
-            summary_text: JSON.stringify(result.summary),
-          });
+          fetch(`/api/eco/${eco!.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: result.summary.titre || eco!.title,
+              summary_text: JSON.stringify(result.summary),
+            }),
+          }).then((r) => r.ok && window.dispatchEvent(new Event("eco-updated")));
           onRefresh?.();
           if (pollRef.current) {
             clearInterval(pollRef.current);

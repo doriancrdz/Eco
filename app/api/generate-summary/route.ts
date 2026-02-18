@@ -251,6 +251,14 @@ Transcription:
         summaryJson: JSON.stringify(summary),
       },
     });
+    // Sync Eco (id = recordingId)
+    await prisma.eco.updateMany({
+      where: { id: recordingId, userId: user.id },
+      data: {
+        title: summary.titre,
+        content: JSON.stringify(summary),
+      },
+    });
     timings.dbUpdate = performance.now() - dbUpdateStart;
 
     timings.total = performance.now() - perfStart;

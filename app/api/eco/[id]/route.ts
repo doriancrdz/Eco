@@ -94,7 +94,7 @@ export async function PATCH(
     }
 
     const body = await req.json();
-    const { title, folder, folderId, summary_text } = body;
+    const { title, folder, folderId, summary_text, transcription_text } = body;
 
     // Vérifier que l'ECO existe et appartient à l'utilisateur
     const eco = await prisma.eco.findFirst({
@@ -108,12 +108,15 @@ export async function PATCH(
       return NextResponse.json({ error: "ECO introuvable" }, { status: 404 });
     }
 
-    const updateData: { title?: string; folderId?: string | null; content?: string | null } = {};
+    const updateData: { title?: string; folderId?: string | null; content?: string | null; transcriptionText?: string | null } = {};
     if (title !== undefined) {
       updateData.title = title;
     }
     if (summary_text !== undefined) {
       updateData.content = summary_text || null;
+    }
+    if (transcription_text !== undefined) {
+      updateData.transcriptionText = transcription_text || null;
     }
     // folderId prioritaire (frontend envoie { folderId }), sinon folder pour compatibilité
     const targetFolderId = folderId !== undefined ? folderId : folder;

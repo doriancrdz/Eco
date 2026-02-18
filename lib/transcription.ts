@@ -25,9 +25,6 @@ export async function transcribeAudio(
   durationSeconds: number,
   mimeType: string = "audio/webm"
 ): Promise<TranscriptionResult> {
-  const t0 = Date.now();
-  console.log("[transcribeAudio] T2 init start", { ts: t0 });
-
   const initRes = await fetch("/api/recordings/init", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -44,8 +41,6 @@ export async function transcribeAudio(
 
   const initData = await initRes.json();
   const recordingId = initData.recordingId;
-  const t3 = Date.now();
-  console.log("[transcribeAudio] T3 init done", { recordingId, elapsed: t3 - t0, ts: t3 });
 
   let extension = "webm";
   if (mimeType.includes("webm")) extension = "webm";
@@ -59,9 +54,7 @@ export async function transcribeAudio(
   fetch(`/api/recordings/${recordingId}/transcribe`, {
     method: "POST",
     body: formData,
-  }).catch((e) => console.error("[transcribeAudio] Upload fire-and-forget error:", e));
-
-  console.log("[transcribeAudio] T4 upload fire-and-forget, navigation immédiate", { ts: Date.now() });
+  }).catch((e) => console.error("[transcribeAudio] Upload error:", e));
 
   return {
     recordingId,

@@ -83,6 +83,11 @@ export async function POST(
         audioBlobSize: audioFile.size,
       },
     });
+    // Sync Eco si existant (id = recordingId)
+    await prisma.eco.updateMany({
+      where: { id: params.id, userId: user.id },
+      data: { transcriptionText: transcription },
+    });
     const dbUpdateMs = performance.now() - dbUpdateStart;
     const totalMs = performance.now() - reqStart;
 
