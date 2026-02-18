@@ -17,12 +17,21 @@ interface TabsProps {
 }
 
 export default function Tabs({ tabs, defaultTab, className = "" }: TabsProps) {
-  const [activeTab, setActiveTab] = useState<string>(defaultTab || tabs[0]?.id || "");
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    if (defaultTab && tabs.some((tab) => tab.id === defaultTab)) {
+      return defaultTab;
+    }
+    return tabs[0]?.id || "";
+  });
 
   const activeTabContent = tabs.find((tab) => tab.id === activeTab)?.content;
 
+  if (!tabs || tabs.length === 0) {
+    return null;
+  }
+
   return (
-    <div className={`rounded-2xl backdrop-blur-xl bg-white/10 ring-1 ring-white/20 shadow-xl overflow-hidden ${className}`}>
+    <div className={`rounded-3xl backdrop-blur-xl bg-white/10 ring-1 ring-white/20 shadow-2xl overflow-hidden ${className}`}>
       {/* Tabs Row */}
       <div className="flex gap-1.5 p-1.5 border-b border-white/10 bg-white/5">
         {tabs.map((tab) => {
