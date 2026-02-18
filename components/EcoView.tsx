@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Eco } from "@/types";
 import { motion } from "framer-motion";
-import { Download, RefreshCw } from "lucide-react";
+import { RefreshCw, Copy, Check } from "lucide-react";
 import { pollRecordingStatus, generateSummary } from "@/lib/transcription";
 import type { Summary } from "@/lib/transcription";
+import Tabs from "@/components/ui/Tabs";
 
 const POLL_INTERVAL_MS = 1000;
 
@@ -39,6 +40,33 @@ function RelancerButton({ recordingId, onSuccess }: { recordingId: string; onSuc
     >
       <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
       {loading ? "Relance en cours…" : "Relancer la génération"}
+    </button>
+  );
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <button
+      onClick={handleCopy}
+      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white/60 border border-gray-200/50 rounded-xl hover:bg-white/80 transition-all shadow-sm"
+    >
+      {copied ? (
+        <>
+          <Check className="w-4 h-4" />
+          Copié
+        </>
+      ) : (
+        <>
+          <Copy className="w-4 h-4" />
+          Copier
+        </>
+      )}
     </button>
   );
 }
@@ -125,7 +153,9 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
       if (pollRef.current) clearInterval(pollRef.current);
       pollRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [needsPolling, eco?.id, eco?.summary_text, eco?.title, onRefresh]);
+
   if (!eco) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -135,6 +165,173 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
       </div>
     );
   }
+
+  // Parse summary data
+  const summaryJson = eco.summary_text || (summaryFromPoll ? JSON.stringify(summaryFromPoll) : null);
+  let summary: Summary | null = null;
+  if (summaryJson) {
+    try {
+      summary = JSON.parse(summaryJson);
+    } catch {
+      // Legacy format, handled below
+    }
+  }
+
+  const transcription = eco.transcription_text || transcriptionFromPoll || "";
+  const isTranscribing = !transcription && (recordingStatus === "PROCESSING" || !recordingStatus);
+  const isGenerating = !summaryJson && aiStatus !== "FAILED";
+  const isFailed = aiStatus === "FAILED";
+
+  // Tab 1: Résumé structuré (default)
+  const summaryContent = (
+    <div className="prose prose-base max-w-none">
+      <div className="text-gray-700 leading-relaxed space-y-4">
+        {isFailed ? (
+          <div className="space-y-4">
+            <p className="text-sm text-red-600">{aiError || "Erreur lors de la génération."}</p>
+            <RelancerButton recordingId={eco.id} onSuccess={onRefresh} />
+          </div>
+        ) : isGenerating ? (
+          <div className="space-y-4 animate-pulse">
+            <div className="h-6 bg-gray-200 rounded w-3/4" />
+            <div className="h-4 bg-gray-200 rounded w-full" />
+            <div className="h-4 bg-gray-200 rounded w-5/6" />
+            <div className="h-5 bg-gray-200 rounded w-1/2 mt-6" />
+            <div className="space-y-2 ml-6">
+              <div className="h-4 bg-gray-200 rounded w-full" />
+              <div className="h-4 bg-gray-200 rounded w-4/5" />
+              <div className="h-4 bg-gray-200 rounded w-3/4" />
+            </div>
+            <p className="text-sm text-gray-500 mt-4">Génération du résumé en cours…</p>
+          </div>
+        ) : summary && summary.titre && summary.resume ? (
+          <>
+            <h3 className="text-xl font-semibold mt-0 mb-4 text-gray-900">{summary.titre}</h3>
+            <p className="mb-4">{summary.resume}</p>
+          </>
+        ) : summaryJson ? (
+          <div>
+            {summaryJson.split("\n").map((line, index) => {
+              if (line.startsWith("## ")) {
+                return (
+                  <h3 key={index} className="text-xl font-semibold mt-8 mb-4 text-gray-900 first:mt-0">
+                    {line.replace("## ", "")}
+                  </h3>
+                );
+              }
+              if (line.startsWith("- ")) {
+                return (
+                  <li key={index} className="ml-6 mb-2">
+                    {line.replace("- ", "")}
+                  </li>
+                );
+              }
+              if (line.trim() === "") {
+                return <br key={index} />;
+              }
+              return (
+                <p key={index} className="mb-4">
+                  {line}
+                </p>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-gray-500">Aucun résumé disponible</p>
+        )}
+      </div>
+    </div>
+  );
+
+  // Tab 2: Transcription
+  const transcriptionContent = (
+    <div className="prose prose-base max-w-none">
+      <div className="flex justify-end mb-4">
+        {transcription && <CopyButton text={transcription} />}
+      </div>
+      {isTranscribing ? (
+        <div className="space-y-2 animate-pulse">
+          <div className="h-4 bg-gray-200 rounded w-full" />
+          <div className="h-4 bg-gray-200 rounded w-5/6" />
+          <div className="h-4 bg-gray-200 rounded w-full" />
+          <div className="h-4 bg-gray-200 rounded w-4/5" />
+          <p className="text-sm text-gray-500 mt-2">Transcription en cours…</p>
+        </div>
+      ) : (
+        <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{transcription || "—"}</p>
+      )}
+    </div>
+  );
+
+  // Tab 3: Points clés
+  const keyPointsContent = (
+    <div className="prose prose-base max-w-none">
+      {summary && summary.pointsCles && summary.pointsCles.length > 0 ? (
+        <ul className="list-disc ml-6 space-y-3 text-gray-700">
+          {summary.pointsCles.map((point: string, index: number) => (
+            <li key={index} className="leading-relaxed">{point}</li>
+          ))}
+        </ul>
+      ) : isGenerating ? (
+        <div className="space-y-3 animate-pulse">
+          <div className="h-4 bg-gray-200 rounded w-full" />
+          <div className="h-4 bg-gray-200 rounded w-5/6" />
+          <div className="h-4 bg-gray-200 rounded w-4/5" />
+        </div>
+      ) : (
+        <p className="text-gray-500">Aucun point clé disponible</p>
+      )}
+    </div>
+  );
+
+  // Tab 4: Notions à retenir
+  const notionsContent = (
+    <div className="prose prose-base max-w-none">
+      {summary && summary.notions && summary.notions.length > 0 ? (
+        <div className="space-y-4">
+          {summary.notions.map((notion: string, index: number) => (
+            <div
+              key={index}
+              className="px-4 py-3 bg-white/20 rounded-xl border border-white/10 shadow-sm"
+            >
+              <p className="text-gray-900 font-medium">{notion}</p>
+            </div>
+          ))}
+        </div>
+      ) : isGenerating ? (
+        <div className="space-y-4 animate-pulse">
+          <div className="h-12 bg-gray-200 rounded-xl w-full" />
+          <div className="h-12 bg-gray-200 rounded-xl w-5/6" />
+          <div className="h-12 bg-gray-200 rounded-xl w-4/5" />
+        </div>
+      ) : (
+        <p className="text-gray-500">Aucune notion disponible</p>
+      )}
+    </div>
+  );
+
+  const tabs = [
+    {
+      id: "summary",
+      label: "Résumé structuré",
+      content: summaryContent,
+    },
+    {
+      id: "transcription",
+      label: "Transcription",
+      content: transcriptionContent,
+    },
+    {
+      id: "keypoints",
+      label: "Points clés",
+      content: keyPointsContent,
+    },
+    {
+      id: "notions",
+      label: "Notions à retenir",
+      content: notionsContent,
+    },
+  ];
 
   return (
     <motion.div
@@ -163,168 +360,7 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
             </p>
           </div>
 
-          <div className="space-y-8">
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-gray-900">Enregistrement audio</h2>
-                <a
-                  href={eco.audio_url}
-                  download={`${eco.title.replace(/\s+/g, "_")}.webm`}
-                  className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-white/60 rounded-xl transition-all shadow-sm border border-gray-200/50"
-                >
-                  <Download className="w-4 h-4" />
-                  Télécharger
-                </a>
-              </div>
-              <audio
-                controls
-                src={eco.audio_url}
-                className="w-full rounded-xl"
-                style={{
-                  outline: "none",
-                }}
-              >
-                Votre navigateur ne supporte pas l&apos;élément audio.
-              </audio>
-            </div>
-
-            <div className="pt-6 border-t border-gray-200/30">
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">Transcription</h2>
-              <div className="prose prose-base max-w-none">
-                {(() => {
-                  const transcription = eco.transcription_text || transcriptionFromPoll || "";
-                  const isTranscribing = !transcription && (recordingStatus === "PROCESSING" || !recordingStatus);
-                  if (isTranscribing) {
-                    return (
-                      <div className="space-y-2 animate-pulse">
-                        <div className="h-4 bg-gray-200 rounded w-full" />
-                        <div className="h-4 bg-gray-200 rounded w-5/6" />
-                        <div className="h-4 bg-gray-200 rounded w-full" />
-                        <div className="h-4 bg-gray-200 rounded w-4/5" />
-                        <p className="text-sm text-gray-500 mt-2">Transcription en cours…</p>
-                      </div>
-                    );
-                  }
-                  return (
-                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-                      {transcription || "—"}
-                    </p>
-                  );
-                })()}
-              </div>
-            </div>
-
-            <div className="pt-6 border-t border-gray-200/30">
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">Résumé structuré</h2>
-              <div className="prose prose-base max-w-none">
-                <div className="text-gray-700 leading-relaxed space-y-4">
-                  {(() => {
-                    const summaryJson = eco.summary_text || (summaryFromPoll ? JSON.stringify(summaryFromPoll) : null);
-                    const isGenerating = !summaryJson && aiStatus !== "FAILED";
-                    const isFailed = aiStatus === "FAILED";
-
-                    if (isFailed) {
-                      return (
-                        <div className="space-y-4">
-                          <p className="text-sm text-red-600">{aiError || "Erreur lors de la génération."}</p>
-                          <RelancerButton recordingId={eco.id} onSuccess={onRefresh} />
-                        </div>
-                      );
-                    }
-
-                    if (isGenerating) {
-                      return (
-                        <div className="space-y-4 animate-pulse">
-                          <div className="h-6 bg-gray-200 rounded w-3/4" />
-                          <div className="h-4 bg-gray-200 rounded w-full" />
-                          <div className="h-4 bg-gray-200 rounded w-5/6" />
-                          <div className="h-5 bg-gray-200 rounded w-1/2 mt-6" />
-                          <div className="space-y-2 ml-6">
-                            <div className="h-4 bg-gray-200 rounded w-full" />
-                            <div className="h-4 bg-gray-200 rounded w-4/5" />
-                            <div className="h-4 bg-gray-200 rounded w-3/4" />
-                          </div>
-                          <p className="text-sm text-gray-500 mt-4">Génération du résumé en cours…</p>
-                        </div>
-                      );
-                    }
-
-                    if (!summaryJson) return null;
-
-                    try {
-                      const summary = JSON.parse(summaryJson);
-                      if (summary.titre && summary.resume) {
-                        // Format JSON structuré
-                        return (
-                          <>
-                            <h3 className="text-xl font-semibold mt-8 mb-4 text-gray-900 first:mt-0">
-                              {summary.titre}
-                            </h3>
-                            <p className="mb-4">{summary.resume}</p>
-                            {summary.pointsCles && summary.pointsCles.length > 0 && (
-                              <>
-                                <h4 className="text-lg font-semibold mt-6 mb-3 text-gray-900">
-                                  Points clés
-                                </h4>
-                                <ul className="list-disc ml-6 space-y-2">
-                                  {summary.pointsCles.map((point: string, index: number) => (
-                                    <li key={index}>{point}</li>
-                                  ))}
-                                </ul>
-                              </>
-                            )}
-                            {summary.notions && summary.notions.length > 0 && (
-                              <>
-                                <h4 className="text-lg font-semibold mt-6 mb-3 text-gray-900">
-                                  Notions importantes
-                                </h4>
-                                <div className="flex flex-wrap gap-2">
-                                  {summary.notions.map((notion: string, index: number) => (
-                                    <span
-                                      key={index}
-                                      className="px-3 py-1 bg-gray-100 rounded-full text-sm"
-                                    >
-                                      {notion}
-                                    </span>
-                                  ))}
-                                </div>
-                              </>
-                            )}
-                          </>
-                        );
-                      }
-                    } catch {
-                      // Format markdown legacy
-                    }
-                    return summaryJson.split("\n").map((line, index) => {
-                      if (line.startsWith("## ")) {
-                        return (
-                          <h3 key={index} className="text-xl font-semibold mt-8 mb-4 text-gray-900 first:mt-0">
-                            {line.replace("## ", "")}
-                          </h3>
-                        );
-                      }
-                      if (line.startsWith("- ")) {
-                        return (
-                          <li key={index} className="ml-6 mb-2">
-                            {line.replace("- ", "")}
-                          </li>
-                        );
-                      }
-                      if (line.trim() === "") {
-                        return <br key={index} />;
-                      }
-                      return (
-                        <p key={index} className="mb-4">
-                          {line}
-                        </p>
-                      );
-                    });
-                  })()}
-                </div>
-              </div>
-            </div>
-          </div>
+          <Tabs tabs={tabs} defaultTab="summary" />
         </motion.div>
       </div>
     </motion.div>
