@@ -102,6 +102,7 @@ export async function POST(req: NextRequest) {
     }
 
     recordingIdForError = recordingId;
+    console.log("[summary] start", { recordingId, ecoId: recordingId, userId: user.id, ts: Date.now() });
 
     // DONE (ou ancien format) → retour direct, pas de regen
     if (recording.aiStatus === "DONE" || (recording.status === "DONE" && recording.summaryJson)) {
@@ -240,6 +241,9 @@ Transcription:
       };
     }
 
+    const summaryJson = JSON.stringify(summary);
+    console.log("[summary] generated", { hasJson: !!summaryJson, size: summaryJson?.length ?? 0, ts: Date.now() });
+
     const dbUpdateStart = performance.now();
     await prisma.recording.update({
       where: { id: recordingId },
@@ -248,16 +252,33 @@ Transcription:
         aiStatus: "DONE",
         aiFinishedAt: new Date(),
         aiError: null,
-        summaryJson: JSON.stringify(summary),
+        summaryJson,
       },
     });
-    // Sync Eco (id = recordingId)
-    await prisma.eco.updateMany({
-      where: { id: recordingId, userId: user.id },
-      data: {
+    console.log("[summary] recording updated", { recordingId, ts: Date.now() });
+
+    // Sync Eco (id = recordingId) : upsert pour être robuste si l'Eco n'existe pas encore
+    const contentStr = summaryJson;
+    const updatedEco = await prisma.eco.upsert({
+      where: { id: recordingId },
+      create: {
+        id: recordingId,
+        userId: user.id,
         title: summary.titre,
-        content: JSON.stringify(summary),
+        content: contentStr,
+        transcriptionText: recording.transcriptionText,
       },
+      update: {
+        title: summary.titre,
+        content: contentStr,
+      },
+      select: { id: true, content: true, title: true },
+    });
+    console.log("[summary] eco synced", {
+      ecoId: updatedEco?.id,
+      hasContent: !!updatedEco?.content,
+      contentLen: updatedEco?.content?.length ?? 0,
+      ts: Date.now(),
     });
     timings.dbUpdate = performance.now() - dbUpdateStart;
 

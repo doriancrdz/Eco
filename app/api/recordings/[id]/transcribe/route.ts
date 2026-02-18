@@ -57,13 +57,8 @@ export async function POST(
       return NextResponse.json({ error: "Fichier audio invalide" }, { status: 400 });
     }
 
-    const dbReadMs = performance.now() - reqStart;
-    console.log("[recordings/transcribe] request start", {
-      id: params.id,
-      authMs: authMs.toFixed(0),
-      dbReadMs: dbReadMs.toFixed(0),
-      ts: Date.now(),
-    });
+    const recordingId = params.id;
+    console.log("[transcribe] start", { recordingId, userId: user.id, ts: Date.now() });
 
     const whisperStart = performance.now();
     const transcriptionResponse = await openai.audio.transcriptions.create({
@@ -76,23 +71,45 @@ export async function POST(
 
     const dbUpdateStart = performance.now();
     await prisma.recording.update({
-      where: { id: params.id },
+      where: { id: recordingId },
       data: {
         status: "TRANSCRIBED",
         transcriptionText: transcription,
         audioBlobSize: audioFile.size,
       },
     });
-    // Sync Eco si existant (id = recordingId)
-    await prisma.eco.updateMany({
-      where: { id: params.id, userId: user.id },
-      data: { transcriptionText: transcription },
+    console.log("[transcribe] recording updated", {
+      hasTranscription: !!transcription,
+      len: transcription?.length ?? 0,
+      ts: Date.now(),
     });
+
+    // Sync Eco (id = recordingId) : upsert pour être robuste si l'Eco n'existe pas encore
+    console.log("[transcribe] syncing eco", { ecoId: recordingId });
+    const defaultTitle = `Eco du ${new Date().toLocaleDateString("fr-FR")}`;
+    const updatedEco = await prisma.eco.upsert({
+      where: { id: recordingId },
+      create: {
+        id: recordingId,
+        userId: user.id,
+        title: defaultTitle,
+        transcriptionText: transcription,
+        content: null,
+      },
+      update: { transcriptionText: transcription },
+      select: { id: true, transcriptionText: true },
+    });
+    console.log("[transcribe] eco synced", {
+      ecoId: updatedEco?.id,
+      hasTranscription: !!updatedEco?.transcriptionText,
+      len: updatedEco?.transcriptionText?.length ?? 0,
+      ts: Date.now(),
+    });
+
     const dbUpdateMs = performance.now() - dbUpdateStart;
     const totalMs = performance.now() - reqStart;
-
     console.log("[recordings/transcribe] request end", {
-      id: params.id,
+      id: recordingId,
       whisperMs: whisperMs.toFixed(0),
       dbUpdateMs: dbUpdateMs.toFixed(0),
       totalMs: totalMs.toFixed(0),
@@ -100,7 +117,7 @@ export async function POST(
     });
 
     return NextResponse.json({
-      recordingId: params.id,
+      recordingId,
       transcription,
       status: "TRANSCRIBED",
     });

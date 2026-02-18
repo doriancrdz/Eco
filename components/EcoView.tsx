@@ -86,10 +86,25 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
   const [recordingStatus, setRecordingStatus] = useState<string>("");
   const [aiStatus, setAiStatus] = useState<string>("IDLE");
   const [aiError, setAiError] = useState<string | null>(null);
+  const [showRetryHint, setShowRetryHint] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const generateSummaryTriggeredRef = useRef(false);
   const lastEcoUpdatedDispatchRef = useRef<number>(0);
   const pollCountRef = useRef(0);
+
+  const hasTranscription = !!(eco?.transcription_text && eco.transcription_text.length > 0);
+  const hasSummary = !!eco?.summary_text;
+  const needsPolling = eco?.id && (!hasTranscription || !hasSummary);
+
+  // Après 30s sans contenu, afficher "Traitement en cours ou échoué" + Relancer
+  useEffect(() => {
+    if (!needsPolling) {
+      setShowRetryHint(false);
+      return;
+    }
+    const t = setTimeout(() => setShowRetryHint(true), 30000);
+    return () => clearTimeout(t);
+  }, [needsPolling]);
 
   // Log les données reçues pour debug
   useEffect(() => {
@@ -105,10 +120,6 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
       });
     }
   }, [eco]);
-
-  const hasTranscription = !!(eco?.transcription_text && eco.transcription_text.length > 0);
-  const hasSummary = !!eco?.summary_text;
-  const needsPolling = eco?.id && (!hasTranscription || !hasSummary);
 
   useEffect(() => {
     if (!needsPolling) {
@@ -316,7 +327,15 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
             })}
           </div>
         ) : (
-          <p className="text-gray-400">Aucun résumé disponible</p>
+          <div className="space-y-3">
+            <p className="text-gray-400">Aucun résumé disponible</p>
+            {showRetryHint && (
+              <>
+                <p className="text-sm text-amber-600">Traitement en cours ou échoué.</p>
+                <RelancerButton recordingId={eco.id} onSuccess={onRefresh} />
+              </>
+            )}
+          </div>
         )}
       </div>
     </div>
@@ -337,7 +356,12 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
           <p className="text-sm text-gray-400 mt-2">Transcription en cours…</p>
         </div>
       ) : (
-        <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{transcription || "—"}</p>
+        <div className="space-y-3">
+          <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{transcription || "—"}</p>
+          {showRetryHint && !transcription && (
+            <p className="text-sm text-amber-600">Transcription en cours ou échouée. Rafraîchir la page ou réessayer plus tard.</p>
+          )}
+        </div>
       )}
     </div>
   );
