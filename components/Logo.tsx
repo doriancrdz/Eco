@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { AlertCircle } from "lucide-react";
 import { useState, useEffect } from "react";
+import Image from "next/image";
 
 export type LogoState = "idle" | "recording" | "paused" | "generating";
 
@@ -140,9 +141,13 @@ export default function Logo({
             : {}
         }
       >
-        <img
+        <Image
           src="/logo-eco.png"
           alt="ECO"
+          width={size}
+          height={size}
+          priority={size >= 200}
+          quality={90}
           className="bg-transparent block w-full h-full object-contain select-none"
         />
       </motion.div>

@@ -2,10 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Sidebar from "@/components/Sidebar";
+import dynamic from "next/dynamic";
 import Header from "@/components/Header";
-import FocusMode from "@/components/FocusMode";
-import ProfileView from "@/components/ProfileView";
 import Logo from "@/components/Logo";
 import { Sparkles, ArrowRight, Settings, ArrowLeft, Mic } from "lucide-react";
 import { useUser, useClerk } from "@clerk/nextjs";
@@ -16,6 +14,22 @@ import { Eco, DEFAULT_FOLDERS } from "@/types";
 import { saveEco, updateEco, getEcoById, getEcos } from "@/lib/storage";
 import { transcribeAudio, generateSummary, pollRecordingStatus } from "@/lib/transcription";
 import { motion, AnimatePresence } from "framer-motion";
+
+// Lazy load components non critiques
+const FocusMode = dynamic(() => import("@/components/FocusMode"), {
+  loading: () => null,
+  ssr: false,
+});
+
+const Sidebar = dynamic(() => import("@/components/Sidebar"), {
+  loading: () => null,
+  ssr: false,
+});
+
+const ProfileView = dynamic(() => import("@/components/ProfileView"), {
+  loading: () => null,
+  ssr: false,
+});
 
 export type CurrentView = "home" | "recording" | "generating" | "detail" | "pricing" | "list";
 
