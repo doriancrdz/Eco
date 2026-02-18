@@ -12,16 +12,22 @@ import { prisma } from "@/lib/prisma";
  * Si folderId est un ID → retourne les ECOs de ce dossier
  */
 export async function GET(req: NextRequest) {
+  const t0 = Date.now();
   try {
+    const authStart = Date.now();
     const { userId } = await auth();
+    const authMs = Date.now() - authStart;
+    
     if (!userId) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
+    const userStart = Date.now();
     const user = await prisma.user.findUnique({
       where: { clerkUserId: userId },
       select: { id: true },
     });
+    const userMs = Date.now() - userStart;
 
     if (!user) {
       return NextResponse.json({ error: "Utilisateur introuvable" }, { status: 404 });
@@ -52,6 +58,7 @@ export async function GET(req: NextRequest) {
     }
     // Si folderId est null/undefined → pas de filtre folderId (retourne tous les ECOs)
 
+    const dbStart = Date.now();
     const ecos = await prisma.eco.findMany({
       where,
       select: {
@@ -67,6 +74,7 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: "desc" },
       take,
     });
+    const dbMs = Date.now() - dbStart;
 
     // Transformer pour correspondre au format attendu par le frontend
     const formattedEcos = ecos.map((eco) => ({
@@ -78,6 +86,9 @@ export async function GET(req: NextRequest) {
       folder: eco.folderId || "",
       created_at: eco.createdAt.toISOString(),
     }));
+
+    const totalMs = Date.now() - t0;
+    console.log(`[api/ecos GET] ms=${totalMs} auth=${authMs} user=${userMs} db=${dbMs} count=${ecos.length}`);
 
     return NextResponse.json({ ecos: formattedEcos });
   } catch (error) {

@@ -60,15 +60,24 @@ export default function Home() {
 
   // Charger les ECOs depuis l'API (source unique)
   const loadEcos = useCallback(async () => {
+    const t0 = performance.now();
+    console.log("[loadEcos] Début");
     try {
-      const res = await fetch("/api/ecos?limit=30");
+      const res = await fetch("/api/ecos?limit=30", { cache: "no-store" });
+      const t1 = performance.now();
+      const duration = t1 - t0;
       if (res.ok) {
         const data = await res.json();
+        const payloadSize = JSON.stringify(data).length;
+        console.log(`[loadEcos] Succès - ${duration.toFixed(0)}ms - ${payloadSize} bytes - ${data.ecos?.length || 0} ECOs`);
         setEcos(data.ecos || []);
       } else {
+        console.log(`[loadEcos] Erreur ${res.status} - ${duration.toFixed(0)}ms`);
         setEcos([]);
       }
-    } catch {
+    } catch (error) {
+      const duration = performance.now() - t0;
+      console.error(`[loadEcos] Exception - ${duration.toFixed(0)}ms`, error);
       setEcos([]);
     }
   }, []);
@@ -95,10 +104,34 @@ export default function Home() {
     migrateEcos();
   }, [loadEcos]);
 
+  // Debounce pour éviter les refetch multiples
+  const ecoUpdatedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastEcoUpdatedRef = useRef<number>(0);
+  
   useEffect(() => {
-    const handleEcoUpdated = () => loadEcos();
+    const handleEcoUpdated = () => {
+      const now = Date.now();
+      const timeSinceLastUpdate = now - lastEcoUpdatedRef.current;
+      
+      // Debounce : ne refetch que si > 300ms depuis le dernier
+      if (ecoUpdatedTimeoutRef.current) {
+        clearTimeout(ecoUpdatedTimeoutRef.current);
+      }
+      
+      ecoUpdatedTimeoutRef.current = setTimeout(() => {
+        console.log("[eco-updated] Déclenchement loadEcos (debounced)");
+        lastEcoUpdatedRef.current = Date.now();
+        loadEcos();
+      }, Math.max(0, 300 - timeSinceLastUpdate));
+    };
+    
     window.addEventListener("eco-updated", handleEcoUpdated);
-    return () => window.removeEventListener("eco-updated", handleEcoUpdated);
+    return () => {
+      window.removeEventListener("eco-updated", handleEcoUpdated);
+      if (ecoUpdatedTimeoutRef.current) {
+        clearTimeout(ecoUpdatedTimeoutRef.current);
+      }
+    };
   }, [loadEcos]);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -109,52 +142,112 @@ export default function Home() {
   const elapsedAtStopRef = useRef(0);
   const mimeTypeRef = useRef<string>("audio/webm");
 
+  // Cache pour éviter les refetch inutiles
+  const currentEcoCacheRef = useRef<{ id: string; data: Eco; timestamp: number } | null>(null);
+  const CACHE_TTL_MS = 5000; // 5 secondes
+
   // Charger l'ECO sélectionné depuis l'API
   useEffect(() => {
     if (!selectedEco) {
       setCurrentEco(null);
+      currentEcoCacheRef.current = null;
       return;
     }
+    
+    // Vérifier le cache
+    const cached = currentEcoCacheRef.current;
+    if (cached && cached.id === selectedEco && Date.now() - cached.timestamp < CACHE_TTL_MS) {
+      console.log(`[loadCurrentEco] Utilisation cache pour ${selectedEco}`);
+      setCurrentEco(cached.data);
+      return;
+    }
+    
     const loadCurrentEco = async () => {
+      const t0 = performance.now();
+      console.log(`[loadCurrentEco] Fetch ${selectedEco}`);
       try {
-        const res = await fetch(`/api/eco/${selectedEco}`);
+        const res = await fetch(`/api/eco/${selectedEco}`, { cache: "no-store" });
+        const t1 = performance.now();
+        const duration = t1 - t0;
         if (res.ok) {
           const data = await res.json();
-          setCurrentEco(data.eco || null);
+          const payloadSize = JSON.stringify(data).length;
+          console.log(`[loadCurrentEco] Succès - ${duration.toFixed(0)}ms - ${payloadSize} bytes`);
+          if (data.eco) {
+            setCurrentEco(data.eco);
+            // Mettre en cache
+            currentEcoCacheRef.current = { id: selectedEco, data: data.eco, timestamp: Date.now() };
+          }
         } else {
+          console.log(`[loadCurrentEco] Erreur ${res.status} - ${duration.toFixed(0)}ms`);
           setSelectedEco(null);
           setSelectedFolder(null);
           setCurrentEco(null);
+          currentEcoCacheRef.current = null;
         }
-      } catch {
+      } catch (error) {
+        const duration = performance.now() - t0;
+        console.error(`[loadCurrentEco] Exception - ${duration.toFixed(0)}ms`, error);
         setSelectedEco(null);
         setSelectedFolder(null);
         setCurrentEco(null);
+        currentEcoCacheRef.current = null;
       }
     };
     loadCurrentEco();
   }, [selectedEco]);
 
-  // Rafraîchir currentEco quand eco-updated est déclenché (eco modifié ou supprimé)
+  // Rafraîchir currentEco quand eco-updated est déclenché (avec debounce et cache)
+  const refreshCurrentEcoTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
   useEffect(() => {
     const handleRefreshCurrent = async () => {
       if (!selectedEco) return;
-      try {
-        const res = await fetch(`/api/eco/${selectedEco}`);
-        if (res.ok) {
-          const data = await res.json();
-          setCurrentEco(data.eco || null);
-        } else {
-          setSelectedEco(null);
-          setSelectedFolder(null);
-          setCurrentEco(null);
+      
+      // Debounce : ne refetch que si > 500ms depuis le dernier
+      if (refreshCurrentEcoTimeoutRef.current) {
+        clearTimeout(refreshCurrentEcoTimeoutRef.current);
+      }
+      
+      refreshCurrentEcoTimeoutRef.current = setTimeout(async () => {
+        // Invalider le cache
+        currentEcoCacheRef.current = null;
+        
+        const t0 = performance.now();
+        console.log(`[refreshCurrentEco] Refresh ${selectedEco}`);
+        try {
+          const res = await fetch(`/api/eco/${selectedEco}`, { cache: "no-store" });
+          const t1 = performance.now();
+          const duration = t1 - t0;
+          if (res.ok) {
+            const data = await res.json();
+            console.log(`[refreshCurrentEco] Succès - ${duration.toFixed(0)}ms`);
+            if (data.eco) {
+              setCurrentEco(data.eco);
+              // Mettre en cache
+              currentEcoCacheRef.current = { id: selectedEco, data: data.eco, timestamp: Date.now() };
+            }
+          } else {
+            console.log(`[refreshCurrentEco] Erreur ${res.status} - ${duration.toFixed(0)}ms`);
+            setSelectedEco(null);
+            setSelectedFolder(null);
+            setCurrentEco(null);
+            currentEcoCacheRef.current = null;
+          }
+        } catch (error) {
+          const duration = performance.now() - t0;
+          console.error(`[refreshCurrentEco] Exception - ${duration.toFixed(0)}ms`, error);
         }
-      } catch {
-        // Ignorer
+      }, 500);
+    };
+    
+    window.addEventListener("eco-updated", handleRefreshCurrent);
+    return () => {
+      window.removeEventListener("eco-updated", handleRefreshCurrent);
+      if (refreshCurrentEcoTimeoutRef.current) {
+        clearTimeout(refreshCurrentEcoTimeoutRef.current);
       }
     };
-    window.addEventListener("eco-updated", handleRefreshCurrent);
-    return () => window.removeEventListener("eco-updated", handleRefreshCurrent);
   }, [selectedEco]);
 
   useEffect(() => {
@@ -416,10 +509,28 @@ export default function Home() {
       setSelectedEco(newEco.id);
       setSelectedFolder(null);
       setRefreshKey((prev) => prev + 1);
+      
+      // Charger l'ECO immédiatement (sans attendre eco-updated)
+      const t0 = performance.now();
+      try {
+        const res = await fetch(`/api/eco/${newEco.id}`, { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          const duration = performance.now() - t0;
+          console.log(`[processRecording] ECO chargé - ${duration.toFixed(0)}ms`);
+          if (data.eco) {
+            setCurrentEco(data.eco);
+            currentEcoCacheRef.current = { id: newEco.id, data: data.eco, timestamp: Date.now() };
+          }
+        }
+      } catch (error) {
+        console.error("[processRecording] Erreur chargement ECO", error);
+      }
+      
+      // Déclencher eco-updated une seule fois (debounced dans les listeners)
       window.dispatchEvent(new Event("eco-updated"));
-      // Rafraîchir les données depuis le serveur pour garantir l'affichage immédiat
-      await loadEcos();
-      router.refresh();
+      // Ne pas appeler loadEcos() ici car eco-updated le déclenchera (debounced)
+      // Ne pas appeler router.refresh() car cela déclenche un re-render complet inutile
     } catch (error) {
       console.error("[processRecording] Erreur lors du traitement:", error);
       console.error("[processRecording] Détails de l'erreur:", {
@@ -720,11 +831,33 @@ export default function Home() {
                 eco={currentEco}
                 onRefresh={() => {
                   if (selectedEco) {
-                    fetch(`/api/eco/${selectedEco}`)
-                      .then((res) => res.ok && res.json())
-                      .then((data) => data?.eco && setCurrentEco(data.eco));
+                    // Invalider le cache
+                    currentEcoCacheRef.current = null;
+                    
+                    const t0 = performance.now();
+                    console.log(`[EcoView.onRefresh] Refresh ${selectedEco}`);
+                    fetch(`/api/eco/${selectedEco}`, { cache: "no-store" })
+                      .then((res) => {
+                        const duration = performance.now() - t0;
+                        if (res.ok) {
+                          return res.json();
+                        }
+                        console.log(`[EcoView.onRefresh] Erreur ${res.status} - ${duration.toFixed(0)}ms`);
+                        return null;
+                      })
+                      .then((data) => {
+                        if (data?.eco) {
+                          setCurrentEco(data.eco);
+                          // Mettre en cache
+                          currentEcoCacheRef.current = { id: selectedEco, data: data.eco, timestamp: Date.now() };
+                          // Déclencher eco-updated une seule fois (debounced)
+                          window.dispatchEvent(new Event("eco-updated"));
+                        }
+                      })
+                      .catch((error) => {
+                        console.error("[EcoView.onRefresh] Exception", error);
+                      });
                     setRefreshKey((prev) => prev + 1);
-                    window.dispatchEvent(new Event("eco-updated"));
                   }
                 }}
               />

@@ -88,6 +88,8 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
   const [aiError, setAiError] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const generateSummaryTriggeredRef = useRef(false);
+  const lastEcoUpdatedDispatchRef = useRef<number>(0);
+  const pollCountRef = useRef(0);
 
   const hasTranscription = !!(eco?.transcription_text && eco.transcription_text.length > 0);
   const hasSummary = !!eco?.summary_text;
@@ -101,6 +103,7 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
       setAiStatus("IDLE");
       setAiError(null);
       generateSummaryTriggeredRef.current = false;
+      pollCountRef.current = 0;
       if (pollRef.current) {
         clearInterval(pollRef.current);
         pollRef.current = null;
@@ -108,57 +111,123 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
       return;
     }
 
+    let pollInterval = POLL_INTERVAL_MS;
+    let maxPolls = 60; // Max 60 polls = 60s avec interval de 1s
+    let pollAttempts = 0;
+
     const poll = async () => {
+      pollAttempts++;
+      pollCountRef.current++;
+      const t0 = performance.now();
+      
       try {
         const result = await pollRecordingStatus(eco!.id);
+        const duration = performance.now() - t0;
+        console.log(`[EcoView.poll] #${pollCountRef.current} - ${duration.toFixed(0)}ms - status:${result.status} aiStatus:${result.aiStatus}`);
+        
         setRecordingStatus(result.status);
         setAiStatus(result.aiStatus ?? "IDLE");
         setAiError(result.aiError ?? null);
 
-        if (result.transcription) {
+        let shouldDispatchEcoUpdated = false;
+
+        // Transcription reçue
+        if (result.transcription && !transcriptionFromPoll) {
+          console.log("[EcoView.poll] Transcription reçue");
           setTranscriptionFromPoll(result.transcription);
-          fetch(`/api/eco/${eco!.id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ transcription_text: result.transcription }),
-          }).then((r) => r.ok && window.dispatchEvent(new Event("eco-updated")));
-          onRefresh?.();
+          try {
+            const patchRes = await fetch(`/api/eco/${eco!.id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ transcription_text: result.transcription }),
+            });
+            if (patchRes.ok) {
+              shouldDispatchEcoUpdated = true;
+            }
+          } catch (error) {
+            console.error("[EcoView.poll] Erreur PATCH transcription", error);
+          }
         }
 
+        // Démarrer génération résumé si transcription terminée
         if (result.status === "TRANSCRIBED" && !generateSummaryTriggeredRef.current) {
+          console.log("[EcoView.poll] Démarrage génération résumé");
           generateSummaryTriggeredRef.current = true;
-          generateSummary(eco!.id).catch(() => {});
+          generateSummary(eco!.id).catch((error) => {
+            console.error("[EcoView.poll] Erreur generateSummary", error);
+          });
         }
 
+        // Résumé reçu
         if (result.aiStatus === "DONE" && result.summary) {
+          console.log("[EcoView.poll] Résumé reçu");
           setSummaryFromPoll(result.summary);
-          fetch(`/api/eco/${eco!.id}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              title: result.summary.titre || eco!.title,
-              summary_text: JSON.stringify(result.summary),
-            }),
-          }).then((r) => r.ok && window.dispatchEvent(new Event("eco-updated")));
-          onRefresh?.();
+          try {
+            const patchRes = await fetch(`/api/eco/${eco!.id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                title: result.summary.titre || eco!.title,
+                summary_text: JSON.stringify(result.summary),
+              }),
+            });
+            if (patchRes.ok) {
+              shouldDispatchEcoUpdated = true;
+              // Arrêter le polling
+              if (pollRef.current) {
+                clearInterval(pollRef.current);
+                pollRef.current = null;
+              }
+              console.log("[EcoView.poll] Polling arrêté - résumé complet");
+            }
+          } catch (error) {
+            console.error("[EcoView.poll] Erreur PATCH résumé", error);
+          }
+        }
+
+        // Déclencher eco-updated UNE SEULE FOIS si nécessaire (debounced)
+        if (shouldDispatchEcoUpdated) {
+          const now = Date.now();
+          const timeSinceLastDispatch = now - lastEcoUpdatedDispatchRef.current;
+          // Ne dispatcher que si > 1s depuis le dernier dispatch
+          if (timeSinceLastDispatch > 1000) {
+            console.log("[EcoView.poll] Dispatch eco-updated");
+            lastEcoUpdatedDispatchRef.current = now;
+            window.dispatchEvent(new Event("eco-updated"));
+            onRefresh?.();
+          } else {
+            console.log(`[EcoView.poll] Skip dispatch (trop récent: ${timeSinceLastDispatch}ms)`);
+          }
+        }
+
+        // Arrêter après max polls
+        if (pollAttempts >= maxPolls) {
+          console.log(`[EcoView.poll] Arrêt après ${maxPolls} tentatives`);
           if (pollRef.current) {
             clearInterval(pollRef.current);
             pollRef.current = null;
           }
         }
-      } catch {
-        // Ignore poll errors
+      } catch (error) {
+        const duration = performance.now() - t0;
+        console.error(`[EcoView.poll] Erreur - ${duration.toFixed(0)}ms`, error);
       }
     };
 
+    // Premier poll immédiat
     poll();
-    pollRef.current = setInterval(poll, POLL_INTERVAL_MS);
+    
+    // Puis polling avec interval
+    pollRef.current = setInterval(poll, pollInterval);
+    
     return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-      pollRef.current = null;
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [needsPolling, eco?.id, eco?.summary_text, eco?.title, onRefresh]);
+  }, [needsPolling, eco?.id]);
 
   if (!eco) {
     return (

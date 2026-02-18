@@ -12,21 +12,28 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const t0 = Date.now();
   try {
+    const authStart = Date.now();
     const { userId } = await auth();
+    const authMs = Date.now() - authStart;
+    
     if (!userId) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
+    const userStart = Date.now();
     const user = await prisma.user.findUnique({
       where: { clerkUserId: userId },
       select: { id: true },
     });
+    const userMs = Date.now() - userStart;
 
     if (!user) {
       return NextResponse.json({ error: "Utilisateur introuvable" }, { status: 404 });
     }
 
+    const dbStart = Date.now();
     const eco = await prisma.eco.findFirst({
       where: {
         id: params.id,
@@ -43,6 +50,7 @@ export async function GET(
         updatedAt: true,
       },
     });
+    const dbMs = Date.now() - dbStart;
 
     if (!eco) {
       return NextResponse.json({ error: "ECO introuvable" }, { status: 404 });
@@ -57,6 +65,9 @@ export async function GET(
       folder: eco.folderId || "",
       created_at: eco.createdAt.toISOString(),
     };
+
+    const totalMs = Date.now() - t0;
+    console.log(`[api/eco/${params.id} GET] ms=${totalMs} auth=${authMs} user=${userMs} db=${dbMs}`);
 
     return NextResponse.json({ eco: formattedEco });
   } catch (error) {
@@ -78,31 +89,41 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const t0 = Date.now();
   try {
+    const authStart = Date.now();
     const { userId } = await auth();
+    const authMs = Date.now() - authStart;
+    
     if (!userId) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
+    const userStart = Date.now();
     const user = await prisma.user.findUnique({
       where: { clerkUserId: userId },
       select: { id: true },
     });
+    const userMs = Date.now() - userStart;
 
     if (!user) {
       return NextResponse.json({ error: "Utilisateur introuvable" }, { status: 404 });
     }
 
+    const bodyStart = Date.now();
     const body = await req.json();
+    const bodyMs = Date.now() - bodyStart;
     const { title, folder, folderId, summary_text, transcription_text } = body;
 
     // Vérifier que l'ECO existe et appartient à l'utilisateur
+    const checkStart = Date.now();
     const eco = await prisma.eco.findFirst({
       where: {
         id: params.id,
         userId: user.id,
       },
     });
+    const checkMs = Date.now() - checkStart;
 
     if (!eco) {
       return NextResponse.json({ error: "ECO introuvable" }, { status: 404 });
@@ -136,6 +157,7 @@ export async function PATCH(
       updateData.folderId = finalFolderId ?? null;
     }
 
+    const updateStart = Date.now();
     const updatedEco = await prisma.eco.update({
       where: { id: params.id },
       data: updateData,
@@ -150,6 +172,7 @@ export async function PATCH(
         updatedAt: true,
       },
     });
+    const updateMs = Date.now() - updateStart;
 
     const formattedEco = {
       id: updatedEco.id,
@@ -160,6 +183,10 @@ export async function PATCH(
       folder: updatedEco.folderId || "",
       created_at: updatedEco.createdAt.toISOString(),
     };
+    
+    const totalMs = Date.now() - t0;
+    console.log(`[api/eco/${params.id} PATCH] ms=${totalMs} auth=${authMs} user=${userMs} body=${bodyMs} check=${checkMs} update=${updateMs}`);
+    
     return NextResponse.json({ eco: formattedEco });
   } catch (error) {
     console.error("[eco PATCH] Erreur:", error);
