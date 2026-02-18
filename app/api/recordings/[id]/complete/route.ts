@@ -159,19 +159,16 @@ export async function POST(
 
     const totalMs = performance.now() - reqStart;
 
-    console.log("[recordings/complete] request end", {
-      recordingId: params.id,
-      durationMs,
-      durationSource,
-      ffprobeEnabled,
-      secondsDebited: result.secondsDebited,
-      remainingSeconds: result.remainingSeconds,
-      overLimit: result.overLimit,
-      totalMs: totalMs.toFixed(0),
-      ts: Date.now(),
-    });
-
     if (!result.success) {
+      console.log("[recordings/complete] Débit échoué (quota insuffisant)", {
+        recordingId: params.id,
+        userId: user.id,
+        durationMs,
+        remainingSeconds: result.remainingSeconds,
+        overLimit: result.overLimit,
+        totalMs: totalMs.toFixed(0),
+        ts: Date.now(),
+      });
       return NextResponse.json(
         {
           error: "Quota insuffisant",
@@ -182,6 +179,30 @@ export async function POST(
         { status: 403 }
       );
     }
+
+    // 7. Mettre à jour le status du Recording à "DONE" après débit réussi
+    // Garantit que l'ECO terminé est bien marqué comme complété
+    await prisma.recording.update({
+      where: { id: params.id },
+      data: {
+        status: "DONE",
+        durationMs,
+      },
+    });
+
+    console.log("[recordings/complete] ECO terminé et persisté", {
+      recordingId: params.id,
+      userId: user.id,
+      durationMs,
+      durationSource,
+      status: "DONE",
+      secondsDebited: result.secondsDebited,
+      remainingSeconds: result.remainingSeconds,
+      overLimit: result.overLimit,
+      completed_persisted: true,
+      totalMs: totalMs.toFixed(0),
+      ts: Date.now(),
+    });
 
     return NextResponse.json({
       success: true,

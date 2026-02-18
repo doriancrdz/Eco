@@ -417,6 +417,9 @@ export default function Home() {
       setSelectedFolder(null);
       setRefreshKey((prev) => prev + 1);
       window.dispatchEvent(new Event("eco-updated"));
+      // Rafraîchir les données depuis le serveur pour garantir l'affichage immédiat
+      await loadEcos();
+      router.refresh();
     } catch (error) {
       console.error("[processRecording] Erreur lors du traitement:", error);
       console.error("[processRecording] Détails de l'erreur:", {
