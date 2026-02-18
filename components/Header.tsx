@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 import PlanBadge from "./PlanBadge";
 
 interface HeaderProps {
-  onGoHome: () => void;
+  onGoHome: (from?: "back" | "logo" | "sidebar") => void;
   onToggleSidebar?: () => void;
   isDetailView?: boolean;
   onShare?: () => void;
@@ -31,7 +31,7 @@ export default function Header({
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
-          onClick={onGoHome}
+          onClick={() => onGoHome("logo")}
           className="p-0 bg-transparent border-0 rounded-none hover:opacity-90 transition-opacity shrink-0"
           aria-label="Retour à l'accueil"
         >
@@ -53,7 +53,7 @@ export default function Header({
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={onGoHome}
+              onClick={() => onGoHome("back")}
               className="p-2 rounded-xl hover:bg-white/20 transition-colors shrink-0"
               aria-label="Retour"
             >
@@ -78,7 +78,7 @@ export default function Header({
       <motion.button
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
-        onClick={onGoHome}
+        onClick={() => onGoHome("logo")}
         className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 bg-transparent p-0 border-0 z-10"
         aria-label="Retour à l'accueil"
       >

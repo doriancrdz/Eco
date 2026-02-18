@@ -14,7 +14,7 @@ interface SidebarProps {
   onSelectEco: (ecoId: string | null) => void;
   onClose?: () => void;
   isOpen?: boolean;
-  onNavigateHome?: () => void;
+  onNavigateHome?: (from?: "back" | "logo" | "sidebar") => void;
   onNavigatePricing?: () => void;
   onNavigateSettings?: () => void;
   onSignOut?: () => void;
@@ -97,7 +97,7 @@ export default function Sidebar({
                 {/* Logo ECO -> Accueil */}
                 <button
                   type="button"
-                  onClick={() => { onNavigateHome?.(); onClose?.(); }}
+                  onClick={() => { onNavigateHome?.("sidebar"); onClose?.(); }}
                   className="w-full px-4 py-4 flex items-center gap-2 shrink-0 bg-transparent border-0 cursor-pointer hover:opacity-90 transition-opacity text-left"
                   aria-label="Retour à l'accueil"
                 >
@@ -113,7 +113,7 @@ export default function Sidebar({
                     <motion.button
                       whileHover={{ x: 2 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => { onNavigateHome(); onClose?.(); }}
+                      onClick={() => { onNavigateHome("sidebar"); onClose?.(); }}
                       className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-white/20 transition-all cursor-pointer"
                     >
                       <Home className="w-4 h-4 shrink-0" />

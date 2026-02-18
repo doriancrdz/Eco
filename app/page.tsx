@@ -146,8 +146,30 @@ export default function Home() {
   const currentEcoCacheRef = useRef<{ id: string; data: Eco; timestamp: number } | null>(null);
   const CACHE_TTL_MS = 5000; // 5 secondes
 
+  // Navigation accueil: empêcher les effects de remettre selectedEco/isProcessing
+  const isNavigatingHomeRef = useRef(false);
+  const selectedEcoRef = useRef<string | null>(null);
+  const isProcessingRef = useRef(false);
+  const isFocusModeRef = useRef(false);
+  const viewAllEcosRef = useRef(false);
+  useEffect(() => {
+    selectedEcoRef.current = selectedEco;
+    isProcessingRef.current = isProcessing;
+    isFocusModeRef.current = isFocusMode;
+    viewAllEcosRef.current = viewAllEcos;
+  }, [selectedEco, isProcessing, isFocusMode, viewAllEcos]);
+
+  const snapshotState = useCallback(() => ({
+    selectedEco: selectedEcoRef.current,
+    isProcessing: isProcessingRef.current,
+    isFocusMode: isFocusModeRef.current,
+    viewAllEcos: viewAllEcosRef.current,
+    isNavigatingHome: isNavigatingHomeRef.current,
+  }), []);
+
   // Charger l'ECO sélectionné depuis l'API
   useEffect(() => {
+    if (isNavigatingHomeRef.current) return;
     if (!selectedEco) {
       setCurrentEco(null);
       currentEcoCacheRef.current = null;
@@ -202,6 +224,7 @@ export default function Home() {
   
   useEffect(() => {
     const handleRefreshCurrent = async () => {
+      if (isNavigatingHomeRef.current) return;
       if (!selectedEco) return;
       
       // Debounce : ne refetch que si > 500ms depuis le dernier
@@ -210,29 +233,34 @@ export default function Home() {
       }
       
       refreshCurrentEcoTimeoutRef.current = setTimeout(async () => {
+        if (isNavigatingHomeRef.current) return;
+        const ecoId = selectedEcoRef.current;
+        if (!ecoId) return;
         // Invalider le cache
         currentEcoCacheRef.current = null;
         
         const t0 = performance.now();
-        console.log(`[refreshCurrentEco] Refresh ${selectedEco}`);
+        console.log(`[refreshCurrentEco] Refresh ${ecoId}`);
         try {
-          const res = await fetch(`/api/ecos/${selectedEco}`, { cache: "no-store" });
+          const res = await fetch(`/api/ecos/${ecoId}`, { cache: "no-store" });
+          if (isNavigatingHomeRef.current) return;
           const t1 = performance.now();
           const duration = t1 - t0;
           if (res.ok) {
             const data = await res.json();
             console.log(`[refreshCurrentEco] Succès - ${duration.toFixed(0)}ms`);
-            if (data.eco) {
+            if (data.eco && !isNavigatingHomeRef.current) {
               setCurrentEco(data.eco);
-              // Mettre en cache
-              currentEcoCacheRef.current = { id: selectedEco, data: data.eco, timestamp: Date.now() };
+              currentEcoCacheRef.current = { id: ecoId, data: data.eco, timestamp: Date.now() };
             }
           } else {
             console.log(`[refreshCurrentEco] Erreur ${res.status} - ${duration.toFixed(0)}ms`);
-            setSelectedEco(null);
-            setSelectedFolder(null);
-            setCurrentEco(null);
-            currentEcoCacheRef.current = null;
+            if (!isNavigatingHomeRef.current) {
+              setSelectedEco(null);
+              setSelectedFolder(null);
+              setCurrentEco(null);
+              currentEcoCacheRef.current = null;
+            }
           }
         } catch (error) {
           const duration = performance.now() - t0;
@@ -618,8 +646,23 @@ export default function Home() {
     }
   };
 
-  /** Une seule fonction pour revenir à l'accueil : reset de tous les états UI qui influencent le rendu. */
-  const goHome = useCallback(() => {
+  /** Une seule fonction pour revenir à l'accueil : reset + navigation réelle vers "/" + kill-switch overlays. */
+  const goHome = useCallback((from?: "back" | "logo" | "sidebar") => {
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[NAV] goHome clicked", {
+        from: from ?? "unknown",
+        ts: Date.now(),
+        selectedEco,
+        isProcessing,
+        isFocusMode,
+        viewAllEcos,
+      });
+    }
+    isNavigatingHomeRef.current = true;
+    if (refreshCurrentEcoTimeoutRef.current) {
+      clearTimeout(refreshCurrentEcoTimeoutRef.current);
+      refreshCurrentEcoTimeoutRef.current = null;
+    }
     setSelectedEco(null);
     setSelectedFolder(null);
     setViewAllEcos(false);
@@ -627,8 +670,26 @@ export default function Home() {
     setIsProcessing(false);
     setCurrentEco(null);
     setSidebarOpen(false);
+    setShowProfile(false);
+    setShowStopConfirm(false);
     setRefreshKey((prev) => prev + 1);
-  }, []);
+    currentEcoCacheRef.current = null;
+    if (typeof document !== "undefined") document.body.style.overflow = "unset";
+    router.push("/");
+    setTimeout(() => {
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[NAV] after goHome 0ms", snapshotState());
+      }
+    }, 0);
+    setTimeout(() => {
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[NAV] after goHome 50ms", snapshotState());
+      }
+    }, 50);
+    setTimeout(() => {
+      isNavigatingHomeRef.current = false;
+    }, 600);
+  }, [router, selectedEco, isProcessing, isFocusMode, viewAllEcos, snapshotState]);
 
   const handleEcoClick = (eco: Eco) => {
     setSelectedEco(eco.id);
@@ -862,7 +923,7 @@ export default function Home() {
               <motion.button
                 whileHover={{ x: -4 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={goHome}
+                onClick={() => goHome("sidebar")}
                 className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
               >
                 <ArrowLeft className="w-5 h-5" />
@@ -996,6 +1057,21 @@ export default function Home() {
         userImageUrl={user?.imageUrl}
         userName={user?.firstName || user?.username || undefined}
       />
+
+      {/* Debug overlay (dev only) */}
+      {process.env.NODE_ENV !== "production" && (
+        <div
+          className="fixed bottom-4 right-4 z-[100] rounded-lg bg-black/80 text-white text-xs font-mono p-3 max-w-[280px] shadow-xl border border-white/20"
+          aria-hidden
+        >
+          <div className="font-bold text-amber-300 mb-1">[NAV] state</div>
+          <div>selectedEco: {selectedEco ?? "null"}</div>
+          <div>isProcessing: {String(isProcessing)}</div>
+          <div>isFocusMode: {String(isFocusMode)}</div>
+          <div>viewAllEcos: {String(viewAllEcos)}</div>
+          <div>overlays: sidebar={String(sidebarOpen)} profile={String(showProfile)} stopConfirm={String(showStopConfirm)}</div>
+        </div>
+      )}
     </div>
   );
 }
