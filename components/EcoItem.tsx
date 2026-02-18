@@ -69,7 +69,7 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
     }
 
     try {
-      const response = await fetch(`/api/eco/${eco.id}`, {
+      const response = await fetch(`/api/ecos/${eco.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: trimmed }),
@@ -102,7 +102,7 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
   const handleMoveToFolder = async (folderId: string | null) => {
     try {
       const payload = { folderId: folderId && folderId !== "" ? folderId : null };
-      const response = await fetch(`/api/eco/${eco.id}`, {
+      const response = await fetch(`/api/ecos/${eco.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -141,7 +141,7 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
       const newFolder = await folderResponse.json();
       
       // Déplacer l'ECO dans le nouveau dossier
-      const moveResponse = await fetch(`/api/eco/${eco.id}`, {
+      const moveResponse = await fetch(`/api/ecos/${eco.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ folderId: newFolder.id }),
@@ -188,7 +188,7 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      const response = await fetch(`/api/eco/${eco.id}`, {
+      const response = await fetch(`/api/ecos/${eco.id}`, {
         method: "DELETE",
       });
 

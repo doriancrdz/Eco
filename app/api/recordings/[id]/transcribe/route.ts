@@ -11,7 +11,7 @@ const openai = new OpenAI({
 
 /**
  * Reçoit l'audio et lance Whisper. Appelé en fire-and-forget par le client.
- * Le client poll GET /api/recording/[id] pour la transcription.
+ * Le client poll GET /api/ecos/[id] pour l’affichage (transcription + résumé).
  */
 export async function POST(
   req: NextRequest,

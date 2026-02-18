@@ -166,7 +166,7 @@ export default function Home() {
       const t0 = performance.now();
       console.log(`[loadCurrentEco] Fetch ${selectedEco}`);
       try {
-        const res = await fetch(`/api/eco/${selectedEco}`, { cache: "no-store" });
+        const res = await fetch(`/api/ecos/${selectedEco}`, { cache: "no-store" });
         const t1 = performance.now();
         const duration = t1 - t0;
         if (res.ok) {
@@ -216,7 +216,7 @@ export default function Home() {
         const t0 = performance.now();
         console.log(`[refreshCurrentEco] Refresh ${selectedEco}`);
         try {
-          const res = await fetch(`/api/eco/${selectedEco}`, { cache: "no-store" });
+          const res = await fetch(`/api/ecos/${selectedEco}`, { cache: "no-store" });
           const t1 = performance.now();
           const duration = t1 - t0;
           if (res.ok) {
@@ -460,8 +460,14 @@ export default function Home() {
       const audioUrl = URL.createObjectURL(audioBlob);
 
       // 1) Init recording pour obtenir l'id AVANT l'upload (évite la race: Eco doit exister quand la transcription met à jour la DB)
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[DEBUG processRecording] STEP 1: Init recording", { durationSeconds, mimeType });
+      }
       const { recordingId: rid } = await initRecording(durationSeconds, audioBlob.type || mimeType);
       recordingId = rid;
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[DEBUG processRecording] STEP 1: ✅ recordingId obtenu", { recordingId, ecoId: recordingId });
+      }
 
       const ecoTitle = `Eco du ${new Date().toLocaleDateString("fr-FR")}`;
 
@@ -478,11 +484,18 @@ export default function Home() {
 
       const createEcoInDb = async (): Promise<boolean> => {
         for (let attempt = 0; attempt < 2; attempt++) {
-          const res = await fetch("/api/ecos", {
+          const url = "/api/ecos";
+          if (process.env.NODE_ENV !== "production") {
+            console.log("[DEBUG processRecording] STEP 2: Création Eco", { url, recordingId, ecoId: recordingId, attempt });
+          }
+          const res = await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(minimalEco),
           });
+          if (process.env.NODE_ENV !== "production") {
+            console.log("[DEBUG processRecording] STEP 2: ✅ Eco créé", { url, status: res.status, recordingId, ecoId: recordingId });
+          }
           if (res.ok) return true;
           const err = await res.json().catch(() => ({}));
           console.error("[processRecording] Création ECO DB échec", { attempt, status: res.status, error: err });
@@ -499,6 +512,9 @@ export default function Home() {
       }
 
       // 3) Lancer l'upload + complete (transcription mettra à jour Recording puis Eco)
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[DEBUG processRecording] STEP 3: Upload + Complete", { recordingId, ecoId: recordingId });
+      }
       await uploadAndComplete(recordingId, audioBlob, durationSeconds, mimeType);
 
       const newEco: Eco = {
@@ -516,7 +532,14 @@ export default function Home() {
       // Charger l'ECO immédiatement (sans attendre eco-updated)
       const tFetch = performance.now();
       try {
-        const res = await fetch(`/api/eco/${newEco.id}`, { cache: "no-store" });
+        const url = `/api/ecos/${newEco.id}`;
+        if (process.env.NODE_ENV !== "production") {
+          console.log("[DEBUG processRecording] STEP 4: Chargement Eco", { url, recordingId, ecoId: newEco.id });
+        }
+        const res = await fetch(url, { cache: "no-store" });
+        if (process.env.NODE_ENV !== "production") {
+          console.log("[DEBUG processRecording] STEP 4: ✅ Eco chargé", { url, status: res.status, recordingId, ecoId: newEco.id });
+        }
         if (res.ok) {
           const data = await res.json();
           const duration = performance.now() - tFetch;
@@ -834,15 +857,25 @@ export default function Home() {
                     // Invalider le cache
                     currentEcoCacheRef.current = null;
                     
+                    const url = `/api/ecos/${selectedEco}`;
                     const t0 = performance.now();
+                    if (process.env.NODE_ENV !== "production") {
+                      console.log("[DEBUG EcoView.onRefresh] Refresh", { url, recordingId: selectedEco, ecoId: selectedEco });
+                    }
                     console.log(`[EcoView.onRefresh] Refresh ${selectedEco}`);
-                    fetch(`/api/eco/${selectedEco}`, { cache: "no-store" })
+                    fetch(url, { cache: "no-store" })
                       .then((res) => {
                         const duration = performance.now() - t0;
+                        if (process.env.NODE_ENV !== "production") {
+                          console.log("[DEBUG EcoView.onRefresh] ✅ Réponse", { url, status: res.status, recordingId: selectedEco, ecoId: selectedEco });
+                        }
                         if (res.ok) {
                           return res.json();
                         }
                         console.log(`[EcoView.onRefresh] Erreur ${res.status} - ${duration.toFixed(0)}ms`);
+                        if (process.env.NODE_ENV !== "production") {
+                          console.log("[DEBUG EcoView.onRefresh] ❌ Erreur", { url, status: res.status, recordingId: selectedEco, ecoId: selectedEco });
+                        }
                         return null;
                       })
                       .then((data) => {
@@ -856,6 +889,9 @@ export default function Home() {
                       })
                       .catch((error) => {
                         console.error("[EcoView.onRefresh] Exception", error);
+                        if (process.env.NODE_ENV !== "production") {
+                          console.log("[DEBUG EcoView.onRefresh] ❌ Exception", { url, recordingId: selectedEco, ecoId: selectedEco, error });
+                        }
                       });
                     setRefreshKey((prev) => prev + 1);
                   }

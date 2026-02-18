@@ -4,20 +4,20 @@ import { useEffect, useRef, useState } from "react";
 import { Eco } from "@/types";
 import { motion } from "framer-motion";
 import { RefreshCw, Copy, Check } from "lucide-react";
-import { pollRecordingStatus, generateSummary } from "@/lib/transcription";
+import { generateSummary } from "@/lib/transcription";
 import type { Summary } from "@/lib/transcription";
 import Tabs from "@/components/ui/Tabs";
 
-const POLL_INTERVAL_MS = 1000;
+const POLL_INTERVAL_MS = 2000;
 
-function RelancerButton({ recordingId, onSuccess }: { recordingId: string; onSuccess?: () => void }) {
+function RelancerButton({ ecoId, onSuccess }: { ecoId: string; onSuccess?: () => void }) {
   const [loading, setLoading] = useState(false);
   const handleClick = async () => {
     setLoading(true);
     try {
-      const summary = await generateSummary(recordingId);
+      const summary = await generateSummary(ecoId);
       if (summary) {
-        const res = await fetch(`/api/eco/${recordingId}`, {
+        const res = await fetch(`/api/ecos/${ecoId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ title: summary.titre, summary_text: JSON.stringify(summary) }),
@@ -81,15 +81,19 @@ interface EcoViewProps {
 }
 
 export default function EcoView({ eco, onRefresh }: EcoViewProps) {
-  const [transcriptionFromPoll, setTranscriptionFromPoll] = useState<string | null>(null);
-  const [summaryFromPoll, setSummaryFromPoll] = useState<Summary | null | undefined>(undefined);
-  const [recordingStatus, setRecordingStatus] = useState<string>("");
-  const [aiStatus, setAiStatus] = useState<string>("IDLE");
-  const [aiError, setAiError] = useState<string | null>(null);
   const [showRetryHint, setShowRetryHint] = useState(false);
+  const [lastSummaryStatus, setLastSummaryStatus] = useState<number | null>(null);
+  const [lastEcoFetch, setLastEcoFetch] = useState<{
+    url: string;
+    statusCode: number;
+    hasTranscription: boolean;
+    transcriptionLen: number;
+    hasContent: boolean;
+    contentLen: number;
+    updatedAt: string | null;
+  } | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const generateSummaryTriggeredRef = useRef(false);
-  const lastEcoUpdatedDispatchRef = useRef<number>(0);
   const pollCountRef = useRef(0);
 
   const hasTranscription = !!(eco?.transcription_text && eco.transcription_text.length > 0);
@@ -106,28 +110,30 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
     return () => clearTimeout(t);
   }, [needsPolling]);
 
-  // Log les données reçues pour debug
+  // Mise à jour lastEcoFetch quand eco change (prop venant du parent)
   useEffect(() => {
     if (eco) {
-      console.log("[EcoView] Données ECO reçues:", {
-        id: eco.id,
-        title: eco.title,
-        hasTranscription: !!(eco.transcription_text && eco.transcription_text.length > 0),
-        transcriptionLength: eco.transcription_text?.length || 0,
-        hasSummary: !!eco.summary_text,
-        summaryLength: eco.summary_text?.length || 0,
-        keys: Object.keys(eco),
+      const url = `/api/ecos/${eco.id}`;
+      const transcriptionLen = eco.transcription_text?.length ?? 0;
+      const contentLen = eco.summary_text?.length ?? 0;
+      setLastEcoFetch({
+        url,
+        statusCode: 200,
+        hasTranscription: transcriptionLen > 0,
+        transcriptionLen,
+        hasContent: contentLen > 0,
+        contentLen,
+        updatedAt: eco.created_at || null,
       });
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[DEBUG EcoView] Données ECO reçues:", { id: eco.id, url, transcriptionLen, contentLen });
+      }
     }
   }, [eco]);
 
+  // Polling unique : GET /api/ecos/[id] toutes les 2s. Stop quand transcriptionText et content non vides.
   useEffect(() => {
-    if (!needsPolling) {
-      setTranscriptionFromPoll(null);
-      setSummaryFromPoll(undefined);
-      setRecordingStatus("");
-      setAiStatus("IDLE");
-      setAiError(null);
+    if (!needsPolling || !eco?.id) {
       generateSummaryTriggeredRef.current = false;
       pollCountRef.current = 0;
       if (pollRef.current) {
@@ -137,120 +143,145 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
       return;
     }
 
-    let pollInterval = POLL_INTERVAL_MS;
-    let maxPolls = 60; // Max 60 polls = 60s avec interval de 1s
+    const ecoId = eco.id;
+    const pollUrl = `/api/ecos/${ecoId}`;
     let pollAttempts = 0;
+    const maxPolls = 90; // 90 * 2s = 3 min max
 
     const poll = async () => {
       pollAttempts++;
       pollCountRef.current++;
       const t0 = performance.now();
-      
       try {
-        const result = await pollRecordingStatus(eco!.id);
-        const duration = performance.now() - t0;
-        console.log(`[EcoView.poll] #${pollCountRef.current} - ${duration.toFixed(0)}ms - status:${result.status} aiStatus:${result.aiStatus}`);
-        
-        setRecordingStatus(result.status);
-        setAiStatus(result.aiStatus ?? "IDLE");
-        setAiError(result.aiError ?? null);
-
-        // Transcription reçue - le backend synchronise déjà, on rafraîchit juste l'Eco
-        if (result.transcription && !transcriptionFromPoll) {
-          console.log("[EcoView.poll] Transcription reçue, rafraîchissement ECO");
-          setTranscriptionFromPoll(result.transcription);
-          // Le backend a déjà synchronisé Recording -> Eco, on rafraîchit juste l'UI
-          onRefresh?.();
+        if (process.env.NODE_ENV !== "production") {
+          console.log("[DEBUG EcoView.poll] GET", { url: pollUrl, ecoId });
         }
+        const res = await fetch(pollUrl, { cache: "no-store" });
+        const duration = performance.now() - t0;
 
-        // Démarrer génération résumé si transcription terminée
-        if (result.status === "TRANSCRIBED" && !generateSummaryTriggeredRef.current) {
-          console.log("[EcoView.poll] Démarrage génération résumé");
-          generateSummaryTriggeredRef.current = true;
-          generateSummary(eco!.id).catch((error) => {
-            console.error("[EcoView.poll] Erreur generateSummary", error);
+        let hasTranscription = false;
+        let hasContent = false;
+        let updatedAt: string | null = null;
+
+        if (res.ok) {
+          const data = await res.json();
+          const e = data?.eco;
+          if (e) {
+            const tLen = e.transcription_text?.length ?? 0;
+            const cLen = e.summary_text?.length ?? 0;
+            hasTranscription = tLen > 0;
+            hasContent = cLen > 0;
+            updatedAt = e.created_at || null;
+            setLastEcoFetch({
+              url: pollUrl,
+              statusCode: res.status,
+              hasTranscription,
+              transcriptionLen: tLen,
+              hasContent,
+              contentLen: cLen,
+              updatedAt,
+            });
+
+            // Rafraîchir le parent pour qu'il mette à jour currentEco (une seule source de vérité)
+            onRefresh?.();
+
+            // Déclencher generate-summary une seule fois quand transcription prête mais pas le résumé
+            if (hasTranscription && !hasContent && !generateSummaryTriggeredRef.current) {
+              generateSummaryTriggeredRef.current = true;
+              if (process.env.NODE_ENV !== "production") {
+                console.log("[DEBUG EcoView.poll] Trigger generate-summary", { ecoId });
+              }
+              fetch("/api/generate-summary", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ recordingId: ecoId }),
+              })
+                .then((r) => {
+                  setLastSummaryStatus(r.status);
+                  if (r.ok || r.status === 202) return;
+                  throw new Error(`Status ${r.status}`);
+                })
+                .catch((err) => console.error("[EcoView.poll] generate-summary error", err));
+            }
+
+            // Stop quand les deux sont remplis
+            if (hasTranscription && hasContent) {
+              if (pollRef.current) {
+                clearInterval(pollRef.current);
+                pollRef.current = null;
+              }
+              if (process.env.NODE_ENV !== "production") {
+                console.log("[EcoView.poll] Stop — transcription + content OK");
+              }
+            }
+          }
+        } else {
+          setLastEcoFetch({
+            url: pollUrl,
+            statusCode: res.status,
+            hasTranscription: false,
+            transcriptionLen: 0,
+            hasContent: false,
+            contentLen: 0,
+            updatedAt: null,
           });
         }
 
-        // Résumé reçu - le backend synchronise déjà, on rafraîchit juste l'Eco
-        if (result.aiStatus === "DONE" && result.summary) {
-          console.log("[EcoView.poll] Résumé reçu, rafraîchissement ECO");
-          setSummaryFromPoll(result.summary);
-          // Le backend a déjà synchronisé Recording -> Eco, on rafraîchit juste l'UI
-          onRefresh?.();
-          
-          // Arrêter le polling car tout est terminé
-          if (pollRef.current) {
-            clearInterval(pollRef.current);
-            pollRef.current = null;
-          }
-          console.log("[EcoView.poll] Polling arrêté - résumé complet");
+        if (process.env.NODE_ENV !== "production") {
+          console.log("[EcoView.poll] #" + pollCountRef.current, { url: pollUrl, status: res.status, duration: duration.toFixed(0), hasTranscription, hasContent });
         }
 
-        // Si transcription ET résumé sont présents, arrêter le polling
-        if (result.transcription && result.summary && result.aiStatus === "DONE") {
-          if (pollRef.current) {
-            clearInterval(pollRef.current);
-            pollRef.current = null;
-          }
-          console.log("[EcoView.poll] Polling arrêté - tout complet");
-        }
-
-        // Arrêter après max polls
         if (pollAttempts >= maxPolls) {
-          console.log(`[EcoView.poll] Arrêt après ${maxPolls} tentatives`);
           if (pollRef.current) {
             clearInterval(pollRef.current);
             pollRef.current = null;
           }
         }
       } catch (error) {
-        const duration = performance.now() - t0;
-        console.error(`[EcoView.poll] Erreur - ${duration.toFixed(0)}ms`, error);
+        console.error("[EcoView.poll] Erreur", error);
+        setLastEcoFetch({
+          url: pollUrl,
+          statusCode: 0,
+          hasTranscription: false,
+          transcriptionLen: 0,
+          hasContent: false,
+          contentLen: 0,
+          updatedAt: null,
+        });
       }
     };
 
-    // Premier poll immédiat
     poll();
-    
-    // Puis polling avec interval
-    pollRef.current = setInterval(poll, pollInterval);
-    
+    pollRef.current = setInterval(poll, POLL_INTERVAL_MS);
     return () => {
       if (pollRef.current) {
         clearInterval(pollRef.current);
         pollRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [needsPolling, eco?.id]);
+  }, [needsPolling, eco?.id, onRefresh]);
 
-  // Parse summary data (calculs avant le return conditionnel pour pouvoir les utiliser dans les hooks)
-  const summaryJson = eco?.summary_text || (summaryFromPoll ? JSON.stringify(summaryFromPoll) : null);
-  const transcription = eco?.transcription_text || transcriptionFromPoll || "";
-  
-  // Calculs d'état (avant le return conditionnel)
-  const isTranscribing = !transcription && (recordingStatus === "PROCESSING" || recordingStatus === "" || !recordingStatus);
-  const isGenerating = !summaryJson && (aiStatus === "GENERATING" || (aiStatus === "IDLE" && recordingStatus === "TRANSCRIBED"));
-  const isFailed = aiStatus === "FAILED";
-  
-  // Log pour debug (seulement si changement d'état) - HOOK INCONDITIONNEL avant le return
+  // Affichage : une seule source de vérité (Eco)
+  const summaryJson = eco?.summary_text ?? null;
+  const transcription = eco?.transcription_text ?? "";
+
+  // États dérivés uniquement des champs Eco + polling actif
+  const isTranscribing = needsPolling && !(eco?.transcription_text && eco.transcription_text.length > 0);
+  const isGenerating = needsPolling && !!(eco?.transcription_text && eco.transcription_text.length > 0) && !(eco?.summary_text && eco.summary_text.length > 0);
+  const isFailed = false; // On ne lit plus aiStatus du Recording ; en cas d'échec, showRetryHint après 30s
+
   useEffect(() => {
-    if (!eco) return; // Condition dans le corps du hook, pas avant le hook
-    
-    console.log("[EcoView] État affichage:", {
-      hasTranscription: !!transcription && transcription.length > 0,
-      transcriptionLength: transcription.length,
-      hasSummary: !!summaryJson,
-      summaryLength: summaryJson?.length || 0,
-      recordingStatus,
-      aiStatus,
-      isTranscribing,
-      isGenerating,
-      isFailed,
-      needsPolling,
-    });
-  }, [eco, transcription, summaryJson, recordingStatus, aiStatus, isTranscribing, isGenerating, isFailed, needsPolling]);
+    if (!eco) return;
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[EcoView] État affichage:", {
+        hasTranscription: !!transcription && transcription.length > 0,
+        hasSummary: !!summaryJson,
+        isTranscribing,
+        isGenerating,
+        needsPolling,
+      });
+    }
+  }, [eco, transcription, summaryJson, isTranscribing, isGenerating, needsPolling]);
 
   if (!eco) {
     return (
@@ -276,12 +307,7 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
   const summaryContent = (
     <div className="prose prose-base max-w-none">
       <div className="text-gray-700 leading-relaxed space-y-4">
-        {isFailed ? (
-          <div className="space-y-4">
-            <p className="text-sm text-red-500/90">{aiError || "Erreur lors de la génération."}</p>
-            <RelancerButton recordingId={eco.id} onSuccess={onRefresh} />
-          </div>
-        ) : isGenerating ? (
+        {isGenerating ? (
           <div className="space-y-4 animate-pulse">
             <div className="h-6 bg-white/10 rounded-lg w-3/4 backdrop-blur-sm" />
             <div className="h-4 bg-white/10 rounded-lg w-full backdrop-blur-sm" />
@@ -332,7 +358,7 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
             {showRetryHint && (
               <>
                 <p className="text-sm text-amber-600">Traitement en cours ou échoué.</p>
-                <RelancerButton recordingId={eco.id} onSuccess={onRefresh} />
+                <RelancerButton ecoId={eco.id} onSuccess={onRefresh} />
               </>
             )}
           </div>
@@ -448,6 +474,27 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
       className="flex-1 overflow-y-auto p-4 md:p-8"
     >
       <div className="max-w-[1100px] mx-auto space-y-6">
+        {/* Panneau DEBUG (DEV ONLY) */}
+        {process.env.NODE_ENV !== "production" && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="relative bg-amber-50/80 backdrop-blur-xl rounded-xl border border-amber-200/50 shadow-lg p-4 text-xs font-mono"
+          >
+            <div className="font-bold text-amber-900 mb-2">🔍 DEBUG PANEL</div>
+            <div className="space-y-1 text-amber-800">
+              <div>ecoId: <span className="font-semibold">{eco.id}</span></div>
+              <div>lastSummaryStatus: <span className="font-semibold">{lastSummaryStatus ?? "—"}</span></div>
+              <div>lastEcoFetch: {lastEcoFetch ? (
+                <span className="font-semibold block mt-1">
+                  URL: {lastEcoFetch.url}<br />
+                  statusCode: {lastEcoFetch.statusCode} | hasTranscription: {lastEcoFetch.hasTranscription ? "✅" : "❌"} ({lastEcoFetch.transcriptionLen}) | hasContent: {lastEcoFetch.hasContent ? "✅" : "❌"} ({lastEcoFetch.contentLen}) | updatedAt: {lastEcoFetch.updatedAt ? new Date(lastEcoFetch.updatedAt).toLocaleTimeString() : "—"}
+                </span>
+              ) : "—"}</div>
+            </div>
+          </motion.div>
+        )}
+        
         {/* Header avec aura */}
         <motion.div
           initial={{ opacity: 0, y: 8 }}

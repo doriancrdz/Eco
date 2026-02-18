@@ -71,16 +71,39 @@ export async function uploadAndComplete(
   const formData = new FormData();
   formData.append("audio", audioBlob, `recording.${extension}`);
 
-  const uploadPromise = fetch(`/api/recordings/${recordingId}/transcribe`, {
+  const transcribeUrl = `/api/recordings/${recordingId}/transcribe`;
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[DEBUG uploadAndComplete] Upload transcribe", { url: transcribeUrl, recordingId, ecoId: recordingId });
+  }
+  const uploadPromise = fetch(transcribeUrl, {
     method: "POST",
     body: formData,
-  }).catch((e) => console.error("[uploadAndComplete] Upload error:", e));
+  })
+    .then((res) => {
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[DEBUG uploadAndComplete] ✅ Transcribe appelé", { url: transcribeUrl, status: res.status, recordingId, ecoId: recordingId });
+      }
+      return res;
+    })
+    .catch((e) => {
+      console.error("[uploadAndComplete] Upload error:", e);
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[DEBUG uploadAndComplete] ❌ Transcribe erreur", { url: transcribeUrl, recordingId, ecoId: recordingId, error: e });
+      }
+    });
 
-  const completeRes = await fetch(`/api/recordings/${recordingId}/complete`, {
+  const completeUrl = `/api/recordings/${recordingId}/complete`;
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[DEBUG uploadAndComplete] Complete", { url: completeUrl, recordingId, ecoId: recordingId });
+  }
+  const completeRes = await fetch(completeUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ durationMs }),
   });
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[DEBUG uploadAndComplete] ✅ Complete", { url: completeUrl, status: completeRes.status, recordingId, ecoId: recordingId });
+  }
 
   if (!completeRes.ok) {
     const err = await completeRes.json().catch(() => ({}));
@@ -133,13 +156,21 @@ export async function transcribeAudio(
  */
 export async function generateSummary(recordingId: string): Promise<Summary | null> {
   const perfStart = performance.now();
+  const url = "/api/generate-summary";
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[DEBUG generateSummary] Appel", { url, recordingId, ecoId: recordingId });
+  }
   console.log("[generateSummary] Début PHASE B", { recordingId });
 
-  const res = await fetch("/api/generate-summary", {
+  const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ recordingId }),
   });
+
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[DEBUG generateSummary] ✅ Réponse", { url, status: res.status, recordingId, ecoId: recordingId });
+  }
 
   if (res.status === 202) {
     console.log("[generateSummary] 202 — génération déjà en cours, polling prendra le relais");
@@ -148,6 +179,9 @@ export async function generateSummary(recordingId: string): Promise<Summary | nu
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[DEBUG generateSummary] ❌ Erreur", { url, status: res.status, recordingId, ecoId: recordingId, error: errorData });
+    }
     throw new Error(errorData.error || "Erreur lors de la génération du résumé");
   }
 
@@ -162,28 +196,6 @@ export async function generateSummary(recordingId: string): Promise<Summary | nu
   });
 
   return data.summary ?? null;
-}
-
-/**
- * Polling: Récupère l'état d'un Recording
- */
-export async function pollRecordingStatus(recordingId: string): Promise<TranscriptionResult> {
-  const res = await fetch(`/api/recording/${recordingId}`);
-
-  if (!res.ok) {
-    throw new Error("Erreur lors de la récupération du Recording");
-  }
-
-  const data = await res.json();
-
-  return {
-    recordingId: data.recordingId,
-    transcription: data.transcription || "",
-    summary: data.summary,
-    status: data.status,
-    aiStatus: data.aiStatus,
-    aiError: data.aiError,
-  };
 }
 
 /**
