@@ -15,8 +15,12 @@ model User {
   clerkUserId         String    @unique
   plan                String    @default("free") // "free" | "student" | "pro" | "business"
   monthKey            String    @default("") // Format: "YYYY-MM" (ex: "2026-02")
-  minutesUsedMonth    Int       @default(0) // Minutes consommées ce mois
-  extraMinutesMonth   Int       @default(0) // Minutes de packs achetés ce mois
+  minutesUsedMonth    Int       @default(0) // Minutes consommées ce mois (legacy, deprecated)
+  extraMinutesMonth   Int       @default(0) // Minutes de packs achetés ce mois (legacy, deprecated)
+  quotaSecondsTotal   Int       @default(600) // Quota total en secondes (10 min par défaut pour free)
+  quotaSecondsUsed    Int       @default(0) // Secondes consommées ce mois
+  quotaExtraSeconds   Int       @default(0) // Secondes supplémentaires de packs achetés ce mois
+  quotaResetAt        DateTime? // Date de reset du quota (basé sur currentPeriodEnd ou monthKey)
   stripeCustomerId    String?   @unique // ID Stripe Customer
   stripeSubscriptionId String?  @unique // ID Stripe Subscription (si abonné)
   stripePriceId       String?   // Price ID Stripe actif (pour détecter annual_commit_monthly)
@@ -31,6 +35,7 @@ model User {
   ecos         Eco[]
   recordings   Recording[]
   folders      Folder[]
+  usageEvents  UsageEvent[]
 
   @@index([clerkUserId])
   @@index([monthKey])
@@ -58,7 +63,9 @@ model Recording {
   status            String    @default("PROCESSING") // "PROCESSING" | "TRANSCRIBED" | "DONE" | "ERROR"
   audioUrl          String?   // URL de l'audio (local ou cloud)
   audioBlobSize     Int?      // Taille du blob audio en bytes
-  durationSeconds   Float?    // Durée de l'enregistrement
+  durationSeconds   Float?    // Durée de l'enregistrement (legacy)
+  durationMs        Int?      // Durée précise en millisecondes
+  usageRecorded     Boolean   @default(false) // Flag pour éviter double débit
   mimeType          String?   // Format audio (audio/webm, audio/mp4, etc.)
   transcriptionText String?   // Texte de transcription (disponible après TRANSCRIBED)
   summaryJson       String?   // JSON du résumé (disponible après DONE)
@@ -70,10 +77,13 @@ model Recording {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
+  usageEvents       UsageEvent[]
+
   @@index([userId])
   @@index([status])
   @@index([aiStatus])
   @@index([createdAt])
+  @@index([usageRecorded])
 }
 
 model Folder {
@@ -107,4 +117,18 @@ model Eco {
   @@index([userId])
   @@index([archived])
   @@index([folderId])
+}
+
+model UsageEvent {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recordingId String    @unique // Un seul événement par recording (idempotence)
+  recording   Recording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+  secondsUsed Int       // Secondes consommées pour cet enregistrement
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([recordingId])
+  @@index([createdAt])
 }

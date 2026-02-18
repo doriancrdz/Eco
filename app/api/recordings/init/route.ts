@@ -2,12 +2,16 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-import { getOrCreateUserWithQuota, getAvailableMinutes, canUseMinutes, debitMinutes } from "@/lib/billing";
+import { getOrCreateUserWithQuotaSeconds, getAvailableSeconds } from "@/lib/usage";
+import { canUseMinutes } from "@/lib/billing";
 import { prisma } from "@/lib/prisma";
 
 /**
  * Crée un Recording et retourne recordingId immédiatement (sans audio).
  * Le client navigue, puis envoie l'audio via POST /api/recordings/[id]/transcribe.
+ * 
+ * NOTE: Le débit du quota se fait maintenant dans /api/recordings/[id]/complete
+ * après l'upload du fichier audio. Ici on fait seulement la validation.
  */
 export async function POST(req: NextRequest) {
   const reqStart = performance.now();
@@ -30,16 +34,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Durée invalide" }, { status: 400 });
     }
 
-    const minutesNeeded = Math.ceil(durationSeconds / 60);
-    if (minutesNeeded > 30) {
+    // Limite de 30 minutes par enregistrement
+    if (durationSeconds > 30 * 60) {
       return NextResponse.json(
-        { error: `Enregistrement trop long (${minutesNeeded} min). Limite 30 min.` },
+        { error: `Enregistrement trop long (${Math.ceil(durationSeconds / 60)} min). Limite 30 min.` },
         { status: 400 }
       );
     }
 
+    // Validation du quota (sans débit)
     const quotaStart = performance.now();
-    const user = await getOrCreateUserWithQuota(userId);
+    const user = await getOrCreateUserWithQuotaSeconds(userId);
     const fullUser = await prisma.user.findUnique({
       where: { id: user.id },
       select: { stripeSubscriptionId: true, subscriptionStatus: true },
@@ -49,30 +54,33 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Paiement échoué — accès suspendu" }, { status: 402 });
     }
 
-    const available = getAvailableMinutes(user.plan, user.minutesUsedMonth, user.extraMinutesMonth);
-    if (minutesNeeded > available) {
+    // Vérifier que l'utilisateur a au moins quelques secondes disponibles
+    // (le débit exact se fera dans /complete avec la durée réelle mesurée)
+    const available = getAvailableSeconds(
+      user.quotaSecondsTotal,
+      user.quotaSecondsUsed,
+      user.quotaExtraSeconds
+    );
+
+    // Si quota complètement épuisé, refuser dès maintenant
+    if (available <= 0) {
       return NextResponse.json(
-        { error: "Quota insuffisant", available, needed: minutesNeeded },
+        { error: "Quota insuffisant", available, needed: Math.ceil(durationSeconds) },
         { status: 403 }
       );
     }
 
-    const debitSuccess = await debitMinutes(user.id, minutesNeeded);
-    if (!debitSuccess) {
-      const u = await getOrCreateUserWithQuota(userId);
-      const avail = getAvailableMinutes(u.plan, u.minutesUsedMonth, u.extraMinutesMonth);
-      return NextResponse.json({ error: "Quota insuffisant", available: avail, needed: minutesNeeded }, { status: 403 });
-    }
-
     timings.quota = performance.now() - quotaStart;
 
+    // Créer le recording sans débit
     const dbStart = performance.now();
     const recording = await prisma.recording.create({
       data: {
         userId: user.id,
         status: "PROCESSING",
-        durationSeconds,
+        durationSeconds, // Legacy field, sera remplacé par durationMs dans /complete
         mimeType: mimeType || "audio/webm",
+        usageRecorded: false, // Sera mis à true dans /complete
       },
     });
     timings.dbCreate = performance.now() - dbStart;

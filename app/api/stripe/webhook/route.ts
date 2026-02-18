@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { getStripeOrNull } from "@/lib/stripe";
 import { getOrCreateUserWithQuota, updateUserPlan, creditExtraMinutes } from "@/lib/billing";
+import { getOrCreateUserWithQuotaSeconds, updateUserQuotaTotal, creditExtraSeconds } from "@/lib/usage";
 import { getCurrentMonthKey } from "@/lib/billing";
 import { prisma } from "@/lib/prisma";
 import { PlanType, isAnnualCommitMonthlyPriceId } from "@/lib/billingConfig";
@@ -97,6 +98,9 @@ export async function POST(req: NextRequest) {
           }
         );
 
+        // Mettre à jour le quota en secondes
+        await updateUserQuotaTotal(user.id, session.metadata.plan as PlanType);
+
         // Logger la transaction
         await prisma.transaction.create({
           data: {
@@ -118,7 +122,9 @@ export async function POST(req: NextRequest) {
 
         if (packMinutes > 0) {
           const currentMonthKey = getCurrentMonthKey();
+          // Créditer en minutes (legacy) et en secondes (nouveau)
           await creditExtraMinutes(user.id, packMinutes, currentMonthKey);
+          await creditExtraSeconds(user.id, packMinutes * 60, currentMonthKey);
 
           // Logger la transaction
           await prisma.transaction.create({
@@ -215,6 +221,8 @@ export async function POST(req: NextRequest) {
           subscriptionStatus: null,
           currentPeriodEnd: null,
         });
+        // Mettre à jour le quota en secondes pour le plan free
+        await updateUserQuotaTotal(user.id, "free");
       }
     }
 

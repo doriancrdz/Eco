@@ -1,6 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { getOrCreateUserWithQuota, getAvailableMinutes } from "@/lib/billing";
+import { getOrCreateUserWithQuotaSeconds, getAvailableSeconds, formatSecondsToMMSS } from "@/lib/usage";
 import { PLANS } from "@/lib/billingConfig";
 import { getStripeOrNull } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
@@ -16,7 +16,7 @@ export async function GET() {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const user = await getOrCreateUserWithQuota(userId);
+    const user = await getOrCreateUserWithQuotaSeconds(userId);
     const fullUser = await prisma.user.findUnique({
       where: { id: user.id },
       select: { commitmentEndAt: true, billingMode: true, stripeSubscriptionId: true, subscriptionStatus: true },
@@ -27,13 +27,19 @@ export async function GET() {
       (fullUser.subscriptionStatus === "past_due" || fullUser.subscriptionStatus === "unpaid")
     );
     const planConfig = PLANS[user.plan];
-    const availableMinutes = subscriptionBlocked
+    
+    // Calculer les secondes disponibles
+    const availableSeconds = subscriptionBlocked
       ? 0
-      : getAvailableMinutes(
-          user.plan,
-          user.minutesUsedMonth,
-          user.extraMinutesMonth
+      : getAvailableSeconds(
+          user.quotaSecondsTotal,
+          user.quotaSecondsUsed,
+          user.quotaExtraSeconds
         );
+    
+    // Convertir en minutes pour compatibilité (arrondi vers le bas)
+    const availableMinutes = Math.floor(availableSeconds / 60);
+    
     const commitmentEndAt = fullUser?.commitmentEndAt?.toISOString() ?? null;
     const billingMode = fullUser?.billingMode ?? null;
     const now = new Date();
@@ -43,34 +49,23 @@ export async function GET() {
       billingMode !== "annual_commit_monthly" ||
       (fullUser?.commitmentEndAt ? now >= fullUser.commitmentEndAt : true);
 
-    // Récupérer current_period_end depuis Stripe si l'utilisateur a une subscription
-    let quotaResetAt: string | null = null;
-    if (user.stripeSubscriptionId && user.plan !== "free") {
-      const stripe = getStripeOrNull();
-      if (stripe) {
-        try {
-          const subscription = await stripe.subscriptions.retrieve(
-            user.stripeSubscriptionId
-          );
-          if (subscription.current_period_end) {
-            quotaResetAt = new Date(
-              subscription.current_period_end * 1000
-            ).toISOString();
-          }
-        } catch (err) {
-          console.error("Erreur récupération subscription Stripe:", err);
-          // Continue sans quotaResetAt si erreur
-        }
-      }
-    }
+    // Utiliser currentPeriodEnd depuis la DB (mis à jour par webhook Stripe)
+    const quotaResetAt = user.currentPeriodEnd?.toISOString() ?? null;
 
     return NextResponse.json({
       plan: user.plan,
       planName: planConfig.name,
       minutesPerMonth: planConfig.minutesPerMonth,
-      minutesUsedMonth: user.minutesUsedMonth,
-      extraMinutesMonth: user.extraMinutesMonth,
-      availableMinutes,
+      // Legacy fields (deprecated, gardés pour compatibilité)
+      minutesUsedMonth: Math.ceil(user.quotaSecondsUsed / 60),
+      extraMinutesMonth: Math.ceil(user.quotaExtraSeconds / 60),
+      availableMinutes, // Arrondi vers le bas pour compatibilité
+      // Nouveaux champs en secondes (source de vérité)
+      quotaSecondsTotal: user.quotaSecondsTotal,
+      quotaSecondsUsed: user.quotaSecondsUsed,
+      quotaExtraSeconds: user.quotaExtraSeconds,
+      availableSeconds,
+      availableSecondsFormatted: formatSecondsToMMSS(availableSeconds),
       monthKey: user.monthKey,
       quotaResetAt,
       commitmentEndAt,

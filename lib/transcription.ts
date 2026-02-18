@@ -17,14 +17,46 @@ export interface TranscriptionResult {
 }
 
 /**
- * PHASE A: Init (rapide) + Upload en fire-and-forget
- * Retourne immédiatement avec recordingId. La transcription arrive via polling.
+ * Mesure la durée réelle d'un blob audio (approximation basée sur la taille)
+ * Fallback: utilise durationSeconds si la mesure échoue
+ */
+async function measureAudioDuration(audioBlob: Blob, fallbackSeconds: number): Promise<number> {
+  try {
+    // Créer un élément audio temporaire pour mesurer la durée
+    const audioUrl = URL.createObjectURL(audioBlob);
+    return new Promise((resolve) => {
+      const audio = new Audio(audioUrl);
+      audio.addEventListener("loadedmetadata", () => {
+        const durationMs = audio.duration * 1000;
+        URL.revokeObjectURL(audioUrl);
+        resolve(durationMs);
+      });
+      audio.addEventListener("error", () => {
+        URL.revokeObjectURL(audioUrl);
+        // Fallback sur durationSeconds
+        resolve(fallbackSeconds * 1000);
+      });
+      // Timeout après 5s
+      setTimeout(() => {
+        URL.revokeObjectURL(audioUrl);
+        resolve(fallbackSeconds * 1000);
+      }, 5000);
+    });
+  } catch {
+    return fallbackSeconds * 1000;
+  }
+}
+
+/**
+ * PHASE A: Init (rapide) + Upload + Complete (débit quota)
+ * Retourne après le débit du quota. La transcription arrive via polling.
  */
 export async function transcribeAudio(
   audioBlob: Blob,
   durationSeconds: number,
   mimeType: string = "audio/webm"
 ): Promise<TranscriptionResult> {
+  // 1. Init recording
   const initRes = await fetch("/api/recordings/init", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -42,6 +74,10 @@ export async function transcribeAudio(
   const initData = await initRes.json();
   const recordingId = initData.recordingId;
 
+  // 2. Mesurer la durée réelle du blob audio
+  const durationMs = await measureAudioDuration(audioBlob, durationSeconds);
+
+  // 3. Upload audio (fire-and-forget pour transcription)
   let extension = "webm";
   if (mimeType.includes("webm")) extension = "webm";
   else if (mimeType.includes("mp4") || mimeType.includes("m4a")) extension = "mp4";
@@ -51,10 +87,47 @@ export async function transcribeAudio(
   const formData = new FormData();
   formData.append("audio", audioBlob, `recording.${extension}`);
 
-  fetch(`/api/recordings/${recordingId}/transcribe`, {
+  // Upload en parallèle avec complete
+  const uploadPromise = fetch(`/api/recordings/${recordingId}/transcribe`, {
     method: "POST",
     body: formData,
   }).catch((e) => console.error("[transcribeAudio] Upload error:", e));
+
+  // 4. Débiter le quota (attendre la réponse)
+  const completeRes = await fetch(`/api/recordings/${recordingId}/complete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ durationMs }),
+  });
+
+  if (!completeRes.ok) {
+    const err = await completeRes.json().catch(() => ({}));
+    const errorMsg = err.error || "Erreur lors du débit du quota";
+    
+    // Si quota insuffisant, afficher un message clair
+    if (completeRes.status === 403) {
+      throw new Error(
+        err.remainingFormatted
+          ? `Quota insuffisant. Il vous reste ${err.remainingFormatted}.`
+          : errorMsg
+      );
+    }
+    
+    throw new Error(errorMsg);
+  }
+
+  const completeData = await completeRes.json();
+  console.log("[transcribeAudio] Quota débité", {
+    recordingId,
+    secondsDebited: completeData.secondsDebited,
+    remainingSeconds: completeData.remainingSeconds,
+    remainingFormatted: completeData.remainingFormatted,
+  });
+
+  // Attendre que l'upload soit terminé (ne bloque pas)
+  uploadPromise.catch(() => {
+    // Erreur upload gérée dans le catch du fetch
+  });
 
   return {
     recordingId,

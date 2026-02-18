@@ -221,6 +221,7 @@ export async function creditExtraMinutes(
 
 /**
  * Met à jour le plan d'un utilisateur (et champs Stripe / engagement)
+ * Met aussi à jour le quota en secondes
  */
 export async function updateUserPlan(
   userId: string,
@@ -236,10 +237,14 @@ export async function updateUserPlan(
     currentPeriodEnd?: Date | null;
   }
 ): Promise<void> {
+  const planConfig = PLANS[plan];
+  const quotaSecondsTotal = planConfig.minutesPerMonth * 60;
+
   await prisma.user.update({
     where: { id: userId },
     data: {
       plan,
+      quotaSecondsTotal, // Mettre à jour le quota en secondes
       ...(stripeCustomerId !== undefined && stripeCustomerId !== null && { stripeCustomerId }),
       ...(stripeSubscriptionId !== undefined && { stripeSubscriptionId }),
       ...(options?.stripeSubscriptionId !== undefined && { stripeSubscriptionId: options.stripeSubscriptionId }),

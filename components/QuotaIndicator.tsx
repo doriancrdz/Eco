@@ -6,7 +6,9 @@ import { AlertCircle } from "lucide-react";
 import { useAuth } from "@clerk/nextjs";
 
 interface QuotaData {
-  availableMinutes: number;
+  availableMinutes: number; // Legacy (arrondi)
+  availableSeconds?: number; // Nouveau (précis)
+  availableSecondsFormatted?: string; // Format "mm:ss"
   plan: string;
 }
 
@@ -28,6 +30,8 @@ export default function QuotaIndicator() {
           const data = await res.json();
           setQuotaData({
             availableMinutes: data.availableMinutes || 0,
+            availableSeconds: data.availableSeconds,
+            availableSecondsFormatted: data.availableSecondsFormatted,
             plan: data.plan || "free",
           });
         }
@@ -48,8 +52,12 @@ export default function QuotaIndicator() {
     return null;
   }
 
-  const isLowQuota = quotaData.availableMinutes < 20;
-  const minutes = Math.floor(quotaData.availableMinutes);
+  // Utiliser les secondes si disponibles, sinon fallback sur minutes
+  const availableSeconds = quotaData.availableSeconds ?? (quotaData.availableMinutes * 60);
+  const isLowQuota = availableSeconds < 30; // Avertir à moins de 30 secondes
+  const displayText = quotaData.availableSecondsFormatted 
+    ? `${quotaData.availableSecondsFormatted} restantes`
+    : `${Math.floor(quotaData.availableMinutes)} min restantes`;
 
   return (
     <motion.div
@@ -66,7 +74,7 @@ export default function QuotaIndicator() {
         <AlertCircle className="w-4 h-4 flex-shrink-0" />
       )}
       <span className="whitespace-nowrap">
-        {minutes} min restantes
+        {displayText}
       </span>
     </motion.div>
   );
