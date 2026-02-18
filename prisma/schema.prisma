@@ -30,6 +30,7 @@ model User {
   transactions Transaction[]
   ecos         Eco[]
   recordings   Recording[]
+  folders      Folder[]
 
   @@index([clerkUserId])
   @@index([monthKey])
@@ -75,6 +76,19 @@ model Recording {
   @@index([createdAt])
 }
 
+model Folder {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ecos Eco[]
+
+  @@index([userId])
+}
+
 model Eco {
   id                String   @id @default(cuid())
   userId            String
@@ -83,12 +97,13 @@ model Eco {
   content           String?  // Contenu optionnel (transcription, résumé, etc.)
   audioUrl          String?  // URL de l'audio
   transcriptionText String?  // Texte de transcription
-  summaryText       String?  // Texte de résumé
-  folder            String?  // ID du dossier
+  folderId          String?  // ID du dossier (relation vers Folder)
+  folder            Folder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
   archived          Boolean  @default(false)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
   @@index([userId])
   @@index([archived])
+  @@index([folderId])
 }

@@ -5,6 +5,48 @@ import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 
 /**
+ * GET /api/folders
+ * Récupère la liste des dossiers de l'utilisateur
+ */
+export async function GET(req: NextRequest) {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { clerkUserId: userId },
+      select: { id: true },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "Utilisateur introuvable" }, { status: 404 });
+    }
+
+    const folders = await prisma.folder.findMany({
+      where: { userId: user.id },
+      select: {
+        id: true,
+        name: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    return NextResponse.json({ folders });
+  } catch (error) {
+    console.error("[folders GET] Erreur:", error);
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "Une erreur est survenue.",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
  * POST /api/folders
  * Crée un nouveau dossier
  */
@@ -34,14 +76,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Pour l'instant, on retourne un ID généré côté client
-    // Plus tard, on pourra utiliser Prisma si on ajoute un modèle Folder dans le schema
-    const folderId = `folder-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-    return NextResponse.json({
-      id: folderId,
-      name: name.trim(),
+    const folder = await prisma.folder.create({
+      data: {
+        userId: user.id,
+        name: name.trim(),
+      },
+      select: {
+        id: true,
+        name: true,
+        createdAt: true,
+      },
     });
+
+    return NextResponse.json(folder);
   } catch (error) {
     console.error("[folders POST] Erreur:", error);
     return NextResponse.json(

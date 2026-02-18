@@ -28,7 +28,7 @@ export async function PATCH(
     }
 
     const body = await req.json();
-    const { title, folder } = body;
+    const { title, folder, folderId } = body;
 
     // Vérifier que l'ECO existe et appartient à l'utilisateur
     const eco = await prisma.eco.findFirst({
@@ -43,12 +43,29 @@ export async function PATCH(
     }
 
     // Mettre à jour uniquement les champs fournis
-    const updateData: { title?: string; folder?: string | null } = {};
+    const updateData: { title?: string; folderId?: string | null } = {};
     if (title !== undefined) {
       updateData.title = title;
     }
-    if (folder !== undefined) {
-      updateData.folder = folder || null;
+    // Support folderId (nouveau) ou folder (ancien pour compatibilité)
+    const targetFolderId = folderId !== undefined ? folderId : folder;
+    if (targetFolderId !== undefined) {
+      // Si folderId est fourni et non null, vérifier qu'il existe et appartient à l'utilisateur
+      if (targetFolderId && targetFolderId !== "") {
+        const folderExists = await prisma.folder.findFirst({
+          where: {
+            id: targetFolderId,
+            userId: user.id,
+          },
+        });
+        if (!folderExists) {
+          return NextResponse.json(
+            { error: "Dossier introuvable" },
+            { status: 404 }
+          );
+        }
+      }
+      updateData.folderId = targetFolderId || null;
     }
 
     const updatedEco = await prisma.eco.update({
@@ -57,7 +74,7 @@ export async function PATCH(
       select: {
         id: true,
         title: true,
-        folder: true,
+        folderId: true,
         createdAt: true,
         updatedAt: true,
       },

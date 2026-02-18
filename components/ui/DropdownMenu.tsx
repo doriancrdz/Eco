@@ -124,9 +124,14 @@ export default function DropdownMenu({ items, children, align = "right" }: Dropd
       const isClickInMenu = menuRef.current?.contains(target);
       const isClickInSubmenu = submenuRef.current?.contains(target);
       const isClickInTrigger = triggerRef.current?.contains(target);
+      
+      // Vérifier si c'est un input dans le sous-menu (création de dossier)
+      const isInputInSubmenu = target instanceof HTMLInputElement && 
+        submenuRef.current?.contains(target);
 
       // Si le clic n'est dans aucun de ces éléments, fermer le menu
-      if (!isClickInMenu && !isClickInSubmenu && !isClickInTrigger) {
+      // Mais ne pas fermer si on clique sur un input dans le sous-menu
+      if (!isClickInMenu && !isClickInSubmenu && !isClickInTrigger && !isInputInSubmenu) {
         handleClose();
       }
     };
@@ -195,11 +200,18 @@ export default function DropdownMenu({ items, children, align = "right" }: Dropd
     if (subItem.onClick) {
       try {
         await subItem.onClick();
+        // Fermer le menu après l'action (sauf si c'est "Nouveau dossier…" qui gère sa propre fermeture)
+        // Pour "Nouveau dossier…", le menu reste ouvert pour l'input inline
+        if (!subItem.label.includes("Nouveau dossier")) {
+          handleClose();
+        }
       } catch (error) {
         console.error("Erreur dans onClick:", error);
       }
+    } else {
+      // Si pas d'onClick, fermer quand même
+      handleClose();
     }
-    handleClose();
   };
 
   return (

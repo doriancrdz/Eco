@@ -3,8 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { MoreHorizontal, FolderPlus } from "lucide-react";
 import { motion } from "framer-motion";
-import { Eco, Folder as FolderType, DEFAULT_FOLDERS } from "@/types";
-import { updateEco, deleteEco, getFolders, saveFolder } from "@/lib/storage";
+import { Eco, Folder as FolderType } from "@/types";
 import DropdownMenu from "./ui/DropdownMenu";
 import Dialog from "./ui/Dialog";
 
@@ -24,13 +23,22 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const [folders, setFolders] = useState<FolderType[]>([]);
   const renameInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
-  const [folders, setFolders] = useState(getFolders());
 
+  // Charger les dossiers depuis l'API
   useEffect(() => {
-    const loadFolders = () => {
-      setFolders(getFolders());
+    const loadFolders = async () => {
+      try {
+        const response = await fetch("/api/folders");
+        if (response.ok) {
+          const data = await response.json();
+          setFolders(data.folders || []);
+        }
+      } catch (error) {
+        console.error("Erreur lors du chargement des dossiers:", error);
+      }
     };
     
     loadFolders();
@@ -61,7 +69,16 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
     }
 
     try {
-      updateEco(eco.id, { title: trimmed });
+      const response = await fetch(`/api/eco/${eco.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: trimmed }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Erreur lors du renommage");
+      }
+
       window.dispatchEvent(new Event("eco-updated"));
       onUpdate?.();
       setIsRenaming(false);
@@ -84,11 +101,22 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
 
   const handleMoveToFolder = async (folderId: string | null) => {
     try {
-      updateEco(eco.id, { folder: folderId || "" });
+      const response = await fetch(`/api/eco/${eco.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folderId: folderId || null }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Erreur lors du déplacement");
+      }
+
       window.dispatchEvent(new Event("eco-updated"));
       onUpdate?.();
+      // Le menu se fermera via le click outside handler après le succès
     } catch (error) {
       console.error("Erreur lors du déplacement:", error);
+      alert("Erreur lors du déplacement de l'ECO.");
     }
   };
 
@@ -98,31 +126,40 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
 
     setIsCreating(true);
     try {
-      // Appel API pour créer le dossier
-      const response = await fetch("/api/folders", {
+      // Créer le dossier
+      const folderResponse = await fetch("/api/folders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: trimmed }),
       });
 
-      if (!response.ok) {
+      if (!folderResponse.ok) {
         throw new Error("Erreur lors de la création du dossier");
       }
 
-      const newFolder = await response.json();
-      
-      // Sauvegarder le dossier dans localStorage
-      saveFolder(newFolder);
+      const newFolder = await folderResponse.json();
       
       // Déplacer l'ECO dans le nouveau dossier
-      updateEco(eco.id, { folder: newFolder.id });
-      window.dispatchEvent(new Event("eco-updated"));
+      const moveResponse = await fetch(`/api/eco/${eco.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ folderId: newFolder.id }),
+      });
+
+      if (!moveResponse.ok) {
+        throw new Error("Erreur lors du déplacement de l'ECO");
+      }
+
+      // Déclencher les événements de mise à jour
       window.dispatchEvent(new Event("folders-updated"));
-      onUpdate?.();
+      window.dispatchEvent(new Event("eco-updated"));
       
       // Réinitialiser l'état
       setIsCreatingFolder(false);
       setNewFolderName("");
+      onUpdate?.();
+      
+      // Le menu se fermera automatiquement via le click outside handler
     } catch (error) {
       console.error("Erreur lors de la création du dossier:", error);
       alert("Erreur lors de la création du dossier.");
@@ -150,7 +187,14 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      deleteEco(eco.id);
+      const response = await fetch(`/api/eco/${eco.id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Erreur lors de la suppression");
+      }
+
       window.dispatchEvent(new Event("eco-updated"));
       onDelete?.();
       setShowDeleteDialog(false);
@@ -170,7 +214,7 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
             label: "",
             onClick: undefined,
             customContent: (
-              <div className="px-4 py-2 flex items-center gap-2">
+              <div className="px-4 py-2 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                 <FolderPlus className="w-4 h-4 text-gray-600 shrink-0" />
                 <input
                   ref={folderInputRef}
@@ -202,8 +246,9 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
       : [
           {
             label: "Nouveau dossier…",
-            onClick: () => {
+            onClick: async () => {
               setIsCreatingFolder(true);
+              // Ne pas fermer le menu ici
             },
             icon: <FolderPlus className="w-4 h-4" />,
           },

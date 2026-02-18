@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { getEcos } from "@/lib/storage";
 import { Eco } from "@/types";
 import EcoItem from "./EcoItem";
 
@@ -22,13 +21,28 @@ export default function EcoHistory({
 }: EcoHistoryProps) {
   const [search, setSearch] = useState("");
   const [ecos, setEcos] = useState<Eco[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const loadEcos = useCallback(() => {
-    let list = getEcos();
-    if (selectedFolderId) {
-      list = list.filter((e) => e.folder === selectedFolderId);
+  const loadEcos = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      // Construire l'URL avec le paramètre folderId
+      const folderIdParam = selectedFolderId || "null";
+      const response = await fetch(`/api/ecos?folderId=${folderIdParam}`);
+      
+      if (!response.ok) {
+        throw new Error("Erreur lors du chargement des ECOs");
+      }
+
+      const data = await response.json();
+      // REMPLACER le state, pas append
+      setEcos(data.ecos || []);
+    } catch (error) {
+      console.error("Erreur lors du chargement des ECOs:", error);
+      setEcos([]);
+    } finally {
+      setIsLoading(false);
     }
-    setEcos(list);
   }, [selectedFolderId]);
 
   useEffect(() => {
@@ -36,8 +50,12 @@ export default function EcoHistory({
   }, [loadEcos, refreshKey]);
 
   useEffect(() => {
-    window.addEventListener("eco-updated", loadEcos);
-    return () => window.removeEventListener("eco-updated", loadEcos);
+    const handleEcoUpdated = () => {
+      loadEcos();
+    };
+    
+    window.addEventListener("eco-updated", handleEcoUpdated);
+    return () => window.removeEventListener("eco-updated", handleEcoUpdated);
   }, [loadEcos]);
 
   const filtered = search.trim()
@@ -59,21 +77,24 @@ export default function EcoHistory({
         className="w-full bg-white/20 border border-white/30 rounded-xl px-3 py-2 text-sm outline-none focus:bg-white/30 transition-all mb-2 mx-4"
       />
       <div className="overflow-y-auto max-h-64 px-2 space-y-0.5">
-        {filtered.map((eco) => (
-          <EcoItem
-            key={eco.id}
-            eco={eco}
-            isSelected={selectedEcoId === eco.id}
-            onSelect={(e) => {
-              onSelectEco(e);
-              onClose?.();
-            }}
-            onUpdate={loadEcos}
-            onDelete={loadEcos}
-          />
-        ))}
-        {filtered.length === 0 && (
+        {isLoading ? (
+          <p className="px-4 py-3 text-gray-500 text-sm">Chargement...</p>
+        ) : filtered.length === 0 ? (
           <p className="px-4 py-3 text-gray-500 text-sm">Aucun ECO</p>
+        ) : (
+          filtered.map((eco) => (
+            <EcoItem
+              key={eco.id}
+              eco={eco}
+              isSelected={selectedEcoId === eco.id}
+              onSelect={(e) => {
+                onSelectEco(e);
+                onClose?.();
+              }}
+              onUpdate={loadEcos}
+              onDelete={loadEcos}
+            />
+          ))
         )}
       </div>
     </div>
