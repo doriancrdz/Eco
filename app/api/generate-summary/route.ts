@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
   const perfStart = performance.now();
   const timings: Record<string, number> = {};
   let recordingIdForError: string | undefined;
+  const traceId = req.headers.get("x-eco-trace") ?? null;
 
   try {
     const authStart = performance.now();
@@ -102,7 +103,7 @@ export async function POST(req: NextRequest) {
     }
 
     recordingIdForError = recordingId;
-    console.log("[summary] start", { recordingId, ecoId: recordingId, userId: user.id, ts: Date.now() });
+    console.log("[summary] start", { traceId, recordingId, userId: user.id, ts: Date.now() });
 
     // DONE (ou ancien format) → retour direct, pas de regen
     if (recording.aiStatus === "DONE" || (recording.status === "DONE" && recording.summaryJson)) {
@@ -140,9 +141,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!recording.transcriptionText) {
+    if (!recording.transcriptionText || recording.transcriptionText.trim() === "") {
+      console.log("[summary] TRANSCRIPTION_MISSING", { traceId, recordingId });
       return NextResponse.json(
-        { error: "Transcription manquante" },
+        { error: "TRANSCRIPTION_MISSING", code: "TRANSCRIPTION_MISSING" },
         { status: 400 }
       );
     }
@@ -274,10 +276,11 @@ Transcription:
       },
       select: { id: true, content: true, title: true },
     });
-    console.log("[summary] eco synced", {
-      ecoId: updatedEco?.id,
-      hasContent: !!updatedEco?.content,
-      contentLen: updatedEco?.content?.length ?? 0,
+    const contentLen = updatedEco?.content?.length ?? 0;
+    console.log("[summary] end", {
+      traceId,
+      recordingId,
+      contentLen,
       ts: Date.now(),
     });
     timings.dbUpdate = performance.now() - dbUpdateStart;

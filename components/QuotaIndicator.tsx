@@ -43,9 +43,18 @@ export default function QuotaIndicator() {
     };
 
     fetchQuota();
-    // Rafraîchir toutes les 30 secondes
+    const onQuotaUpdated = () => {
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[QuotaIndicator] quota-updated, refetch");
+      }
+      fetchQuota();
+    };
+    window.addEventListener("quota-updated", onQuotaUpdated);
     const interval = setInterval(fetchQuota, 30000);
-    return () => clearInterval(interval);
+    return () => {
+      window.removeEventListener("quota-updated", onQuotaUpdated);
+      clearInterval(interval);
+    };
   }, [isSignedIn]);
 
   if (!isSignedIn || isLoading || !quotaData) {

@@ -18,6 +18,8 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   const reqStart = performance.now();
+  const traceId = req.headers.get("x-eco-trace") ?? null;
+
   try {
     const authStart = performance.now();
     const { userId } = await auth();
@@ -54,11 +56,12 @@ export async function POST(
     const formData = await req.formData();
     const audioFile = formData.get("audio");
     if (!audioFile || !(audioFile instanceof File) || audioFile.size === 0) {
-      return NextResponse.json({ error: "Fichier audio invalide" }, { status: 400 });
+      console.log("[transcribe] AUDIO_MISSING", { traceId, recordingId: params.id, userId: user.id });
+      return NextResponse.json({ error: "AUDIO_MISSING", code: "AUDIO_MISSING" }, { status: 400 });
     }
 
     const recordingId = params.id;
-    console.log("[transcribe] start", { recordingId, userId: user.id, ts: Date.now() });
+    console.log("[transcribe] start", { traceId, recordingId, userId: user.id, ts: Date.now() });
 
     const whisperStart = performance.now();
     const transcriptionResponse = await openai.audio.transcriptions.create({
@@ -108,8 +111,11 @@ export async function POST(
 
     const dbUpdateMs = performance.now() - dbUpdateStart;
     const totalMs = performance.now() - reqStart;
-    console.log("[recordings/transcribe] request end", {
-      id: recordingId,
+    const transcriptionLen = transcription?.length ?? 0;
+    console.log("[transcribe] end", {
+      traceId,
+      recordingId,
+      transcriptionLen,
       whisperMs: whisperMs.toFixed(0),
       dbUpdateMs: dbUpdateMs.toFixed(0),
       totalMs: totalMs.toFixed(0),
@@ -120,6 +126,7 @@ export async function POST(
       recordingId,
       transcription,
       status: "TRANSCRIBED",
+      transcriptionLen,
     });
   } catch (error) {
     console.error("[recordings/transcribe] Erreur:", error);

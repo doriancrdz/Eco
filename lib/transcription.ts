@@ -1,5 +1,13 @@
 import { getDurationMsFromBlob } from "./audio";
 
+/** Génère un traceId pour suivre un enregistrement dans les logs (client + API). */
+export function createPipelineTraceId(): string {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `eco-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+}
+
 export interface Summary {
   titre: string;
   resume: string;
@@ -20,19 +28,22 @@ export interface TranscriptionResult {
 
 /**
  * Init uniquement : crée le Recording et retourne l'id.
- * À appeler avant de créer l'Eco côté client, pour que l'Eco existe quand la transcription met à jour la DB.
+ * traceId optionnel pour corrélation des logs.
  */
 export async function initRecording(
   durationSeconds: number,
-  mimeType: string = "audio/webm"
+  mimeType: string = "audio/webm",
+  traceId?: string
 ): Promise<{ recordingId: string }> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (traceId) headers["x-eco-trace"] = traceId;
+  const body = { durationSeconds, mimeType };
+  if (traceId) (body as Record<string, unknown>).traceId = traceId;
+
   const initRes = await fetch("/api/recordings/init", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      durationSeconds,
-      mimeType,
-    }),
+    headers,
+    body: JSON.stringify(body),
   });
 
   if (!initRes.ok) {
@@ -44,14 +55,24 @@ export async function initRecording(
   return { recordingId: initData.recordingId };
 }
 
+export interface PipelineLogStep {
+  step: string;
+  status: number;
+  json?: unknown;
+}
+
 /**
- * Upload audio + complete (débit quota). À appeler après avoir créé l'Eco avec le même id que recordingId.
+ * Upload + complete (débit quota) puis transcribe (attendu).
+ * Ordre garanti : 1) complete (si audioBlob.size > 0 et durationMs > 0), 2) transcribe (await).
+ * traceId optionnel pour les logs.
  */
 export async function uploadAndComplete(
   recordingId: string,
   audioBlob: Blob,
   durationSeconds: number,
-  mimeType: string = "audio/webm"
+  mimeType: string = "audio/webm",
+  traceId?: string,
+  pipelineLog?: (entry: PipelineLogStep) => void
 ): Promise<void> {
   let durationMs: number;
   try {
@@ -61,6 +82,43 @@ export async function uploadAndComplete(
     durationMs = 1000;
   }
   durationMs = Math.max(1, Math.round(durationMs));
+
+  if (audioBlob.size === 0 || durationMs <= 0) {
+    const msg = "Audio invalide (size=0 ou duration=0). Impossible de continuer.";
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[PIPELINE]", msg, { audioBlobSize: audioBlob.size, durationMs });
+      pipelineLog?.({ step: "complete", status: 0, json: { error: msg } });
+    }
+    throw new Error(msg);
+  }
+
+  const completeHeaders: Record<string, string> = { "Content-Type": "application/json" };
+  if (traceId) completeHeaders["x-eco-trace"] = traceId;
+  const completeBody = { durationMs };
+  if (traceId) (completeBody as Record<string, unknown>).traceId = traceId;
+
+  const completeUrl = `/api/recordings/${recordingId}/complete`;
+  const completeRes = await fetch(completeUrl, {
+    method: "POST",
+    headers: completeHeaders,
+    body: JSON.stringify(completeBody),
+  });
+  const completeJson = await completeRes.json().catch(() => ({}));
+  if (process.env.NODE_ENV !== "production") {
+    console.log("[PIPELINE] complete", "status=" + completeRes.status, completeJson);
+    pipelineLog?.({ step: "complete", status: completeRes.status, json: completeJson });
+  }
+  if (!completeRes.ok) {
+    const errorMsg = completeJson.error || "Erreur lors du débit du quota";
+    if (completeRes.status === 403) {
+      throw new Error(
+        completeJson.remainingFormatted
+          ? `Quota insuffisant. Il vous reste ${completeJson.remainingFormatted}.`
+          : errorMsg
+      );
+    }
+    throw new Error(errorMsg);
+  }
 
   let extension = "webm";
   if (mimeType.includes("webm")) extension = "webm";
@@ -72,61 +130,22 @@ export async function uploadAndComplete(
   formData.append("audio", audioBlob, `recording.${extension}`);
 
   const transcribeUrl = `/api/recordings/${recordingId}/transcribe`;
-  if (process.env.NODE_ENV !== "production") {
-    console.log("[DEBUG uploadAndComplete] Upload transcribe", { url: transcribeUrl, recordingId, ecoId: recordingId });
-  }
-  const uploadPromise = fetch(transcribeUrl, {
+  const transcribeHeaders: Record<string, string> = {};
+  if (traceId) transcribeHeaders["x-eco-trace"] = traceId;
+
+  const transcribeRes = await fetch(transcribeUrl, {
     method: "POST",
+    headers: transcribeHeaders,
     body: formData,
-  })
-    .then((res) => {
-      if (process.env.NODE_ENV !== "production") {
-        console.log("[DEBUG uploadAndComplete] ✅ Transcribe appelé", { url: transcribeUrl, status: res.status, recordingId, ecoId: recordingId });
-      }
-      return res;
-    })
-    .catch((e) => {
-      console.error("[uploadAndComplete] Upload error:", e);
-      if (process.env.NODE_ENV !== "production") {
-        console.log("[DEBUG uploadAndComplete] ❌ Transcribe erreur", { url: transcribeUrl, recordingId, ecoId: recordingId, error: e });
-      }
-    });
-
-  const completeUrl = `/api/recordings/${recordingId}/complete`;
-  if (process.env.NODE_ENV !== "production") {
-    console.log("[DEBUG uploadAndComplete] Complete", { url: completeUrl, recordingId, ecoId: recordingId });
-  }
-  const completeRes = await fetch(completeUrl, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ durationMs }),
   });
+  const transcribeJson = await transcribeRes.json().catch(() => ({}));
   if (process.env.NODE_ENV !== "production") {
-    console.log("[DEBUG uploadAndComplete] ✅ Complete", { url: completeUrl, status: completeRes.status, recordingId, ecoId: recordingId });
+    console.log("[PIPELINE] transcribe", "status=" + transcribeRes.status, transcribeJson);
+    pipelineLog?.({ step: "transcribe", status: transcribeRes.status, json: transcribeJson });
   }
-
-  if (!completeRes.ok) {
-    const err = await completeRes.json().catch(() => ({}));
-    const errorMsg = err.error || "Erreur lors du débit du quota";
-    if (completeRes.status === 403) {
-      throw new Error(
-        err.remainingFormatted
-          ? `Quota insuffisant. Il vous reste ${err.remainingFormatted}.`
-          : errorMsg
-      );
-    }
-    throw new Error(errorMsg);
+  if (!transcribeRes.ok) {
+    throw new Error(transcribeJson.error || "Erreur transcription");
   }
-
-  const completeData = await completeRes.json();
-  console.log("[uploadAndComplete] Quota débité", {
-    recordingId,
-    secondsDebited: completeData.secondsDebited,
-    remainingSeconds: completeData.remainingSeconds,
-    remainingFormatted: completeData.remainingFormatted,
-  });
-
-  uploadPromise.catch(() => {});
 }
 
 /**
@@ -154,18 +173,21 @@ export async function transcribeAudio(
  * - 202 (GENERATING) → retourne null, le polling récupérera le résultat
  * - erreur → throw
  */
-export async function generateSummary(recordingId: string): Promise<Summary | null> {
+export async function generateSummary(
+  recordingId: string,
+  traceId?: string
+): Promise<Summary | null> {
   const perfStart = performance.now();
   const url = "/api/generate-summary";
-  if (process.env.NODE_ENV !== "production") {
-    console.log("[DEBUG generateSummary] Appel", { url, recordingId, ecoId: recordingId });
-  }
-  console.log("[generateSummary] Début PHASE B", { recordingId });
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (traceId) headers["x-eco-trace"] = traceId;
+  const body: { recordingId: string; traceId?: string } = { recordingId };
+  if (traceId) body.traceId = traceId;
 
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ recordingId }),
+    headers,
+    body: JSON.stringify(body),
   });
 
   if (process.env.NODE_ENV !== "production") {

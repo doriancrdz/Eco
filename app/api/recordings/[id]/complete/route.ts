@@ -40,6 +40,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   const reqStart = performance.now();
+  const traceId = req.headers.get("x-eco-trace") ?? null;
 
   try {
     // 1. Authentification
@@ -59,7 +60,7 @@ export async function POST(
     let durationMs: number | undefined;
     let durationSource: string = "body";
 
-    if (body && typeof body === "object" && "durationMs" in (body as any)) {
+    if (body && typeof body === "object" && "durationMs" in (body as Record<string, unknown>)) {
       const raw = (body as any).durationMs;
       const candidate =
         typeof raw === "string" ? Number(raw) : (raw as number | undefined);
@@ -154,6 +155,14 @@ export async function POST(
       );
     }
 
+    console.log("[recordings/complete] start", {
+      traceId,
+      recordingId: params.id,
+      userId: user.id,
+      durationMs,
+      ts: Date.now(),
+    });
+
     // 6. Débiter les secondes (transaction atomique)
     const result = await debitRecordingSeconds(user.id, params.id, durationMs);
 
@@ -161,6 +170,7 @@ export async function POST(
 
     if (!result.success) {
       console.log("[recordings/complete] Débit échoué (quota insuffisant)", {
+        traceId,
         recordingId: params.id,
         userId: user.id,
         durationMs,
@@ -181,7 +191,6 @@ export async function POST(
     }
 
     // 7. Mettre à jour le status du Recording à "DONE" après débit réussi
-    // Garantit que l'ECO terminé est bien marqué comme complété
     await prisma.recording.update({
       where: { id: params.id },
       data: {
@@ -190,26 +199,33 @@ export async function POST(
       },
     });
 
-    console.log("[recordings/complete] ECO terminé et persisté", {
+    const afterUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { quotaSecondsUsed: true, quotaSecondsTotal: true },
+    });
+    const quotaSecondsUsed = afterUser?.quotaSecondsUsed ?? 0;
+    const quotaSecondsTotal = afterUser?.quotaSecondsTotal ?? 0;
+
+    console.log("[recordings/complete] result", {
+      traceId,
       recordingId: params.id,
-      userId: user.id,
-      durationMs,
-      durationSource,
-      status: "DONE",
       secondsDebited: result.secondsDebited,
-      remainingSeconds: result.remainingSeconds,
-      overLimit: result.overLimit,
-      completed_persisted: true,
+      quotaSecondsUsed,
+      quotaSecondsTotal,
+      usageEventCreated: true,
       totalMs: totalMs.toFixed(0),
       ts: Date.now(),
     });
 
     return NextResponse.json({
+      ok: true,
       success: true,
+      secondsDebited: result.secondsDebited,
+      quotaSecondsUsed,
+      quotaSecondsTotal,
       remainingSeconds: result.remainingSeconds,
       remainingFormatted: formatSecondsToMMSS(result.remainingSeconds),
       overLimit: result.overLimit,
-      secondsDebited: result.secondsDebited,
       durationMsUsed: durationMs,
       durationSource,
     });

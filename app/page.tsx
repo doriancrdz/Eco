@@ -12,7 +12,7 @@ import RecordButton from "@/components/RecordButton";
 import { useAudioLevel } from "@/hooks/useAudioLevel";
 import { Eco } from "@/types";
 import { getEcos } from "@/lib/storage";
-import { initRecording, uploadAndComplete } from "@/lib/transcription";
+import { createPipelineTraceId, initRecording, uploadAndComplete } from "@/lib/transcription";
 import { motion, AnimatePresence } from "framer-motion";
 
 // Lazy load components non critiques
@@ -454,24 +454,37 @@ export default function Home() {
   };
 
   const processRecording = async (audioBlob: Blob, durationSeconds: number, mimeType: string = "audio/webm") => {
+    const traceId = createPipelineTraceId();
     const t0 = Date.now();
     let recordingId: string | null = null;
+    const pipelineSteps: Array<{ step: string; status: number; json?: unknown }> = [];
+
+    const logStep = (entry: { step: string; status: number; json?: unknown }) => {
+      pipelineSteps.push(entry);
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[PIPELINE]", entry.step, "status=" + entry.status, entry.json ?? "");
+      }
+    };
+
     try {
       const audioUrl = URL.createObjectURL(audioBlob);
 
-      // 1) Init recording pour obtenir l'id AVANT l'upload (évite la race: Eco doit exister quand la transcription met à jour la DB)
-      if (process.env.NODE_ENV !== "production") {
-        console.log("[DEBUG processRecording] STEP 1: Init recording", { durationSeconds, mimeType });
+      // 1) Init recording
+      const initRes = await fetch("/api/recordings/init", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-eco-trace": traceId },
+        body: JSON.stringify({ durationSeconds, mimeType, traceId }),
+      });
+      const initJson = await initRes.json().catch(() => ({}));
+      logStep({ step: "initRecording", status: initRes.status, json: initJson });
+      if (!initRes.ok) {
+        throw new Error(initJson.error || "Erreur init recording");
       }
-      const { recordingId: rid } = await initRecording(durationSeconds, audioBlob.type || mimeType);
-      recordingId = rid;
-      if (process.env.NODE_ENV !== "production") {
-        console.log("[DEBUG processRecording] STEP 1: ✅ recordingId obtenu", { recordingId, ecoId: recordingId });
-      }
+      recordingId = initJson.recordingId;
+      if (!recordingId) throw new Error("recordingId manquant");
 
+      // 2) Créer l'Eco en DB
       const ecoTitle = `Eco du ${new Date().toLocaleDateString("fr-FR")}`;
-
-      // 2) Créer l'Eco en DB immédiatement (même id que Recording) pour que /recordings/[id]/transcribe et generate-summary puissent le mettre à jour
       const minimalEco = {
         id: recordingId,
         title: ecoTitle,
@@ -481,46 +494,24 @@ export default function Home() {
         folder: null,
         created_at: new Date().toISOString(),
       };
-
-      const createEcoInDb = async (): Promise<boolean> => {
-        for (let attempt = 0; attempt < 2; attempt++) {
-          const url = "/api/ecos";
-          if (process.env.NODE_ENV !== "production") {
-            console.log("[DEBUG processRecording] STEP 2: Création Eco", { url, recordingId, ecoId: recordingId, attempt });
-          }
-          const res = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(minimalEco),
-          });
-          if (process.env.NODE_ENV !== "production") {
-            console.log("[DEBUG processRecording] STEP 2: ✅ Eco créé", { url, status: res.status, recordingId, ecoId: recordingId });
-          }
-          if (res.ok) return true;
-          const err = await res.json().catch(() => ({}));
-          console.error("[processRecording] Création ECO DB échec", { attempt, status: res.status, error: err });
-        }
-        return false;
-      };
-
-      const created = await createEcoInDb();
-      if (!created) {
-        alert("Erreur de sauvegarde, réessayer.");
-        setIsProcessing(false);
-        setIsFocusMode(false);
-        return;
+      const createRes = await fetch("/api/ecos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-eco-trace": traceId },
+        body: JSON.stringify(minimalEco),
+      });
+      const createJson = await createRes.json().catch(() => ({}));
+      logStep({ step: "createEco", status: createRes.status, json: createJson });
+      if (!createRes.ok) {
+        throw new Error(createJson.error || "Erreur création Eco");
       }
 
-      // 3) Lancer l'upload + complete (transcription mettra à jour Recording puis Eco)
-      if (process.env.NODE_ENV !== "production") {
-        console.log("[DEBUG processRecording] STEP 3: Upload + Complete", { recordingId, ecoId: recordingId });
-      }
-      await uploadAndComplete(recordingId, audioBlob, durationSeconds, mimeType);
+      // 3) Complete (débit quota) puis Transcribe (await)
+      await uploadAndComplete(recordingId, audioBlob, durationSeconds, mimeType, traceId, logStep);
 
       const newEco: Eco = {
         ...minimalEco,
-        transcription_text: minimalEco.transcription_text || "",
-        summary_text: minimalEco.summary_text ?? null,
+        transcription_text: "",
+        summary_text: null,
         folder: "",
       };
       setIsFocusMode(false);
@@ -528,45 +519,43 @@ export default function Home() {
       setSelectedEco(newEco.id);
       setSelectedFolder(null);
       setRefreshKey((prev) => prev + 1);
-      
-      // Charger l'ECO immédiatement (sans attendre eco-updated)
-      const tFetch = performance.now();
+
+      // Rafraîchir le quota UI (minutes en haut à droite)
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[PIPELINE] quota refresh (avant)", { traceId });
+      }
+      window.dispatchEvent(new Event("quota-updated"));
+
+      // 4) Charger l'Eco
       try {
-        const url = `/api/ecos/${newEco.id}`;
-        if (process.env.NODE_ENV !== "production") {
-          console.log("[DEBUG processRecording] STEP 4: Chargement Eco", { url, recordingId, ecoId: newEco.id });
-        }
-        const res = await fetch(url, { cache: "no-store" });
-        if (process.env.NODE_ENV !== "production") {
-          console.log("[DEBUG processRecording] STEP 4: ✅ Eco chargé", { url, status: res.status, recordingId, ecoId: newEco.id });
-        }
-        if (res.ok) {
-          const data = await res.json();
-          const duration = performance.now() - tFetch;
-          console.log(`[processRecording] ECO chargé - ${duration.toFixed(0)}ms`);
+        const getRes = await fetch(`/api/ecos/${newEco.id}`, {
+          cache: "no-store",
+          headers: traceId ? { "x-eco-trace": traceId } : undefined,
+        });
+        logStep({ step: "getEco", status: getRes.status });
+        if (getRes.ok) {
+          const data = await getRes.json();
           if (data.eco) {
             setCurrentEco(data.eco);
             currentEcoCacheRef.current = { id: newEco.id, data: data.eco, timestamp: Date.now() };
           }
         }
-      } catch (error) {
-        console.error("[processRecording] Erreur chargement ECO", error);
+      } catch (e) {
+        console.error("[processRecording] Erreur chargement ECO", e);
       }
-      
+
       window.dispatchEvent(new Event("eco-updated"));
     } catch (error) {
-      console.error("[processRecording] Erreur lors du traitement:", error);
-      console.error("[processRecording] Détails de l'erreur:", {
-        message: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-        name: error instanceof Error ? error.name : typeof error,
-      });
+      const failedStep = pipelineSteps.find((s) => s.status !== 200 && s.status !== 202);
+      if (process.env.NODE_ENV !== "production" && failedStep) {
+        console.error("[PIPELINE] failed at step:", failedStep.step, "status:", failedStep.status);
+        alert(`Pipeline failed at step: ${failedStep.step} (status ${failedStep.status}). See console.`);
+      }
+      console.error("[processRecording] Erreur:", error);
       setIsProcessing(false);
       setIsFocusMode(false);
       const errorMessage =
-        error instanceof Error
-          ? `Erreur lors du traitement: ${error.message}`
-          : "Une erreur est survenue lors du traitement de l'enregistrement.";
+        error instanceof Error ? error.message : "Une erreur est survenue lors du traitement.";
       alert(errorMessage);
     }
   };

@@ -32,6 +32,9 @@ export default function PlanBadge() {
         if (res.ok) {
           const json = await res.json();
           setData(json);
+          if (process.env.NODE_ENV !== "production") {
+            console.log("[PlanBadge] quota after fetch", { availableMinutes: json.availableMinutes });
+          }
         }
       } catch {
         // Erreur silencieuse
@@ -41,6 +44,14 @@ export default function PlanBadge() {
     };
 
     fetchBilling();
+    const onQuotaUpdated = () => {
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[PlanBadge] quota-updated, refetch");
+      }
+      fetchBilling();
+    };
+    window.addEventListener("quota-updated", onQuotaUpdated);
+    return () => window.removeEventListener("quota-updated", onQuotaUpdated);
   }, []);
 
   const plan = data?.plan || "free";

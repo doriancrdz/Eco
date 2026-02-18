@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
+    const traceId = req.headers.get("x-eco-trace") ?? (body && typeof body === "object" && "traceId" in body ? (body as { traceId?: string }).traceId : null);
     const { durationSeconds: ds, mimeType } = body;
     const durationSeconds = parseFloat(ds);
 
@@ -87,6 +88,7 @@ export async function POST(req: NextRequest) {
     timings.total = performance.now() - reqStart;
 
     console.log("[recordings/init] request end", {
+      traceId: traceId ?? undefined,
       recordingId: recording.id,
       authMs: timings.auth?.toFixed(0),
       totalMs: timings.total.toFixed(0),
