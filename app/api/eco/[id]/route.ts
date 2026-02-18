@@ -67,7 +67,14 @@ export async function GET(
     };
 
     const totalMs = Date.now() - t0;
-    console.log(`[api/eco/${params.id} GET] ms=${totalMs} auth=${authMs} user=${userMs} db=${dbMs}`);
+    console.log(`[api/eco/${params.id} GET] ms=${totalMs} auth=${authMs} user=${userMs} db=${dbMs}`, {
+      id: eco.id,
+      hasTranscription: !!eco.transcriptionText && eco.transcriptionText.length > 0,
+      transcriptionLength: eco.transcriptionText?.length || 0,
+      hasSummary: !!eco.content,
+      summaryLength: eco.content?.length || 0,
+      updatedAt: eco.updatedAt.toISOString(),
+    });
 
     return NextResponse.json({ eco: formattedEco });
   } catch (error) {

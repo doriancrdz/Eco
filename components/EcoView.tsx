@@ -91,6 +91,21 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
   const lastEcoUpdatedDispatchRef = useRef<number>(0);
   const pollCountRef = useRef(0);
 
+  // Log les données reçues pour debug
+  useEffect(() => {
+    if (eco) {
+      console.log("[EcoView] Données ECO reçues:", {
+        id: eco.id,
+        title: eco.title,
+        hasTranscription: !!(eco.transcription_text && eco.transcription_text.length > 0),
+        transcriptionLength: eco.transcription_text?.length || 0,
+        hasSummary: !!eco.summary_text,
+        summaryLength: eco.summary_text?.length || 0,
+        keys: Object.keys(eco),
+      });
+    }
+  }, [eco]);
+
   const hasTranscription = !!(eco?.transcription_text && eco.transcription_text.length > 0);
   const hasSummary = !!eco?.summary_text;
   const needsPolling = eco?.id && (!hasTranscription || !hasSummary);
@@ -129,24 +144,12 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
         setAiStatus(result.aiStatus ?? "IDLE");
         setAiError(result.aiError ?? null);
 
-        let shouldDispatchEcoUpdated = false;
-
-        // Transcription reçue
+        // Transcription reçue - le backend synchronise déjà, on rafraîchit juste l'Eco
         if (result.transcription && !transcriptionFromPoll) {
-          console.log("[EcoView.poll] Transcription reçue");
+          console.log("[EcoView.poll] Transcription reçue, rafraîchissement ECO");
           setTranscriptionFromPoll(result.transcription);
-          try {
-            const patchRes = await fetch(`/api/eco/${eco!.id}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ transcription_text: result.transcription }),
-            });
-            if (patchRes.ok) {
-              shouldDispatchEcoUpdated = true;
-            }
-          } catch (error) {
-            console.error("[EcoView.poll] Erreur PATCH transcription", error);
-          }
+          // Le backend a déjà synchronisé Recording -> Eco, on rafraîchit juste l'UI
+          onRefresh?.();
         }
 
         // Démarrer génération résumé si transcription terminée
@@ -158,46 +161,28 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
           });
         }
 
-        // Résumé reçu
+        // Résumé reçu - le backend synchronise déjà, on rafraîchit juste l'Eco
         if (result.aiStatus === "DONE" && result.summary) {
-          console.log("[EcoView.poll] Résumé reçu");
+          console.log("[EcoView.poll] Résumé reçu, rafraîchissement ECO");
           setSummaryFromPoll(result.summary);
-          try {
-            const patchRes = await fetch(`/api/eco/${eco!.id}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                title: result.summary.titre || eco!.title,
-                summary_text: JSON.stringify(result.summary),
-              }),
-            });
-            if (patchRes.ok) {
-              shouldDispatchEcoUpdated = true;
-              // Arrêter le polling
-              if (pollRef.current) {
-                clearInterval(pollRef.current);
-                pollRef.current = null;
-              }
-              console.log("[EcoView.poll] Polling arrêté - résumé complet");
-            }
-          } catch (error) {
-            console.error("[EcoView.poll] Erreur PATCH résumé", error);
+          // Le backend a déjà synchronisé Recording -> Eco, on rafraîchit juste l'UI
+          onRefresh?.();
+          
+          // Arrêter le polling car tout est terminé
+          if (pollRef.current) {
+            clearInterval(pollRef.current);
+            pollRef.current = null;
           }
+          console.log("[EcoView.poll] Polling arrêté - résumé complet");
         }
 
-        // Déclencher eco-updated UNE SEULE FOIS si nécessaire (debounced)
-        if (shouldDispatchEcoUpdated) {
-          const now = Date.now();
-          const timeSinceLastDispatch = now - lastEcoUpdatedDispatchRef.current;
-          // Ne dispatcher que si > 1s depuis le dernier dispatch
-          if (timeSinceLastDispatch > 1000) {
-            console.log("[EcoView.poll] Dispatch eco-updated");
-            lastEcoUpdatedDispatchRef.current = now;
-            window.dispatchEvent(new Event("eco-updated"));
-            onRefresh?.();
-          } else {
-            console.log(`[EcoView.poll] Skip dispatch (trop récent: ${timeSinceLastDispatch}ms)`);
+        // Si transcription ET résumé sont présents, arrêter le polling
+        if (result.transcription && result.summary && result.aiStatus === "DONE") {
+          if (pollRef.current) {
+            clearInterval(pollRef.current);
+            pollRef.current = null;
           }
+          console.log("[EcoView.poll] Polling arrêté - tout complet");
         }
 
         // Arrêter après max polls
@@ -251,9 +236,27 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
   }
 
   const transcription = eco.transcription_text || transcriptionFromPoll || "";
-  const isTranscribing = !transcription && (recordingStatus === "PROCESSING" || !recordingStatus);
-  const isGenerating = !summaryJson && aiStatus !== "FAILED";
+  // isTranscribing: pas de transcription ET (status PROCESSING ou pas encore de status)
+  const isTranscribing = !transcription && (recordingStatus === "PROCESSING" || recordingStatus === "" || !recordingStatus);
+  // isGenerating: pas de résumé ET (status GENERATING ou IDLE mais transcription terminée)
+  const isGenerating = !summaryJson && (aiStatus === "GENERATING" || (aiStatus === "IDLE" && recordingStatus === "TRANSCRIBED"));
   const isFailed = aiStatus === "FAILED";
+  
+  // Log pour debug (seulement si changement d'état)
+  useEffect(() => {
+    console.log("[EcoView] État affichage:", {
+      hasTranscription: !!transcription && transcription.length > 0,
+      transcriptionLength: transcription.length,
+      hasSummary: !!summaryJson,
+      summaryLength: summaryJson?.length || 0,
+      recordingStatus,
+      aiStatus,
+      isTranscribing,
+      isGenerating,
+      isFailed,
+      needsPolling,
+    });
+  }, [transcription, summaryJson, recordingStatus, aiStatus, isTranscribing, isGenerating, isFailed, needsPolling]);
 
   // Tab 1: Résumé structuré (default)
   const summaryContent = (
