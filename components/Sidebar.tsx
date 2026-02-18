@@ -94,13 +94,18 @@ export default function Sidebar({
                 transition={{ duration: 0.2 }}
                 className="flex flex-col h-full min-w-[280px]"
               >
-                {/* Logo ECO */}
-                <div className="px-4 py-4 flex items-center gap-2 shrink-0 bg-transparent">
+                {/* Logo ECO -> Accueil */}
+                <button
+                  type="button"
+                  onClick={() => { onNavigateHome?.(); onClose?.(); }}
+                  className="w-full px-4 py-4 flex items-center gap-2 shrink-0 bg-transparent border-0 cursor-pointer hover:opacity-90 transition-opacity text-left"
+                  aria-label="Retour à l'accueil"
+                >
                   <div className="w-5 h-5 relative shrink-0 bg-transparent border-0">
                     <Image src="/logo-eco.png" alt="" width={20} height={20} className="bg-transparent block object-contain" />
                   </div>
                   <span className="font-bold text-gray-900">ECO</span>
-                </div>
+                </button>
 
                 {/* Nav */}
                 <div className="px-2 py-2 space-y-0.5">

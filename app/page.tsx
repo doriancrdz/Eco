@@ -618,16 +618,17 @@ export default function Home() {
     }
   };
 
-  const handleBackToHome = () => {
-    // Réinitialiser tous les états pour garantir le retour à l'accueil
+  /** Une seule fonction pour revenir à l'accueil : reset de tous les états UI qui influencent le rendu. */
+  const goHome = useCallback(() => {
     setSelectedEco(null);
     setSelectedFolder(null);
     setViewAllEcos(false);
-    setIsProcessing(false);
     setIsFocusMode(false);
-    // Forcer un refresh pour s'assurer que la vue home s'affiche
+    setIsProcessing(false);
+    setCurrentEco(null);
+    setSidebarOpen(false);
     setRefreshKey((prev) => prev + 1);
-  };
+  }, []);
 
   const handleEcoClick = (eco: Eco) => {
     setSelectedEco(eco.id);
@@ -659,7 +660,7 @@ export default function Home() {
         onClose={() => setSidebarOpen(false)}
         isOpen={sidebarOpen}
         refreshKey={refreshKey}
-        onNavigateHome={handleBackToHome}
+        onNavigateHome={goHome}
         onNavigatePricing={() => router.push("/pricing")}
         onNavigateSettings={() => router.push("/settings/preferences")}
         onSignOut={() => signOut()}
@@ -672,7 +673,7 @@ export default function Home() {
       <div className="flex-1 flex flex-col overflow-hidden min-w-0 lg:min-w-0">
         {!isFocusMode && (
           <Header
-            onGoHome={handleBackToHome}
+            onGoHome={goHome}
             onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
             isDetailView={!!selectedEco}
             onShare={selectedEco ? async () => {
@@ -702,7 +703,15 @@ export default function Home() {
         <main className="flex-1 overflow-y-auto overflow-x-hidden pt-6">
           <div className={`${sidebarOpen ? "" : "max-w-3xl mx-auto"} px-4 md:px-6 lg:px-8`}>
             <AnimatePresence mode="wait">
-            {!selectedEco && !isFocusMode && !viewAllEcos && !isProcessing && (
+            {(() => {
+              const conditionHome = !selectedEco && !isFocusMode && !viewAllEcos && !isProcessing;
+              const conditionList = viewAllEcos && !selectedEco && !isFocusMode && !isProcessing;
+              const conditionDetail = selectedEco && !isFocusMode && !viewAllEcos;
+              const conditionGenerating = isProcessing;
+              const noViewMatched = !conditionHome && !conditionList && !conditionDetail && !conditionGenerating;
+              const showHome = conditionHome || noViewMatched;
+              return showHome;
+            })() && (
             <motion.div
               key="home"
               initial={{ opacity: 0, y: 16 }}
@@ -853,7 +862,7 @@ export default function Home() {
               <motion.button
                 whileHover={{ x: -4 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={() => setViewAllEcos(false)}
+                onClick={goHome}
                 className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
               >
                 <ArrowLeft className="w-5 h-5" />
@@ -959,19 +968,6 @@ export default function Home() {
               </div>
             </motion.div>
           )}
-            {/* Fallback : si aucune vue ne correspond, afficher la vue home pour éviter écran vide */}
-            {!selectedEco && !isFocusMode && !viewAllEcos && isProcessing && (
-              <motion.div
-                key="home-fallback"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="flex-1 flex flex-col items-center justify-center min-h-[60vh] p-4 md:p-8"
-              >
-                <div className="text-center">
-                  <p className="text-gray-500">Chargement...</p>
-                </div>
-              </motion.div>
-            )}
             </AnimatePresence>
           </div>
         </main>
