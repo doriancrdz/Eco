@@ -1,3 +1,5 @@
+import { getDurationMsFromBlob } from "./audio";
+
 export interface Summary {
   titre: string;
   resume: string;
@@ -14,37 +16,6 @@ export interface TranscriptionResult {
   aiError?: string;
   demoMode?: boolean;
   warning?: string;
-}
-
-/**
- * Mesure la durée réelle d'un blob audio (approximation basée sur la taille)
- * Fallback: utilise durationSeconds si la mesure échoue
- */
-async function measureAudioDuration(audioBlob: Blob, fallbackSeconds: number): Promise<number> {
-  try {
-    // Créer un élément audio temporaire pour mesurer la durée
-    const audioUrl = URL.createObjectURL(audioBlob);
-    return new Promise((resolve) => {
-      const audio = new Audio(audioUrl);
-      audio.addEventListener("loadedmetadata", () => {
-        const durationMs = audio.duration * 1000;
-        URL.revokeObjectURL(audioUrl);
-        resolve(durationMs);
-      });
-      audio.addEventListener("error", () => {
-        URL.revokeObjectURL(audioUrl);
-        // Fallback sur durationSeconds
-        resolve(fallbackSeconds * 1000);
-      });
-      // Timeout après 5s
-      setTimeout(() => {
-        URL.revokeObjectURL(audioUrl);
-        resolve(fallbackSeconds * 1000);
-      }, 5000);
-    });
-  } catch {
-    return fallbackSeconds * 1000;
-  }
 }
 
 /**
@@ -74,8 +45,15 @@ export async function transcribeAudio(
   const initData = await initRes.json();
   const recordingId = initData.recordingId;
 
-  // 2. Mesurer la durée réelle du blob audio
-  const durationMs = await measureAudioDuration(audioBlob, durationSeconds);
+  // 2. Mesurer la durée réelle du blob audio via les métadonnées
+  let durationMs: number;
+  try {
+    durationMs = await getDurationMsFromBlob(audioBlob);
+  } catch (err) {
+    console.warn("[transcribeAudio] getDurationMsFromBlob failed, fallback to 1000ms", err);
+    durationMs = 1000;
+  }
+  durationMs = Math.max(1, Math.round(durationMs));
 
   // 3. Upload audio (fire-and-forget pour transcription)
   let extension = "webm";

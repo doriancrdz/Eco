@@ -9,6 +9,7 @@ import {
   formatSecondsToMMSS,
 } from "@/lib/usage";
 import { canUseMinutes } from "@/lib/billing";
+import { probeDurationMs } from "@/lib/serverAudio";
 
 /**
  * POST /api/recordings/[id]/complete
@@ -16,14 +17,22 @@ import { canUseMinutes } from "@/lib/billing";
  * Débite les secondes consommées pour un enregistrement terminé.
  * Idempotent: si déjà débité, retourne les infos actuelles sans re-débit.
  * 
- * Body: { durationMs: number }
+ * Body: { durationMs?: number }
+ * - durationMs doit être un entier positif en millisecondes.
+ * - Si durationMs est manquant ou invalide:
+ *   - si USE_FFPROBE="true" et recording.audioUrl défini, le serveur tente
+ *     de mesurer la durée via ffprobe.
+ *   - sinon, fallback conservateur à une petite durée (par défaut 1000ms)
+ *     ou aux champs legacy (durationMs / durationSeconds) du Recording.
  * 
  * Returns: {
  *   success: boolean,
  *   remainingSeconds: number,
  *   remainingFormatted: string, // "mm:ss"
  *   overLimit: boolean,
- *   secondsDebited: number
+ *   secondsDebited: number,
+ *   durationMsUsed?: number,
+ *   durationSource?: string // "body" | "ffprobe" | "recording_durationMs" | "recording_durationSeconds" | "fallback_1000ms"
  * }
  */
 export async function POST(
@@ -39,26 +48,25 @@ export async function POST(
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    // 2. Parse body
-    const body = await req.json();
-    const { durationMs } = body;
-
-    if (typeof durationMs !== "number" || durationMs < 0 || !Number.isFinite(durationMs)) {
-      return NextResponse.json(
-        { error: "durationMs doit être un nombre positif" },
-        { status: 400 }
-      );
+    // 2. Parse body de manière robuste (durationMs facultatif)
+    let body: unknown = null;
+    try {
+      body = await req.json();
+    } catch (err) {
+      console.warn("[recordings/complete] JSON parse error, proceeding without durationMs", err);
     }
 
-    // Limite de 30 minutes par enregistrement
-    const maxDurationMs = 30 * 60 * 1000;
-    if (durationMs > maxDurationMs) {
-      return NextResponse.json(
-        {
-          error: `Enregistrement trop long (${Math.ceil(durationMs / 60000)} min). La limite est de 30 minutes.`,
-        },
-        { status: 400 }
-      );
+    let durationMs: number | undefined;
+    let durationSource: string = "body";
+
+    if (body && typeof body === "object" && "durationMs" in (body as any)) {
+      const raw = (body as any).durationMs;
+      const candidate =
+        typeof raw === "string" ? Number(raw) : (raw as number | undefined);
+
+      if (typeof candidate === "number" && Number.isFinite(candidate) && candidate > 0) {
+        durationMs = candidate;
+      }
     }
 
     // 3. Vérifier que l'utilisateur peut utiliser le service
@@ -78,6 +86,12 @@ export async function POST(
     // 4. Vérifier que le recording existe et appartient à l'utilisateur
     const recording = await prisma.recording.findFirst({
       where: { id: params.id, userId: user.id },
+      select: {
+        id: true,
+        audioUrl: true,
+        durationSeconds: true,
+        durationMs: true,
+      },
     });
 
     if (!recording) {
@@ -87,7 +101,60 @@ export async function POST(
       );
     }
 
-    // 5. Débiter les secondes (transaction atomique)
+    // 5. Fallback côté serveur si durationMs manquant ou invalide
+    const ffprobeEnabled = process.env.USE_FFPROBE === "true";
+
+    if (!durationMs || durationMs <= 0) {
+      if (ffprobeEnabled && recording.audioUrl) {
+        try {
+          const probed = await probeDurationMs(recording.audioUrl);
+          durationMs = probed;
+          durationSource = "ffprobe";
+          console.log("[recordings/complete] server probed durationMs via ffprobe", {
+            recordingId: params.id,
+            durationMs,
+          });
+        } catch (err) {
+          console.error("[recordings/complete] ffprobe failed, will use fallback", err);
+        }
+      } else if (ffprobeEnabled && !recording.audioUrl) {
+        console.warn("[recordings/complete] USE_FFPROBE=true but recording.audioUrl is missing", {
+          recordingId: params.id,
+        });
+      }
+
+      // Si ffprobe désactivé ou a échoué, utiliser les champs du recording ou un fallback conservateur
+      if (!durationMs || durationMs <= 0) {
+        if (recording.durationMs && recording.durationMs > 0) {
+          durationMs = recording.durationMs;
+          durationSource = "recording_durationMs";
+        } else if (recording.durationSeconds && recording.durationSeconds > 0) {
+          durationMs = Math.round(recording.durationSeconds * 1000);
+          durationSource = "recording_durationSeconds";
+        } else {
+          durationMs = 1000;
+          durationSource = "fallback_1000ms";
+        }
+      }
+    }
+
+    // Normalisation: entier positif
+    durationMs = Math.max(1, Math.round(durationMs));
+
+    // Limite de 30 minutes par enregistrement (après fallback éventuel)
+    const maxDurationMs = 30 * 60 * 1000;
+    if (durationMs > maxDurationMs) {
+      return NextResponse.json(
+        {
+          error: `Enregistrement trop long (${Math.ceil(
+            durationMs / 60000
+          )} min). La limite est de 30 minutes.`,
+        },
+        { status: 400 }
+      );
+    }
+
+    // 6. Débiter les secondes (transaction atomique)
     const result = await debitRecordingSeconds(user.id, params.id, durationMs);
 
     const totalMs = performance.now() - reqStart;
@@ -95,6 +162,8 @@ export async function POST(
     console.log("[recordings/complete] request end", {
       recordingId: params.id,
       durationMs,
+      durationSource,
+      ffprobeEnabled,
       secondsDebited: result.secondsDebited,
       remainingSeconds: result.remainingSeconds,
       overLimit: result.overLimit,
@@ -120,6 +189,8 @@ export async function POST(
       remainingFormatted: formatSecondsToMMSS(result.remainingSeconds),
       overLimit: result.overLimit,
       secondsDebited: result.secondsDebited,
+      durationMsUsed: durationMs,
+      durationSource,
     });
   } catch (error) {
     console.error("[recordings/complete] Erreur:", error);
