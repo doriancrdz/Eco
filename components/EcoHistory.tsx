@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { getEcos } from "@/lib/storage";
 import { Eco } from "@/types";
-import { motion } from "framer-motion";
+import EcoItem from "./EcoItem";
 
 interface EcoHistoryProps {
   selectedFolderId: string | null;
@@ -60,27 +60,17 @@ export default function EcoHistory({
       />
       <div className="overflow-y-auto max-h-64 px-2 space-y-0.5">
         {filtered.map((eco) => (
-          <motion.button
+          <EcoItem
             key={eco.id}
-            whileHover={{ x: 2 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => {
-              onSelectEco(eco);
+            eco={eco}
+            isSelected={selectedEcoId === eco.id}
+            onSelect={(e) => {
+              onSelectEco(e);
               onClose?.();
             }}
-            className="w-full text-left px-4 py-2.5 rounded-xl hover:bg-white/20 transition-all cursor-pointer flex flex-col gap-0.5"
-          >
-            <span className="font-medium text-sm text-gray-800 truncate">
-              {eco.title}
-            </span>
-            <span className="text-xs text-gray-400">
-              {new Date(eco.created_at).toLocaleDateString("fr-FR", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              })}
-            </span>
-          </motion.button>
+            onUpdate={loadEcos}
+            onDelete={loadEcos}
+          />
         ))}
         {filtered.length === 0 && (
           <p className="px-4 py-3 text-gray-500 text-sm">Aucun ECO</p>

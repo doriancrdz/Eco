@@ -69,9 +69,35 @@ export default function Home() {
     if (selectedEco) {
       const eco = getEcoById(selectedEco);
       setCurrentEco(eco || null);
+      // Si l'ECO n'existe plus (supprimé), désélectionner
+      if (!eco) {
+        setSelectedEco(null);
+        setSelectedFolder(null);
+      }
     } else {
       setCurrentEco(null);
     }
+  }, [selectedEco]);
+
+  // Écouter les événements eco-updated pour vérifier si l'ECO sélectionné existe toujours
+  useEffect(() => {
+    const handleEcoUpdated = () => {
+      if (selectedEco) {
+        const eco = getEcoById(selectedEco);
+        if (!eco) {
+          // L'ECO sélectionné a été supprimé, retourner à l'accueil
+          setSelectedEco(null);
+          setSelectedFolder(null);
+          setCurrentEco(null);
+        } else {
+          // Mettre à jour l'ECO actuel si modifié
+          setCurrentEco(eco);
+        }
+      }
+    };
+
+    window.addEventListener("eco-updated", handleEcoUpdated);
+    return () => window.removeEventListener("eco-updated", handleEcoUpdated);
   }, [selectedEco]);
 
   useEffect(() => {

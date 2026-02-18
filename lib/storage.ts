@@ -46,3 +46,10 @@ export function getEcosByFolder(folderId: string): Eco[] {
   const ecos = getEcos();
   return ecos.filter((eco) => eco.folder === folderId);
 }
+
+export function deleteEco(ecoId: string): void {
+  if (typeof window === "undefined") return;
+  const ecos = getEcos();
+  const filtered = ecos.filter((e) => e.id !== ecoId);
+  localStorage.setItem(STORAGE_KEY_ECOS, JSON.stringify(filtered));
+}
