@@ -5,6 +5,72 @@ import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 
 /**
+ * GET /api/eco/[id]
+ * Récupère un ECO par ID
+ */
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { clerkUserId: userId },
+      select: { id: true },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "Utilisateur introuvable" }, { status: 404 });
+    }
+
+    const eco = await prisma.eco.findFirst({
+      where: {
+        id: params.id,
+        userId: user.id,
+      },
+      select: {
+        id: true,
+        title: true,
+        audioUrl: true,
+        transcriptionText: true,
+        content: true,
+        folderId: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    if (!eco) {
+      return NextResponse.json({ error: "ECO introuvable" }, { status: 404 });
+    }
+
+    const formattedEco = {
+      id: eco.id,
+      title: eco.title,
+      audio_url: eco.audioUrl || "",
+      transcription_text: eco.transcriptionText || "",
+      summary_text: eco.content || null,
+      folder: eco.folderId || "",
+      created_at: eco.createdAt.toISOString(),
+    };
+
+    return NextResponse.json({ eco: formattedEco });
+  } catch (error) {
+    console.error("[eco GET] Erreur:", error);
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : "Une erreur est survenue.",
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
  * PATCH /api/eco/[id]
  * Met à jour un ECO (title, folder)
  */

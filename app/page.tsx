@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import Header from "@/components/Header";
@@ -10,8 +10,8 @@ import { useUser, useClerk } from "@clerk/nextjs";
 import EcoView from "@/components/EcoView";
 import RecordButton from "@/components/RecordButton";
 import { useAudioLevel } from "@/hooks/useAudioLevel";
-import { Eco, DEFAULT_FOLDERS } from "@/types";
-import { saveEco, updateEco, getEcoById, getEcos } from "@/lib/storage";
+import { Eco } from "@/types";
+import { getEcos } from "@/lib/storage";
 import { transcribeAudio, generateSummary, pollRecordingStatus } from "@/lib/transcription";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -54,8 +54,52 @@ export default function Home() {
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [viewAllEcos, setViewAllEcos] = useState(false);
   const [recordingElapsedSeconds, setRecordingElapsedSeconds] = useState(0);
+  const [ecos, setEcos] = useState<Eco[]>([]);
 
   const { soundLevel, frequencyData, isAvailable, startAudioLevel, stopAudioLevel, analyserRef } = useAudioLevel(isPaused);
+
+  // Charger les ECOs depuis l'API (source unique)
+  const loadEcos = useCallback(async () => {
+    try {
+      const res = await fetch("/api/ecos");
+      if (res.ok) {
+        const data = await res.json();
+        setEcos(data.ecos || []);
+      } else {
+        setEcos([]);
+      }
+    } catch {
+      setEcos([]);
+    }
+  }, []);
+
+  // Migration localStorage → DB au premier chargement
+  useEffect(() => {
+    const migrateEcos = async () => {
+      const localEcos = getEcos();
+      if (localEcos.length > 0) {
+        try {
+          await fetch("/api/ecos/migrate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ecos: localEcos }),
+          });
+          await loadEcos();
+        } catch (error) {
+          console.error("Erreur lors de la migration des ECOs:", error);
+        }
+      } else {
+        loadEcos();
+      }
+    };
+    migrateEcos();
+  }, [loadEcos]);
+
+  useEffect(() => {
+    const handleEcoUpdated = () => loadEcos();
+    window.addEventListener("eco-updated", handleEcoUpdated);
+    return () => window.removeEventListener("eco-updated", handleEcoUpdated);
+  }, [loadEcos]);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
@@ -65,39 +109,52 @@ export default function Home() {
   const elapsedAtStopRef = useRef(0);
   const mimeTypeRef = useRef<string>("audio/webm");
 
+  // Charger l'ECO sélectionné depuis l'API
   useEffect(() => {
-    if (selectedEco) {
-      const eco = getEcoById(selectedEco);
-      setCurrentEco(eco || null);
-      // Si l'ECO n'existe plus (supprimé), désélectionner
-      if (!eco) {
-        setSelectedEco(null);
-        setSelectedFolder(null);
-      }
-    } else {
+    if (!selectedEco) {
       setCurrentEco(null);
+      return;
     }
-  }, [selectedEco]);
-
-  // Écouter les événements eco-updated pour vérifier si l'ECO sélectionné existe toujours
-  useEffect(() => {
-    const handleEcoUpdated = () => {
-      if (selectedEco) {
-        const eco = getEcoById(selectedEco);
-        if (!eco) {
-          // L'ECO sélectionné a été supprimé, retourner à l'accueil
+    const loadCurrentEco = async () => {
+      try {
+        const res = await fetch(`/api/eco/${selectedEco}`);
+        if (res.ok) {
+          const data = await res.json();
+          setCurrentEco(data.eco || null);
+        } else {
           setSelectedEco(null);
           setSelectedFolder(null);
           setCurrentEco(null);
-        } else {
-          // Mettre à jour l'ECO actuel si modifié
-          setCurrentEco(eco);
         }
+      } catch {
+        setSelectedEco(null);
+        setSelectedFolder(null);
+        setCurrentEco(null);
       }
     };
+    loadCurrentEco();
+  }, [selectedEco]);
 
-    window.addEventListener("eco-updated", handleEcoUpdated);
-    return () => window.removeEventListener("eco-updated", handleEcoUpdated);
+  // Rafraîchir currentEco quand eco-updated est déclenché (eco modifié ou supprimé)
+  useEffect(() => {
+    const handleRefreshCurrent = async () => {
+      if (!selectedEco) return;
+      try {
+        const res = await fetch(`/api/eco/${selectedEco}`);
+        if (res.ok) {
+          const data = await res.json();
+          setCurrentEco(data.eco || null);
+        } else {
+          setSelectedEco(null);
+          setSelectedFolder(null);
+          setCurrentEco(null);
+        }
+      } catch {
+        // Ignorer
+      }
+    };
+    window.addEventListener("eco-updated", handleRefreshCurrent);
+    return () => window.removeEventListener("eco-updated", handleRefreshCurrent);
   }, [selectedEco]);
 
   useEffect(() => {
@@ -345,9 +402,6 @@ export default function Home() {
         created_at: new Date().toISOString(),
       };
 
-      // Sauvegarder dans localStorage (pour compatibilité)
-      saveEco(newEco);
-
       // Créer l'ECO en DB
       try {
         await fetch("/api/ecos", {
@@ -380,12 +434,6 @@ export default function Home() {
               summary_text: JSON.stringify(summary),
             };
             
-            // Mettre à jour dans localStorage
-            updateEco(newEco.id, {
-              title: updatedEco.title,
-              summary_text: updatedEco.summary_text,
-            });
-            
             // Mettre à jour en DB
             try {
               await fetch(`/api/eco/${newEco.id}`, {
@@ -401,7 +449,11 @@ export default function Home() {
             }
             
             if (selectedEco === newEco.id) {
-              setCurrentEco(getEcoById(newEco.id) || null);
+              const res = await fetch(`/api/eco/${newEco.id}`);
+              if (res.ok) {
+                const data = await res.json();
+                setCurrentEco(data.eco || null);
+              }
               setRefreshKey((prev) => prev + 1);
             }
             window.dispatchEvent(new Event("eco-updated"));
@@ -605,7 +657,7 @@ export default function Home() {
               >
                 <div className="flex items-center justify-between">
                   <h2 className="text-xl font-bold text-gray-800">Vos derniers ECOs</h2>
-                  {getEcos().length > 0 && (
+                  {ecos.length > 0 && (
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
@@ -617,7 +669,7 @@ export default function Home() {
                   )}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {getEcos()
+                  {ecos
                     .slice(0, 6)
                     .map((eco, index) => (
                       <motion.button
@@ -644,7 +696,7 @@ export default function Home() {
                       </motion.button>
                     ))}
                 </div>
-                {getEcos().length === 0 && (
+                {ecos.length === 0 && (
                   <p className="text-gray-500 text-sm py-8 text-center">Aucun Eco pour l&apos;instant</p>
                 )}
               </motion.div>
@@ -669,7 +721,7 @@ export default function Home() {
                 <span className="font-bold">Retour</span>
               </motion.button>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {getEcos().map((eco, index) => (
+                {ecos.map((eco, index) => (
                   <motion.button
                     key={eco.id}
                     initial={{ opacity: 0, y: 8 }}
@@ -708,7 +760,9 @@ export default function Home() {
                 eco={currentEco}
                 onRefresh={() => {
                   if (selectedEco) {
-                    setCurrentEco(getEcoById(selectedEco) || null);
+                    fetch(`/api/eco/${selectedEco}`)
+                      .then((res) => res.ok && res.json())
+                      .then((data) => data?.eco && setCurrentEco(data.eco));
                     setRefreshKey((prev) => prev + 1);
                     window.dispatchEvent(new Event("eco-updated"));
                   }

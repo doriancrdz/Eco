@@ -29,6 +29,8 @@ export async function GET(req: NextRequest) {
 
     const searchParams = req.nextUrl.searchParams;
     const folderId = searchParams.get("folderId");
+    const limitParam = searchParams.get("limit");
+    const take = limitParam ? Math.min(Math.max(1, parseInt(limitParam, 10)), 100) : 30;
 
     const where: any = {
       userId: user.id,
@@ -63,7 +65,7 @@ export async function GET(req: NextRequest) {
         updatedAt: true,
       },
       orderBy: { updatedAt: "desc" },
-      take: 30, // Limite pour la sidebar
+      take,
     });
 
     // Transformer pour correspondre au format attendu par le frontend
