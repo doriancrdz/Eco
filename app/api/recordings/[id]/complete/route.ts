@@ -190,14 +190,9 @@ export async function POST(
       );
     }
 
-    // 7. Mettre à jour le status du Recording à "DONE" après débit réussi
-    await prisma.recording.update({
-      where: { id: params.id },
-      data: {
-        status: "DONE",
-        durationMs,
-      },
-    });
+    // 7. Ne PAS mettre status "DONE" ici : le recording doit rester "PROCESSING"
+    // pour que /transcribe exécute Whisper. (DONE sera mis par generate-summary.)
+    // durationMs + usageRecorded sont déjà mis par debitRecordingSeconds.
 
     const afterUser = await prisma.user.findUnique({
       where: { id: user.id },

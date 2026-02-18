@@ -55,13 +55,25 @@ export async function POST(
 
     const formData = await req.formData();
     const audioFile = formData.get("audio");
+    const fileSize = audioFile && audioFile instanceof File ? audioFile.size : 0;
+    console.log("[transcribe] formData received", {
+      traceId,
+      recordingId: params.id,
+      hasAudio: !!audioFile,
+      isFile: audioFile instanceof File,
+      fileSize,
+      ts: Date.now(),
+    });
     if (!audioFile || !(audioFile instanceof File) || audioFile.size === 0) {
       console.log("[transcribe] AUDIO_MISSING", { traceId, recordingId: params.id, userId: user.id });
-      return NextResponse.json({ error: "AUDIO_MISSING", code: "AUDIO_MISSING" }, { status: 400 });
+      return NextResponse.json(
+        { ok: false, error: "AUDIO_MISSING", code: "AUDIO_MISSING", detail: "Fichier audio absent ou vide" },
+        { status: 400 }
+      );
     }
 
     const recordingId = params.id;
-    console.log("[transcribe] start", { traceId, recordingId, userId: user.id, ts: Date.now() });
+    console.log("[transcribe] start", { traceId, recordingId, userId: user.id, fileSize, ts: Date.now() });
 
     const whisperStart = performance.now();
     const transcriptionResponse = await openai.audio.transcriptions.create({
@@ -129,7 +141,9 @@ export async function POST(
       transcriptionLen,
     });
   } catch (error) {
-    console.error("[recordings/transcribe] Erreur:", error);
+    const errMsg = error instanceof Error ? error.message : String(error);
+    const errStack = error instanceof Error ? error.stack : undefined;
+    console.error("[recordings/transcribe] Erreur:", errMsg, errStack);
 
     try {
       const { userId } = await auth();
@@ -144,7 +158,7 @@ export async function POST(
               where: { id: params.id },
               data: {
                 status: "ERROR",
-                errorMessage: error instanceof Error ? error.message : String(error),
+                errorMessage: errMsg,
               },
             });
           }
@@ -154,8 +168,13 @@ export async function POST(
       console.error("[recordings/transcribe] Update ERROR:", e);
     }
 
+    const isOpenAI = errMsg.includes("OpenAI") || errMsg.includes("whisper");
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erreur transcription" },
+      {
+        ok: false,
+        error: errMsg,
+        code: isOpenAI ? "OPENAI_ERROR" : "TRANSCRIBE_ERROR",
+      },
       { status: 500 }
     );
   }

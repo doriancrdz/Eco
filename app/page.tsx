@@ -508,6 +508,23 @@ export default function Home() {
       // 3) Complete (débit quota) puis Transcribe (await)
       await uploadAndComplete(recordingId, audioBlob, durationSeconds, mimeType, traceId, logStep);
 
+      // 3b) Déclencher generate-summary tout de suite (EcoView le fera aussi au poll si besoin)
+      try {
+        const sumRes = await fetch("/api/generate-summary", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-eco-trace": traceId },
+          body: JSON.stringify({ recordingId }),
+        });
+        const sumJson = await sumRes.json().catch(() => ({}));
+        if (process.env.NODE_ENV !== "production") {
+          console.log("[PIPELINE] generate-summary", "status=" + sumRes.status, sumJson);
+          logStep({ step: "generate-summary", status: sumRes.status, json: sumJson });
+        }
+      } catch (e) {
+        console.warn("[processRecording] generate-summary kick failed", e);
+        logStep({ step: "generate-summary", status: 0, json: { error: String(e) } });
+      }
+
       const newEco: Eco = {
         ...minimalEco,
         transcription_text: "",
@@ -521,9 +538,6 @@ export default function Home() {
       setRefreshKey((prev) => prev + 1);
 
       // Rafraîchir le quota UI (minutes en haut à droite)
-      if (process.env.NODE_ENV !== "production") {
-        console.log("[PIPELINE] quota refresh (avant)", { traceId });
-      }
       window.dispatchEvent(new Event("quota-updated"));
 
       // 4) Charger l'Eco
@@ -545,11 +559,48 @@ export default function Home() {
       }
 
       window.dispatchEvent(new Event("eco-updated"));
+
+      // 5) Diagnostic DEV : tableau + GET /api/debug/pipeline/[id]
+      if (process.env.NODE_ENV !== "production" && recordingId) {
+        console.log("[PIPELINE] --- TABLEAU RÉEL ---");
+        pipelineSteps.forEach((s) => {
+          console.log(`  ${s.step} -> status=${s.status}`, s.json ?? "");
+        });
+        try {
+          const debugRes = await fetch(`/api/debug/pipeline/${recordingId}`);
+          const debugJson = await debugRes.json().catch(() => ({}));
+          console.log("[PIPELINE] GET /api/debug/pipeline/" + recordingId, debugJson);
+          console.log("[PIPELINE] --- PREUVES ---", {
+            "recording.transcriptionLen": debugJson.recording?.transcriptionLen,
+            "recording.summaryLen": debugJson.recording?.summaryLen,
+            "eco.transcriptionLen": debugJson.eco?.transcriptionLen,
+            "eco.contentLen": debugJson.eco?.contentLen,
+            "lastUsageEvent.secondsDebited": debugJson.lastUsageEvent?.secondsDebited,
+          });
+        } catch (e) {
+          console.error("[PIPELINE] debug fetch failed", e);
+        }
+      }
     } catch (error) {
       const failedStep = pipelineSteps.find((s) => s.status !== 200 && s.status !== 202);
-      if (process.env.NODE_ENV !== "production" && failedStep) {
-        console.error("[PIPELINE] failed at step:", failedStep.step, "status:", failedStep.status);
-        alert(`Pipeline failed at step: ${failedStep.step} (status ${failedStep.status}). See console.`);
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[PIPELINE] --- TABLEAU RÉEL (après erreur) ---");
+        pipelineSteps.forEach((s) => {
+          console.log(`  ${s.step} -> status=${s.status}`, s.json ?? "");
+        });
+        if (failedStep) {
+          console.error("[PIPELINE] point de rupture:", failedStep.step, "status:", failedStep.status, failedStep.json);
+          alert(`Pipeline failed at step: ${failedStep.step} (status ${failedStep.status}). See console.`);
+        }
+        if (recordingId) {
+          try {
+            const debugRes = await fetch(`/api/debug/pipeline/${recordingId}`);
+            const debugJson = await debugRes.json().catch(() => ({}));
+            console.log("[PIPELINE] GET /api/debug/pipeline/" + recordingId, debugJson);
+          } catch (e) {
+            console.error("[PIPELINE] debug fetch failed", e);
+          }
+        }
       }
       console.error("[processRecording] Erreur:", error);
       setIsProcessing(false);
