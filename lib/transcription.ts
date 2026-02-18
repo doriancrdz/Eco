@@ -19,21 +19,19 @@ export interface TranscriptionResult {
 }
 
 /**
- * PHASE A: Init (rapide) + Upload + Complete (débit quota)
- * Retourne après le débit du quota. La transcription arrive via polling.
+ * Init uniquement : crée le Recording et retourne l'id.
+ * À appeler avant de créer l'Eco côté client, pour que l'Eco existe quand la transcription met à jour la DB.
  */
-export async function transcribeAudio(
-  audioBlob: Blob,
+export async function initRecording(
   durationSeconds: number,
   mimeType: string = "audio/webm"
-): Promise<TranscriptionResult> {
-  // 1. Init recording
+): Promise<{ recordingId: string }> {
   const initRes = await fetch("/api/recordings/init", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       durationSeconds,
-      mimeType: audioBlob.type || mimeType,
+      mimeType,
     }),
   });
 
@@ -43,19 +41,27 @@ export async function transcribeAudio(
   }
 
   const initData = await initRes.json();
-  const recordingId = initData.recordingId;
+  return { recordingId: initData.recordingId };
+}
 
-  // 2. Mesurer la durée réelle du blob audio via les métadonnées
+/**
+ * Upload audio + complete (débit quota). À appeler après avoir créé l'Eco avec le même id que recordingId.
+ */
+export async function uploadAndComplete(
+  recordingId: string,
+  audioBlob: Blob,
+  durationSeconds: number,
+  mimeType: string = "audio/webm"
+): Promise<void> {
   let durationMs: number;
   try {
     durationMs = await getDurationMsFromBlob(audioBlob);
   } catch (err) {
-    console.warn("[transcribeAudio] getDurationMsFromBlob failed, fallback to 1000ms", err);
+    console.warn("[uploadAndComplete] getDurationMsFromBlob failed, fallback to 1000ms", err);
     durationMs = 1000;
   }
   durationMs = Math.max(1, Math.round(durationMs));
 
-  // 3. Upload audio (fire-and-forget pour transcription)
   let extension = "webm";
   if (mimeType.includes("webm")) extension = "webm";
   else if (mimeType.includes("mp4") || mimeType.includes("m4a")) extension = "mp4";
@@ -65,13 +71,11 @@ export async function transcribeAudio(
   const formData = new FormData();
   formData.append("audio", audioBlob, `recording.${extension}`);
 
-  // Upload en parallèle avec complete
   const uploadPromise = fetch(`/api/recordings/${recordingId}/transcribe`, {
     method: "POST",
     body: formData,
-  }).catch((e) => console.error("[transcribeAudio] Upload error:", e));
+  }).catch((e) => console.error("[uploadAndComplete] Upload error:", e));
 
-  // 4. Débiter le quota (attendre la réponse)
   const completeRes = await fetch(`/api/recordings/${recordingId}/complete`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -81,8 +85,6 @@ export async function transcribeAudio(
   if (!completeRes.ok) {
     const err = await completeRes.json().catch(() => ({}));
     const errorMsg = err.error || "Erreur lors du débit du quota";
-    
-    // Si quota insuffisant, afficher un message clair
     if (completeRes.status === 403) {
       throw new Error(
         err.remainingFormatted
@@ -90,23 +92,31 @@ export async function transcribeAudio(
           : errorMsg
       );
     }
-    
     throw new Error(errorMsg);
   }
 
   const completeData = await completeRes.json();
-  console.log("[transcribeAudio] Quota débité", {
+  console.log("[uploadAndComplete] Quota débité", {
     recordingId,
     secondsDebited: completeData.secondsDebited,
     remainingSeconds: completeData.remainingSeconds,
     remainingFormatted: completeData.remainingFormatted,
   });
 
-  // Attendre que l'upload soit terminé (ne bloque pas)
-  uploadPromise.catch(() => {
-    // Erreur upload gérée dans le catch du fetch
-  });
+  uploadPromise.catch(() => {});
+}
 
+/**
+ * PHASE A: Init (rapide) + Upload + Complete (débit quota)
+ * Retourne après le débit du quota. La transcription arrive via polling.
+ */
+export async function transcribeAudio(
+  audioBlob: Blob,
+  durationSeconds: number,
+  mimeType: string = "audio/webm"
+): Promise<TranscriptionResult> {
+  const { recordingId } = await initRecording(durationSeconds, audioBlob.type || mimeType);
+  await uploadAndComplete(recordingId, audioBlob, durationSeconds, mimeType);
   return {
     recordingId,
     transcription: "",

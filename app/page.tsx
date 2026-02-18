@@ -12,7 +12,7 @@ import RecordButton from "@/components/RecordButton";
 import { useAudioLevel } from "@/hooks/useAudioLevel";
 import { Eco } from "@/types";
 import { getEcos } from "@/lib/storage";
-import { transcribeAudio } from "@/lib/transcription";
+import { initRecording, uploadAndComplete } from "@/lib/transcription";
 import { motion, AnimatePresence } from "framer-motion";
 
 // Lazy load components non critiques
@@ -459,13 +459,13 @@ export default function Home() {
     try {
       const audioUrl = URL.createObjectURL(audioBlob);
 
-      const phaseAResult = await transcribeAudio(audioBlob, durationSeconds, mimeType);
-      recordingId = phaseAResult.recordingId;
-      const t4 = Date.now();
+      // 1) Init recording pour obtenir l'id AVANT l'upload (évite la race: Eco doit exister quand la transcription met à jour la DB)
+      const { recordingId: rid } = await initRecording(durationSeconds, audioBlob.type || mimeType);
+      recordingId = rid;
 
       const ecoTitle = `Eco du ${new Date().toLocaleDateString("fr-FR")}`;
 
-      // Garantie : créer l'ECO en DB immédiatement (folderId=null, statut minimal)
+      // 2) Créer l'Eco en DB immédiatement (même id que Recording) pour que /recordings/[id]/transcribe et generate-summary puissent le mettre à jour
       const minimalEco = {
         id: recordingId,
         title: ecoTitle,
@@ -498,6 +498,9 @@ export default function Home() {
         return;
       }
 
+      // 3) Lancer l'upload + complete (transcription mettra à jour Recording puis Eco)
+      await uploadAndComplete(recordingId, audioBlob, durationSeconds, mimeType);
+
       const newEco: Eco = {
         ...minimalEco,
         transcription_text: minimalEco.transcription_text || "",
@@ -511,12 +514,12 @@ export default function Home() {
       setRefreshKey((prev) => prev + 1);
       
       // Charger l'ECO immédiatement (sans attendre eco-updated)
-      const t0 = performance.now();
+      const tFetch = performance.now();
       try {
         const res = await fetch(`/api/eco/${newEco.id}`, { cache: "no-store" });
         if (res.ok) {
           const data = await res.json();
-          const duration = performance.now() - t0;
+          const duration = performance.now() - tFetch;
           console.log(`[processRecording] ECO chargé - ${duration.toFixed(0)}ms`);
           if (data.eco) {
             setCurrentEco(data.eco);
@@ -527,10 +530,7 @@ export default function Home() {
         console.error("[processRecording] Erreur chargement ECO", error);
       }
       
-      // Déclencher eco-updated une seule fois (debounced dans les listeners)
       window.dispatchEvent(new Event("eco-updated"));
-      // Ne pas appeler loadEcos() ici car eco-updated le déclenchera (debounced)
-      // Ne pas appeler router.refresh() car cela déclenche un re-render complet inutile
     } catch (error) {
       console.error("[processRecording] Erreur lors du traitement:", error);
       console.error("[processRecording] Détails de l'erreur:", {

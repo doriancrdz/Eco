@@ -146,15 +146,32 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // En update: ne pas écraser transcriptionText/content avec vide si déjà remplis (sync Recording -> Eco peut avoir déjà eu lieu)
+    const existing = await prisma.eco.findUnique({ where: { id }, select: { transcriptionText: true, content: true } });
+    const updateData: {
+      title: string;
+      audioUrl: string | null;
+      transcriptionText?: string | null;
+      content?: string | null;
+      folderId: string | null;
+    } = {
+      title,
+      audioUrl: audio_url || null,
+      folderId,
+    };
+    if (existing) {
+      if (transcription_text !== undefined)
+        updateData.transcriptionText = (transcription_text && transcription_text.length > 0) ? transcription_text : (existing.transcriptionText ?? null);
+      if (summary_text !== undefined)
+        updateData.content = (summary_text != null && summary_text !== "") ? summary_text : (existing.content ?? null);
+    } else {
+      updateData.transcriptionText = transcription_text || null;
+      updateData.content = summary_text || null;
+    }
+
     const eco = await prisma.eco.upsert({
       where: { id },
-      update: {
-        title,
-        audioUrl: audio_url || null,
-        transcriptionText: transcription_text || null,
-        content: summary_text || null,
-        folderId,
-      },
+      update: updateData,
       create: {
         id,
         userId: user.id,
