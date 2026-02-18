@@ -32,15 +32,17 @@ function RelancerButton({ recordingId, onSuccess }: { recordingId: string; onSuc
     }
   };
   return (
-    <button
+    <motion.button
       type="button"
       onClick={handleClick}
       disabled={loading}
-      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white/80 border border-gray-200 rounded-xl hover:bg-white transition-colors disabled:opacity-60"
+      whileHover={{ y: -1 }}
+      whileTap={{ scale: 0.98 }}
+      className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-gray-800 bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl hover:bg-white/15 hover:border-white/30 transition-all shadow-lg hover:shadow-xl disabled:opacity-60 disabled:cursor-not-allowed"
     >
       <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
       {loading ? "Relance en cours…" : "Relancer la génération"}
-    </button>
+    </motion.button>
   );
 }
 
@@ -52,9 +54,11 @@ function CopyButton({ text }: { text: string }) {
     setTimeout(() => setCopied(false), 2000);
   };
   return (
-    <button
+    <motion.button
       onClick={handleCopy}
-      className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white/60 border border-gray-200/50 rounded-xl hover:bg-white/80 transition-all shadow-sm"
+      whileHover={{ y: -1 }}
+      whileTap={{ scale: 0.98 }}
+      className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-gray-800 bg-white/10 backdrop-blur-xl border border-white/20 rounded-xl hover:bg-white/15 hover:border-white/30 transition-all shadow-lg hover:shadow-xl"
     >
       {copied ? (
         <>
@@ -67,7 +71,7 @@ function CopyButton({ text }: { text: string }) {
           Copier
         </>
       )}
-    </button>
+    </motion.button>
   );
 }
 
@@ -188,26 +192,26 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
       <div className="text-gray-700 leading-relaxed space-y-4">
         {isFailed ? (
           <div className="space-y-4">
-            <p className="text-sm text-red-600">{aiError || "Erreur lors de la génération."}</p>
+            <p className="text-sm text-red-500/90">{aiError || "Erreur lors de la génération."}</p>
             <RelancerButton recordingId={eco.id} onSuccess={onRefresh} />
           </div>
         ) : isGenerating ? (
           <div className="space-y-4 animate-pulse">
-            <div className="h-6 bg-gray-200 rounded w-3/4" />
-            <div className="h-4 bg-gray-200 rounded w-full" />
-            <div className="h-4 bg-gray-200 rounded w-5/6" />
-            <div className="h-5 bg-gray-200 rounded w-1/2 mt-6" />
+            <div className="h-6 bg-white/10 rounded-lg w-3/4 backdrop-blur-sm" />
+            <div className="h-4 bg-white/10 rounded-lg w-full backdrop-blur-sm" />
+            <div className="h-4 bg-white/10 rounded-lg w-5/6 backdrop-blur-sm" />
+            <div className="h-5 bg-white/10 rounded-lg w-1/2 mt-6 backdrop-blur-sm" />
             <div className="space-y-2 ml-6">
-              <div className="h-4 bg-gray-200 rounded w-full" />
-              <div className="h-4 bg-gray-200 rounded w-4/5" />
-              <div className="h-4 bg-gray-200 rounded w-3/4" />
+              <div className="h-4 bg-white/10 rounded-lg w-full backdrop-blur-sm" />
+              <div className="h-4 bg-white/10 rounded-lg w-4/5 backdrop-blur-sm" />
+              <div className="h-4 bg-white/10 rounded-lg w-3/4 backdrop-blur-sm" />
             </div>
-            <p className="text-sm text-gray-500 mt-4">Génération du résumé en cours…</p>
+            <p className="text-sm text-gray-400 mt-4">Génération du résumé en cours…</p>
           </div>
         ) : summary && summary.titre && summary.resume ? (
           <>
             <h3 className="text-xl font-semibold mt-0 mb-4 text-gray-900">{summary.titre}</h3>
-            <p className="mb-4">{summary.resume}</p>
+            <p className="mb-4 text-gray-700">{summary.resume}</p>
           </>
         ) : summaryJson ? (
           <div>
@@ -221,7 +225,7 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
               }
               if (line.startsWith("- ")) {
                 return (
-                  <li key={index} className="ml-6 mb-2">
+                  <li key={index} className="ml-6 mb-2 text-gray-700">
                     {line.replace("- ", "")}
                   </li>
                 );
@@ -230,14 +234,14 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
                 return <br key={index} />;
               }
               return (
-                <p key={index} className="mb-4">
+                <p key={index} className="mb-4 text-gray-700">
                   {line}
                 </p>
               );
             })}
           </div>
         ) : (
-          <p className="text-gray-500">Aucun résumé disponible</p>
+          <p className="text-gray-400">Aucun résumé disponible</p>
         )}
       </div>
     </div>
@@ -246,16 +250,16 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
   // Tab 2: Transcription
   const transcriptionContent = (
     <div className="prose prose-base max-w-none">
-      <div className="flex justify-end mb-4">
+      <div className="flex justify-end mb-6">
         {transcription && <CopyButton text={transcription} />}
       </div>
       {isTranscribing ? (
         <div className="space-y-2 animate-pulse">
-          <div className="h-4 bg-gray-200 rounded w-full" />
-          <div className="h-4 bg-gray-200 rounded w-5/6" />
-          <div className="h-4 bg-gray-200 rounded w-full" />
-          <div className="h-4 bg-gray-200 rounded w-4/5" />
-          <p className="text-sm text-gray-500 mt-2">Transcription en cours…</p>
+          <div className="h-4 bg-white/10 rounded-lg w-full backdrop-blur-sm" />
+          <div className="h-4 bg-white/10 rounded-lg w-5/6 backdrop-blur-sm" />
+          <div className="h-4 bg-white/10 rounded-lg w-full backdrop-blur-sm" />
+          <div className="h-4 bg-white/10 rounded-lg w-4/5 backdrop-blur-sm" />
+          <p className="text-sm text-gray-400 mt-2">Transcription en cours…</p>
         </div>
       ) : (
         <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{transcription || "—"}</p>
@@ -274,12 +278,12 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
         </ul>
       ) : isGenerating ? (
         <div className="space-y-3 animate-pulse">
-          <div className="h-4 bg-gray-200 rounded w-full" />
-          <div className="h-4 bg-gray-200 rounded w-5/6" />
-          <div className="h-4 bg-gray-200 rounded w-4/5" />
+          <div className="h-4 bg-white/10 rounded-lg w-full backdrop-blur-sm" />
+          <div className="h-4 bg-white/10 rounded-lg w-5/6 backdrop-blur-sm" />
+          <div className="h-4 bg-white/10 rounded-lg w-4/5 backdrop-blur-sm" />
         </div>
       ) : (
-        <p className="text-gray-500">Aucun point clé disponible</p>
+        <p className="text-gray-400">Aucun point clé disponible</p>
       )}
     </div>
   );
@@ -290,22 +294,26 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
       {summary && summary.notions && summary.notions.length > 0 ? (
         <div className="space-y-4">
           {summary.notions.map((notion: string, index: number) => (
-            <div
+            <motion.div
               key={index}
-              className="px-4 py-3 bg-white/20 rounded-xl border border-white/10 shadow-sm"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 }}
+              whileHover={{ y: -2, transition: { duration: 0.2 } }}
+              className="px-5 py-4 bg-white/8 backdrop-blur-xl rounded-xl border border-white/15 shadow-lg hover:bg-white/12 hover:border-white/25 hover:shadow-xl transition-all"
             >
               <p className="text-gray-900 font-medium">{notion}</p>
-            </div>
+            </motion.div>
           ))}
         </div>
       ) : isGenerating ? (
         <div className="space-y-4 animate-pulse">
-          <div className="h-12 bg-gray-200 rounded-xl w-full" />
-          <div className="h-12 bg-gray-200 rounded-xl w-5/6" />
-          <div className="h-12 bg-gray-200 rounded-xl w-4/5" />
+          <div className="h-12 bg-white/10 rounded-xl w-full backdrop-blur-sm" />
+          <div className="h-12 bg-white/10 rounded-xl w-5/6 backdrop-blur-sm" />
+          <div className="h-12 bg-white/10 rounded-xl w-4/5 backdrop-blur-sm" />
         </div>
       ) : (
-        <p className="text-gray-500">Aucune notion disponible</p>
+        <p className="text-gray-400">Aucune notion disponible</p>
       )}
     </div>
   );
@@ -340,16 +348,23 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
       transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
       className="flex-1 overflow-y-auto p-4 md:p-8"
     >
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-[1100px] mx-auto space-y-6">
+        {/* Header avec aura */}
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1, duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-          className="floating-card rounded-card border border-white/40 p-10 mb-8"
+          className="relative"
         >
-          <div className="mb-8 pb-6 border-b border-gray-200/30">
-            <h1 className="text-4xl font-semibold text-gray-900 mb-3 tracking-tight">{eco.title}</h1>
-            <p className="text-gray-500 text-sm">
+          {/* Aura gradient flou derrière le header */}
+          <div className="absolute -inset-4 bg-gradient-to-r from-aura-emerald/20 via-aura-blue/20 to-aura-sand/20 rounded-3xl blur-2xl opacity-60 -z-10" />
+          
+          {/* Glass card header */}
+          <div className="relative bg-white/8 backdrop-blur-xl rounded-2xl border border-white/15 shadow-2xl p-8 md:p-10">
+            <h1 className="text-4xl md:text-5xl font-semibold text-gray-900 mb-2 tracking-[-0.02em]">
+              {eco.title}
+            </h1>
+            <p className="text-gray-400 text-sm opacity-70">
               {new Date(eco.created_at).toLocaleDateString("fr-FR", {
                 day: "numeric",
                 month: "long",
@@ -359,8 +374,21 @@ export default function EcoView({ eco, onRefresh }: EcoViewProps) {
               })}
             </p>
           </div>
+        </motion.div>
 
-          <Tabs tabs={tabs} defaultTab="summary" />
+        {/* Tabs avec contenu dans glass card */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15, duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+          className="relative"
+        >
+          {/* Aura subtile derrière les tabs */}
+          <div className="absolute -inset-2 bg-gradient-to-br from-aura-emerald/10 via-aura-blue/10 to-aura-sand/10 rounded-2xl blur-xl opacity-50 -z-10" />
+          
+          <div className="relative bg-white/8 backdrop-blur-xl rounded-2xl border border-white/15 shadow-2xl overflow-hidden">
+            <Tabs tabs={tabs} defaultTab="summary" />
+          </div>
         </motion.div>
       </div>
     </motion.div>

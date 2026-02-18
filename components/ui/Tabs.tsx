@@ -31,9 +31,9 @@ export default function Tabs({ tabs, defaultTab, className = "" }: TabsProps) {
   }
 
   return (
-    <div className={`rounded-3xl backdrop-blur-xl bg-white/10 ring-1 ring-white/20 shadow-2xl overflow-hidden ${className}`}>
-      {/* Tabs Row */}
-      <div className="flex gap-1.5 p-1.5 border-b border-white/10 bg-white/5">
+    <div className={`${className}`}>
+      {/* Tabs Row - Pill tabs avec glass effect */}
+      <div className="flex gap-2 p-2 bg-white/5 backdrop-blur-sm border-b border-white/10">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
@@ -41,10 +41,10 @@ export default function Tabs({ tabs, defaultTab, className = "" }: TabsProps) {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`
-                relative px-6 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 z-10
+                relative px-6 py-2.5 text-sm font-medium rounded-xl transition-all duration-300 z-10
                 ${isActive
                   ? "text-gray-900"
-                  : "text-gray-600 hover:text-gray-800"
+                  : "text-gray-500 hover:text-gray-700 opacity-70 hover:opacity-100"
                 }
               `}
             >
@@ -52,8 +52,8 @@ export default function Tabs({ tabs, defaultTab, className = "" }: TabsProps) {
               {isActive && (
                 <motion.div
                   layoutId="activeTab"
-                  className="absolute inset-0 bg-white/30 rounded-lg shadow-sm"
-                  transition={{ type: "spring", bounce: 0.2, duration: 0.5 }}
+                  className="absolute inset-0 bg-gradient-to-br from-white/25 to-white/15 backdrop-blur-sm rounded-xl border border-white/30 shadow-lg"
+                  transition={{ type: "spring", bounce: 0.15, duration: 0.5 }}
                 />
               )}
             </button>
@@ -61,15 +61,15 @@ export default function Tabs({ tabs, defaultTab, className = "" }: TabsProps) {
         })}
       </div>
 
-      {/* Tab Content */}
-      <div className="p-6 min-h-[200px]">
+      {/* Tab Content - Dans glass card */}
+      <div className="p-8 md:p-10 min-h-[300px] bg-white/5 backdrop-blur-sm">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+            transition={{ duration: 0.3, ease: [0.25, 0.1, 0.25, 1] }}
           >
             {activeTabContent}
           </motion.div>
