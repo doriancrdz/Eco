@@ -11,6 +11,7 @@ export interface Eco {
 export interface Folder {
   id: string;
   name: string;
+  isDefault?: boolean;
 }
 
 export const DEFAULT_FOLDERS: Folder[] = [

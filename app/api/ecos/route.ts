@@ -33,15 +33,20 @@ export async function GET(req: NextRequest) {
       archived: false,
     };
 
-    // Si folderId est fourni, filtrer par ce dossier
-    // Si folderId est "null" (string), retourner les ECOs sans dossier
-    if (folderId !== null) {
+    // Logique de filtrage :
+    // - Si folderId est absent ou null → retourner TOUS les ECOs (pas de filtre)
+    // - Si folderId est "null" (string explicite) → retourner uniquement les ECOs sans dossier
+    // - Si folderId est un ID → retourner les ECOs de ce dossier
+    if (folderId !== null && folderId !== undefined) {
       if (folderId === "null" || folderId === "") {
+        // Cas explicite : uniquement les ECOs sans dossier
         where.folderId = null;
       } else {
+        // Cas : filtrer par dossier spécifique
         where.folderId = folderId;
       }
     }
+    // Si folderId est null/undefined → pas de filtre folderId (retourne tous les ECOs)
 
     const ecos = await prisma.eco.findMany({
       where,

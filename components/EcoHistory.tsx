@@ -27,8 +27,13 @@ export default function EcoHistory({
     setIsLoading(true);
     try {
       // Construire l'URL avec le paramètre folderId
-      const folderIdParam = selectedFolderId || "null";
-      const response = await fetch(`/api/ecos?folderId=${folderIdParam}`);
+      // Si selectedFolderId est null → ne pas passer folderId (retourne tous les ECOs)
+      // Si selectedFolderId est un ID → passer cet ID
+      const url = selectedFolderId
+        ? `/api/ecos?folderId=${selectedFolderId}`
+        : `/api/ecos`;
+      
+      const response = await fetch(url);
       
       if (!response.ok) {
         throw new Error("Erreur lors du chargement des ECOs");

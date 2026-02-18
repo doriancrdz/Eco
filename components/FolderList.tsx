@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FolderPlus, Folder } from "lucide-react";
+import { FolderPlus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Folder as FolderType } from "@/types";
+import FolderItem from "./FolderItem";
 
 interface FolderListProps {
   selectedFolderId: string | null;
@@ -143,20 +144,13 @@ export default function FolderList({ selectedFolderId, onSelectFolder }: FolderL
           <p className="px-4 py-3 text-gray-500 text-xs">Chargement...</p>
         ) : (
           folders.map((folder) => (
-            <motion.button
+            <FolderItem
               key={folder.id}
-              whileHover={{ x: 2 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => onSelectFolder(selectedFolderId === folder.id ? null : folder.id)}
-              className={`w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
-                selectedFolderId === folder.id
-                  ? "bg-white/25 text-gray-900"
-                  : "text-gray-700 hover:bg-white/20"
-              }`}
-            >
-              <Folder className="w-4 h-4 shrink-0" />
-              <span className="truncate flex-1">{folder.name}</span>
-            </motion.button>
+              folder={folder}
+              isSelected={selectedFolderId === folder.id}
+              onSelect={onSelectFolder}
+              onUpdate={loadFolders}
+            />
           ))
         )}
       </div>
