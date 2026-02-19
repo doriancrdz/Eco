@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Home, CreditCard, Settings, LogOut } from "lucide-react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@clerk/nextjs";
 import FolderList from "./FolderList";
 import EcoHistory from "./EcoHistory";
 
@@ -40,6 +41,7 @@ export default function Sidebar({
   userImageUrl,
   refreshKey = 0,
 }: SidebarProps) {
+  const { isSignedIn } = useAuth();
   const [, setRefresh] = useState(0);
 
   useEffect(() => {
@@ -135,7 +137,8 @@ export default function Sidebar({
                       Abonnement
                     </motion.button>
                   )}
-                  {onNavigateSettings && (
+                  {/* Paramètres seulement si connecté */}
+                  {isSignedIn && onNavigateSettings && (
                     <motion.button
                       whileHover={{ x: 2 }}
                       whileTap={{ scale: 0.98 }}
@@ -164,43 +167,45 @@ export default function Sidebar({
                   />
                 </div>
 
-                {/* Bottom: avatar, name, Déconnexion */}
-                <div className="border-t border-white/20 mt-auto pt-4 pb-4 shrink-0">
-                  {onOpenProfile && (
-                    <motion.button
-                      whileHover={{ x: 2 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => { onOpenProfile(); onClose?.(); }}
-                      className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-gray-700 hover:bg-white/20 transition-all cursor-pointer mb-2"
-                    >
-                      {userImageUrl ? (
-                        <img
-                          src={userImageUrl}
-                          alt=""
-                          className="w-8 h-8 rounded-full object-cover shrink-0"
-                        />
-                      ) : (
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-aura-emerald to-aura-blue flex items-center justify-center text-sm font-bold text-gray-800 shrink-0">
-                          {userName?.charAt(0) || "?"}
-                        </div>
-                      )}
-                      <span className="text-sm font-medium text-gray-800 truncate flex-1">
-                        {userName || "Utilisateur"}
-                      </span>
-                    </motion.button>
-                  )}
-                  {onSignOut && (
-                    <motion.button
-                      whileHover={{ x: 2 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => { onSignOut(); onClose?.(); }}
-                      className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-white/20 transition-all cursor-pointer"
-                    >
-                      <LogOut className="w-4 h-4 shrink-0" />
-                      Déconnexion
-                    </motion.button>
-                  )}
-                </div>
+                {/* Bottom: avatar, name, Déconnexion (seulement si connecté) */}
+                {isSignedIn && (
+                  <div className="border-t border-white/20 mt-auto pt-4 pb-4 shrink-0">
+                    {onOpenProfile && (
+                      <motion.button
+                        whileHover={{ x: 2 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => { onOpenProfile(); onClose?.(); }}
+                        className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-gray-700 hover:bg-white/20 transition-all cursor-pointer mb-2"
+                      >
+                        {userImageUrl ? (
+                          <img
+                            src={userImageUrl}
+                            alt=""
+                            className="w-8 h-8 rounded-full object-cover shrink-0"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-aura-emerald to-aura-blue flex items-center justify-center text-sm font-bold text-gray-800 shrink-0">
+                            {userName?.charAt(0) || "?"}
+                          </div>
+                        )}
+                        <span className="text-sm font-medium text-gray-800 truncate flex-1">
+                          {userName || "Utilisateur"}
+                        </span>
+                      </motion.button>
+                    )}
+                    {onSignOut && (
+                      <motion.button
+                        whileHover={{ x: 2 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => { onSignOut(); onClose?.(); }}
+                        className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-white/20 transition-all cursor-pointer"
+                      >
+                        <LogOut className="w-4 h-4 shrink-0" />
+                        Déconnexion
+                      </motion.button>
+                    )}
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>

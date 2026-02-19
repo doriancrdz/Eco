@@ -26,27 +26,34 @@ export default function AnnualChoiceModal({
   isLoading = false,
 }: AnnualChoiceModalProps) {
 
+  if (!isOpen) return null;
+
   return (
     <AnimatePresence>
-      {isOpen && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
-          />
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 px-4"
-          >
+      <>
+        {/* Backdrop avec z-index élevé */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm"
+          aria-hidden="true"
+        />
+        {/* Modal content avec z-index supérieur */}
+        <motion.div
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 20 }}
+          transition={{ type: "spring", damping: 25, stiffness: 300 }}
+          className="fixed left-1/2 top-1/2 z-[101] w-full max-w-md -translate-x-1/2 -translate-y-1/2 px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="annual-choice-title"
+        >
             <div className="rounded-3xl border border-white/40 bg-white/80 p-6 shadow-xl backdrop-blur-md">
               <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-gray-900">
+                <h3 id="annual-choice-title" className="text-lg font-semibold text-gray-900">
                   Choisir le paiement — {planName}
                 </h3>
                 <button
@@ -104,8 +111,7 @@ export default function AnnualChoiceModal({
               )}
             </div>
           </motion.div>
-        </>
-      )}
+      </>
     </AnimatePresence>
   );
 }

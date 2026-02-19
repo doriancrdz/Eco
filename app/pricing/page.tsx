@@ -92,18 +92,28 @@ export default function PricingPage() {
       return;
     }
     if (isYearly && planKey !== "free") {
-      setSelectedPlanForModal(planKey);
-      setAnnualModalOpen(true);
+      try {
+        setSelectedPlanForModal(planKey);
+        setAnnualModalOpen(true);
+      } catch (error) {
+        console.error("Erreur ouverture modal annuel:", error);
+        setError("Impossible d'ouvrir le modal de sélection. Veuillez réessayer.");
+      }
       return;
     }
     doCheckout(planKey);
   };
 
-  const handleAnnualChoice = (choice: AnnualBillingChoice) => {
-    if (!selectedPlanForModal) return;
-    doCheckout(selectedPlanForModal, choice);
+  const handleAnnualChoice = async (choice: AnnualBillingChoice) => {
+    if (!selectedPlanForModal) {
+      setError("Plan non sélectionné");
+      setAnnualModalOpen(false);
+      setSelectedPlanForModal(null);
+      return;
+    }
     setAnnualModalOpen(false);
     setSelectedPlanForModal(null);
+    await doCheckout(selectedPlanForModal, choice);
   };
 
   const handlePackSelect = async (packIndex: number) => {

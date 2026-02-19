@@ -3,6 +3,8 @@
 import { PanelLeft, Share2, ArrowLeft } from "lucide-react";
 import Image from "next/image";
 import { motion } from "framer-motion";
+import { useAuth } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 import PlanBadge from "./PlanBadge";
 
 interface HeaderProps {
@@ -24,6 +26,9 @@ export default function Header({
   userImageUrl,
   userName,
 }: HeaderProps) {
+  const { isSignedIn } = useAuth();
+  const router = useRouter();
+
   return (
     <header className="h-[72px] px-4 flex items-center justify-between relative bg-white/10 backdrop-blur-sm border-b border-white/10 sticky top-0 z-20">
       {/* Left: logo ECO seul (sans texte) + toggle */}
@@ -94,15 +99,16 @@ export default function Header({
         <span className="font-bold text-gray-900 text-lg pointer-events-none">ECO</span>
       </motion.button>
 
-      {/* Right: PlanBadge + avatar */}
+      {/* Right: PlanBadge + avatar ou bouton Connexion */}
       <div className="flex items-center gap-3 min-w-0 shrink-0">
-        <PlanBadge />
-        {onAvatarClick && (
+        {isSignedIn && <PlanBadge />}
+        {isSignedIn && onAvatarClick ? (
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={onAvatarClick}
             className="w-9 h-9 rounded-full overflow-hidden border-2 border-white/30 shadow-md shrink-0 flex items-center justify-center bg-gradient-to-br from-aura-emerald to-aura-blue"
+            aria-label="Profil utilisateur"
           >
             {userImageUrl ? (
               <img
@@ -116,7 +122,16 @@ export default function Header({
               </span>
             )}
           </motion.button>
-        )}
+        ) : !isSignedIn ? (
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => router.push("/sign-in")}
+            className="px-4 py-2 rounded-xl bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors shadow-md"
+          >
+            Connexion
+          </motion.button>
+        ) : null}
       </div>
     </header>
   );

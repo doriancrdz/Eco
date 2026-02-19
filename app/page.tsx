@@ -35,7 +35,7 @@ export type CurrentView = "home" | "recording" | "generating" | "detail" | "pric
 
 export default function Home() {
   const router = useRouter();
-  const { user } = useUser();
+  const { user, isSignedIn } = useUser();
   const { signOut } = useClerk();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -723,9 +723,9 @@ export default function Home() {
         refreshKey={refreshKey}
         onNavigateHome={goHome}
         onNavigatePricing={() => router.push("/pricing")}
-        onNavigateSettings={() => router.push("/settings/preferences")}
-        onSignOut={() => signOut()}
-        onOpenProfile={() => setShowProfile(true)}
+        onNavigateSettings={isSignedIn ? () => router.push("/settings/preferences") : undefined}
+        onSignOut={isSignedIn ? () => signOut() : undefined}
+        onOpenProfile={isSignedIn ? () => setShowProfile(true) : undefined}
         userName={user?.firstName || user?.username || undefined}
         userImageUrl={user?.imageUrl}
       />
@@ -755,7 +755,7 @@ export default function Home() {
                 alert("Lien copié !");
               }
             } : undefined}
-            onAvatarClick={() => setShowProfile(true)}
+            onAvatarClick={isSignedIn ? () => setShowProfile(true) : undefined}
             userImageUrl={user?.imageUrl}
             userName={user?.firstName || user?.username || undefined}
           />
