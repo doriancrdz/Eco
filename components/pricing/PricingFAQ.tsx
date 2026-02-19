@@ -6,11 +6,6 @@ import { motion, AnimatePresence } from "framer-motion";
 
 const faqs = [
   {
-    question: "Les minutes sont-elles cumulables d'un mois sur l'autre ?",
-    answer:
-      "Non, les minutes incluses dans votre plan sont valables uniquement pour le mois en cours. Elles se réinitialisent automatiquement le 1er de chaque mois. Cependant, les packs de minutes achetés sont valables pour le mois d'achat.",
-  },
-  {
     question: "Puis-je acheter des packs même avec le plan Free ?",
     answer:
       "Oui, absolument ! Les packs de minutes sont disponibles pour tous les utilisateurs, y compris ceux sur le plan Free. C'est idéal si vous avez besoin de quelques minutes supplémentaires ponctuellement.",
@@ -29,6 +24,11 @@ const faqs = [
     question: "Les données sont-elles sécurisées ?",
     answer:
       "Oui, tous vos enregistrements et transcriptions sont stockés localement dans votre navigateur. Nous ne conservons aucune donnée sur nos serveurs. Votre vie privée est notre priorité.",
+  },
+  {
+    question: "Les minutes sont-elles cumulables d'un mois sur l'autre ?",
+    answer:
+      "Non, les minutes incluses dans votre plan sont valables uniquement pour le mois en cours. Elles se réinitialisent automatiquement le 1er de chaque mois. Cependant, les packs de minutes achetés sont valables pour le mois d'achat.",
   },
 ];
 
