@@ -1,6 +1,7 @@
 import { prisma } from "./prisma";
 import { PLANS, PlanType } from "./billingConfig";
 import { getCurrentMonthKey } from "./billing";
+import { getStripeOrNull } from "./stripe";
 
 /**
  * Convertit les minutes d'un plan en secondes
@@ -62,16 +63,37 @@ export async function getOrCreateUserWithQuotaSeconds(
     // Vérifier si on doit reset le quota
     let shouldReset = false;
     let resetAt: Date | null = null;
+    let currentPeriodEnd: Date | null = user.currentPeriodEnd;
 
-    // Priorité 1: Reset basé sur currentPeriodEnd (Stripe)
-    if (user.currentPeriodEnd) {
-      if (now >= user.currentPeriodEnd) {
-        shouldReset = true;
-        resetAt = user.currentPeriodEnd;
+    // Priorité 1: Si l'utilisateur a un abonnement Stripe mais pas de currentPeriodEnd, le récupérer
+    if (!currentPeriodEnd && user.stripeSubscriptionId) {
+      try {
+        const stripe = getStripeOrNull();
+        if (stripe) {
+          const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+          if (subscription.current_period_end) {
+            currentPeriodEnd = new Date(subscription.current_period_end * 1000);
+            // Mettre à jour la DB pour éviter de refaire cette requête
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { currentPeriodEnd },
+            });
+          }
+        }
+      } catch (error) {
+        console.error("[getOrCreateUserWithQuotaSeconds] Erreur récupération subscription Stripe:", error);
       }
     }
-    // Priorité 2: Reset basé sur monthKey (legacy)
-    else if (user.monthKey !== currentMonthKey) {
+
+    // Priorité 2: Reset basé sur currentPeriodEnd (date anniversaire)
+    if (currentPeriodEnd) {
+      if (now >= currentPeriodEnd) {
+        shouldReset = true;
+        resetAt = currentPeriodEnd;
+      }
+    }
+    // Priorité 3: Reset basé sur monthKey (legacy, uniquement pour utilisateurs free sans abonnement)
+    else if (user.plan === "free" && !user.stripeSubscriptionId && user.monthKey !== currentMonthKey) {
       shouldReset = true;
       // Calculer la date de fin du mois précédent
       const [year, month] = user.monthKey.split("-").map(Number);
@@ -80,6 +102,23 @@ export async function getOrCreateUserWithQuotaSeconds(
 
     if (shouldReset) {
       const newQuotaTotal = planMinutesToSeconds(user.plan as PlanType);
+      
+      // Si reset basé sur date anniversaire et on a une subscription Stripe, récupérer la prochaine période
+      let nextPeriodEnd: Date | null = null;
+      if (currentPeriodEnd && resetAt && user.stripeSubscriptionId) {
+        try {
+          const stripe = getStripeOrNull();
+          if (stripe) {
+            const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+            if (subscription.current_period_end) {
+              nextPeriodEnd = new Date(subscription.current_period_end * 1000);
+            }
+          }
+        } catch (error) {
+          console.error("[getOrCreateUserWithQuotaSeconds] Erreur récupération subscription pour nextPeriodEnd:", error);
+        }
+      }
+      
       user = await prisma.user.update({
         where: { id: user.id },
         data: {
@@ -89,6 +128,8 @@ export async function getOrCreateUserWithQuotaSeconds(
           quotaExtraSeconds: 0,
           // bonusSeconds: JAMAIS RESET (permanent)
           quotaResetAt: resetAt,
+          // Mettre à jour currentPeriodEnd si on a récupéré la prochaine période depuis Stripe
+          ...(nextPeriodEnd && { currentPeriodEnd: nextPeriodEnd }),
           // Legacy fields reset aussi
           minutesUsedMonth: 0,
           extraMinutesMonth: 0,
@@ -211,15 +252,51 @@ export async function debitRecordingSeconds(
     const now = new Date();
     const currentMonthKey = getCurrentMonthKey();
     let shouldReset = false;
+    let currentPeriodEnd: Date | null = user.currentPeriodEnd;
 
-    if (user.currentPeriodEnd && now >= user.currentPeriodEnd) {
+    // Si l'utilisateur a un abonnement Stripe mais pas de currentPeriodEnd, le récupérer
+    if (!currentPeriodEnd && user.stripeSubscriptionId) {
+      try {
+        const stripe = getStripeOrNull();
+        if (stripe) {
+          const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+          if (subscription.current_period_end) {
+            currentPeriodEnd = new Date(subscription.current_period_end * 1000);
+          }
+        }
+      } catch (error) {
+        console.error("[debitRecordingSeconds] Erreur récupération subscription Stripe:", error);
+      }
+    }
+
+    // Reset basé sur currentPeriodEnd (date anniversaire) en priorité
+    if (currentPeriodEnd && now >= currentPeriodEnd) {
       shouldReset = true;
-    } else if (!user.currentPeriodEnd && user.monthKey !== currentMonthKey) {
+    }
+    // Reset basé sur monthKey uniquement pour utilisateurs free sans abonnement
+    else if (user.plan === "free" && !user.stripeSubscriptionId && user.monthKey !== currentMonthKey) {
       shouldReset = true;
     }
 
     if (shouldReset) {
       const newQuotaTotal = planMinutesToSeconds(user.plan as PlanType);
+      
+      // Si reset basé sur date anniversaire et on a une subscription Stripe, récupérer la prochaine période
+      let nextPeriodEnd: Date | null = null;
+      if (currentPeriodEnd && now >= currentPeriodEnd && user.stripeSubscriptionId) {
+        try {
+          const stripe = getStripeOrNull();
+          if (stripe) {
+            const subscription = await stripe.subscriptions.retrieve(user.stripeSubscriptionId);
+            if (subscription.current_period_end) {
+              nextPeriodEnd = new Date(subscription.current_period_end * 1000);
+            }
+          }
+        } catch (error) {
+          console.error("[debitRecordingSeconds] Erreur récupération subscription pour nextPeriodEnd:", error);
+        }
+      }
+      
       await tx.user.update({
         where: { id: userId },
         data: {
@@ -228,6 +305,8 @@ export async function debitRecordingSeconds(
           quotaSecondsUsed: 0,
           quotaExtraSeconds: 0,
           // bonusSeconds: JAMAIS RESET (permanent)
+          // Mettre à jour currentPeriodEnd si on a récupéré la prochaine période depuis Stripe
+          ...(nextPeriodEnd && { currentPeriodEnd: nextPeriodEnd }),
           minutesUsedMonth: 0,
           extraMinutesMonth: 0,
         },

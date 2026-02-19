@@ -169,10 +169,26 @@ export async function POST(req: NextRequest) {
         where: { stripeSubscriptionId: subscriptionId },
       });
       if (user) {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { subscriptionStatus: "active" },
-        });
+        // Récupérer la subscription pour mettre à jour currentPeriodEnd
+        try {
+          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+          const periodEnd = subscription.current_period_end;
+          
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              subscriptionStatus: "active",
+              currentPeriodEnd: periodEnd ? new Date(periodEnd * 1000) : null,
+            },
+          });
+        } catch (error) {
+          console.error("[webhook] Erreur récupération subscription dans invoice.payment_succeeded:", error);
+          // Fallback: mettre à jour seulement le status
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { subscriptionStatus: "active" },
+          });
+        }
       }
     } else if (event.type === "customer.subscription.updated") {
       const subscription = event.data.object as any;
