@@ -22,7 +22,6 @@ export default function ProfileView({
   const { signOut } = useClerk();
   const router = useRouter();
   const [userPlan, setUserPlan] = useState<string>("free");
-  const [isLoadingPortal, setIsLoadingPortal] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
@@ -45,25 +44,6 @@ export default function ProfileView({
   const handleSignOut = async () => {
     await signOut({ redirectUrl: '/sign-in' });
     onClose();
-  };
-
-  const handleManageSubscription = async () => {
-    setIsLoadingPortal(true);
-    try {
-      const res = await fetch("/api/billing/portal", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-      const data = await res.json();
-      if (res.ok && data.url) {
-        window.location.href = data.url;
-      }
-    } catch {
-      // Erreur silencieuse
-    } finally {
-      setIsLoadingPortal(false);
-      onClose();
-    }
   };
 
   return (
@@ -125,7 +105,7 @@ export default function ProfileView({
               Paramètres
             </motion.button>
 
-            {userPlan === "free" ? (
+            {userPlan === "free" && (
               <motion.button
                 whileHover={{ x: 4 }}
                 whileTap={{ scale: 0.98 }}
@@ -138,29 +118,20 @@ export default function ProfileView({
                 <Sparkles className="w-5 h-5" />
                 Passer au forfait supérieur
               </motion.button>
-            ) : (
+            )}
+
+            {userPlan !== "free" && (
               <motion.button
                 whileHover={{ x: 4 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={handleManageSubscription}
-                disabled={isLoadingPortal}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/60 border border-white/50 text-gray-900 font-medium hover:bg-white/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => {
+                  router.push("/settings");
+                  onClose();
+                }}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/60 border border-white/50 text-gray-900 font-medium hover:bg-white/90 transition-all"
               >
-                {isLoadingPortal ? (
-                  <>
-                    <motion.span
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      className="w-5 h-5 border-2 border-current border-t-transparent rounded-full"
-                    />
-                    Chargement...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-5 h-5" />
-                    Gérer mon abonnement
-                  </>
-                )}
+                <Settings className="w-5 h-5" />
+                Gérer mon abonnement
               </motion.button>
             )}
 

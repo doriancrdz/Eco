@@ -51,9 +51,24 @@ export async function POST() {
       );
     }
 
-    await stripe.subscriptions.cancel(user.stripeSubscriptionId);
+    // Annuler l'abonnement Stripe avec cancel_at_period_end = true
+    // L'utilisateur garde l'accès jusqu'à la fin de la période payée
+    const subscription = await stripe.subscriptions.update(
+      user.stripeSubscriptionId,
+      { cancel_at_period_end: true }
+    );
 
-    return NextResponse.json({ success: true });
+    console.log("[cancel] Abonnement résilié:", {
+      userId,
+      subscriptionId: user.stripeSubscriptionId,
+      cancelAt: subscription.cancel_at ? new Date(subscription.cancel_at * 1000).toISOString() : null,
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "Abonnement résilié. Vous garderez l'accès jusqu'à la fin de la période en cours.",
+      cancelAt: subscription.cancel_at ? new Date(subscription.cancel_at * 1000).toISOString() : null,
+    });
   } catch (error) {
     console.error("Erreur annulation abonnement:", error);
     return NextResponse.json(

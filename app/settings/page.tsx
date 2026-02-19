@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Package, CreditCard, Calendar, Clock, AlertCircle } from "lucide-react";
 import Link from "next/link";
 
@@ -19,6 +19,7 @@ interface BillingData {
   commitmentEndAt: string | null;
   canCancel: boolean;
   subscriptionStatus: string | null;
+  subscriptionType: "monthly" | "annual" | null;
   paymentBlocked: boolean;
 }
 
@@ -29,6 +30,7 @@ export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
@@ -39,7 +41,12 @@ export default function SettingsPage() {
     fetchBillingData();
   }, [isLoaded, isSignedIn, router]);
 
-  const handleCancelSubscription = async () => {
+  const handleCancelSubscription = () => {
+    if (!billingData?.canCancel) return;
+    setShowCancelModal(true);
+  };
+
+  const confirmCancel = async () => {
     if (!billingData?.canCancel) return;
     setCancelling(true);
     setError(null);
@@ -47,11 +54,18 @@ export default function SettingsPage() {
       const res = await fetch("/api/billing/cancel", { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Erreur lors de l'annulation");
-      await fetchBillingData();
+      if (data.success) {
+        alert(data.message || "Abonnement résilié avec succès");
+        await fetchBillingData();
+        window.location.reload(); // Rafraîchir pour mettre à jour l'UI
+      } else {
+        throw new Error(data.error || "Erreur lors de l'annulation");
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Une erreur est survenue");
     } finally {
       setCancelling(false);
+      setShowCancelModal(false);
     }
   };
 
@@ -100,6 +114,14 @@ export default function SettingsPage() {
   const usedMinutes = billingData?.minutesUsedMonth || 0;
   const availableMinutes = billingData?.availableMinutes || 0;
   const usagePercent = totalMinutes > 0 ? (usedMinutes / totalMinutes) * 100 : 0;
+
+  // Déterminer quel bouton afficher selon le type d'abonnement
+  const isFree = billingData?.plan === "free";
+  const isMonthly = billingData?.subscriptionType === "monthly";
+  const isAnnual = billingData?.subscriptionType === "annual";
+
+  const showUpgradeButton = isFree || isAnnual;
+  const showCancelButton = !isFree && isMonthly && billingData?.canCancel;
 
   return (
     <div className="min-h-screen aura-gradient relative">
@@ -258,16 +280,46 @@ export default function SettingsPage() {
 
           {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-4">
-            <motion.button
-              whileHover={{ scale: 1.02, y: -2 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => router.push("/pricing")}
-              className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-xl font-semibold hover:from-gray-800 hover:to-gray-700 shadow-lg hover:shadow-xl transition-all"
-            >
-              <CreditCard className="w-4 h-4" />
-              Passer au forfait supérieur
-            </motion.button>
+            {/* Bouton gauche */}
+            {showUpgradeButton && (
+              <motion.button
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => router.push("/pricing")}
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-xl font-semibold hover:from-gray-800 hover:to-gray-700 shadow-lg hover:shadow-xl transition-all"
+              >
+                <CreditCard className="w-4 h-4" />
+                Passer au forfait supérieur
+              </motion.button>
+            )}
 
+            {showCancelButton && (
+              <motion.button
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleCancelSubscription}
+                disabled={cancelling}
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-red-50 border-2 border-red-200 text-red-600 rounded-xl font-semibold hover:bg-red-100 hover:border-red-300 transition-all disabled:opacity-50"
+              >
+                {cancelling ? (
+                  <>
+                    <motion.span
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                      className="w-4 h-4 border-2 border-current border-t-transparent rounded-full"
+                    />
+                    Annulation...
+                  </>
+                ) : (
+                  <>
+                    <AlertCircle className="w-4 h-4" />
+                    Résilier mon abonnement
+                  </>
+                )}
+              </motion.button>
+            )}
+
+            {/* Bouton droite */}
             <motion.button
               whileHover={{ scale: 1.02, y: -2 }}
               whileTap={{ scale: 0.98 }}
@@ -279,27 +331,70 @@ export default function SettingsPage() {
             </motion.button>
           </div>
 
-          {billingData && billingData.plan !== "free" && (
+          {billingData && billingData.plan !== "free" && !showCancelButton && !billingData.canCancel && (
             <div className="mt-6 pt-6 border-t border-white/40">
-              {billingData.canCancel ? (
-                <motion.button
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.99 }}
-                  onClick={handleCancelSubscription}
-                  disabled={cancelling}
-                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-red-600 border border-gray-300 hover:border-red-200 rounded-xl transition-colors disabled:opacity-50"
-                >
-                  {cancelling ? "Annulation en cours..." : "Résilier mon abonnement"}
-                </motion.button>
-              ) : (
-                <p className="text-sm text-gray-500">
-                  L&apos;annulation sera possible après la date d&apos;engagement.
-                </p>
-              )}
+              <p className="text-sm text-gray-500">
+                L&apos;annulation sera possible après la date d&apos;engagement.
+              </p>
             </div>
           )}
         </motion.div>
       </div>
+
+      {/* Modale de confirmation de résiliation */}
+      <AnimatePresence>
+        {showCancelModal && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowCancelModal(false)}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50"
+              aria-hidden="true"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="fixed left-1/2 top-1/2 z-[51] w-full max-w-md -translate-x-1/2 -translate-y-1/2 px-4"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="cancel-confirm-title"
+            >
+              <div className="bg-white rounded-3xl p-8 shadow-2xl border border-white/40">
+                <h3 id="cancel-confirm-title" className="text-xl font-bold text-gray-900 mb-4">
+                  Résilier votre abonnement ?
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  Votre abonnement sera annulé à la fin de la période en cours. 
+                  Vous ne serez pas débité le mois prochain.
+                </p>
+                <div className="flex gap-3">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setShowCancelModal(false)}
+                    className="flex-1 px-4 py-2 bg-gray-100 rounded-xl font-medium text-gray-900 hover:bg-gray-200 transition-colors"
+                  >
+                    Annuler
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={confirmCancel}
+                    disabled={cancelling}
+                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+                  >
+                    {cancelling ? "Résiliation..." : "Oui, résilier"}
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
