@@ -83,11 +83,9 @@ export default function Header({
         )}
       </div>
 
-      {/* Center: logo h-9 w-9 + texte ECO, cliquable comme la flèche retour */}
-      <motion.button
+      {/* Center: logo + ECO — complètement fixe, aucun effet au hover */}
+      <button
         type="button"
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
         onClick={() => {
           if (process.env.NODE_ENV !== "production") console.log("[NAV] logo click -> goHome", { location: "header-center" });
           onGoHome("logo");
@@ -95,9 +93,9 @@ export default function Header({
         className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 bg-transparent p-0 border-0 z-[25] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/30 focus-visible:ring-offset-2 min-w-[100px] justify-center"
         aria-label="Retour à l'accueil"
       >
-        <Image src="/logo-eco.png" alt="" width={36} height={36} className="bg-transparent block h-9 w-9 object-contain select-none pointer-events-none" />
-        <span className="font-bold text-gray-900 text-lg pointer-events-none">ECO</span>
-      </motion.button>
+        <Image src="/logo-eco.png" alt="" width={32} height={32} className="w-8 h-8 bg-transparent block object-contain select-none pointer-events-none" />
+        <span className="text-lg font-bold text-gray-900 pointer-events-none">ECO</span>
+      </button>
 
       {/* Right: PlanBadge + avatar ou bouton Connexion */}
       <div className="flex items-center gap-3 min-w-0 shrink-0">
