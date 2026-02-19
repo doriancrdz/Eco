@@ -17,72 +17,84 @@ const testimonials: Testimonial[] = [
     name: "Thomas L.",
     stars: 5,
     text: "Depuis que j'utilise ECO, je n'ai plus peur de rater une info en cours. Au lieu de me concentrer à prendre des notes, je lance un enregistrement et ECO se charge de me sortir tout ce qui est important à retenir du cours.",
+    avatarSrc: "/avatars/thomas-l.jpg",
   },
   {
     id: "2",
     name: "Sofia M.",
     stars: 4,
     text: "L'application est super pratique pour réviser rapidement avant un examen. Les notions à retenir sont vraiment utiles. Peut-être ajouter un mode \"révision rapide\" encore plus synthétique serait top, mais globalement je recommande.",
+    avatarSrc: "/avatars/sofia-m.jpg",
   },
   {
     id: "3",
     name: "Thibault V.",
     stars: 5,
     text: "J'enregistre mes réunions et ECO me sort un résumé clair avec les actions à retenir. Je suis beaucoup plus organisé et je ne perds plus d'idées importantes.",
+    avatarSrc: "/avatars/thibault-v.jpg",
   },
   {
     id: "4",
     name: "Élise V.",
     stars: 5,
     text: "Mon fils écoute beaucoup plus en cours et révise plus efficacement depuis que je lui paye ECO. C'est rassurant de savoir qu'il peut revoir les notions importantes après.",
+    avatarSrc: "/avatars/elise-v.jpg",
   },
   {
     id: "5",
     name: "Léa M.",
     stars: 4,
     text: "Très bonne application, surtout pour les étudiants. La transcription est fiable et les résumés sont clairs. J'aimerais juste une option pour exporter directement vers Notion ou Google Docs, mais sinon rien à redire.",
+    avatarSrc: "/avatars/lea-m.jpg",
   },
   {
     id: "6",
     name: "Lucas M.",
     stars: 5,
     text: "J'utilise ECO tous les jours en amphi. Le fait d'avoir un résumé structuré et les points essentiels me fait gagner un temps fou en période de partiels.",
+    avatarSrc: "/avatars/lucas-m.jpg",
   },
   {
     id: "7",
     name: "Daniel C.",
     stars: 5,
     text: "ECO m'a vraiment aidé à rester concentré en cours. Le fait d'avoir les points clés automatiquement change tout. J'aimerais juste pouvoir personnaliser un peu plus la mise en forme des résumés, mais sinon c'est devenu indispensable pour moi.",
+    avatarSrc: "/avatars/daniel-c.jpg",
   },
   {
     id: "8",
     name: "Camille L.",
     stars: 5,
     text: "La transcription est hyper propre, mais surtout les points clés me sauvent la vie. Au lieu de relire 15 pages de notes, j'ai l'essentiel en quelques secondes.",
+    avatarSrc: "/avatars/camille-l.jpg",
   },
   {
     id: "9",
     name: "Adrien R.",
     stars: 5,
     text: "Je l'utilise pour mes réunions clients et ça m'évite de perdre des informations importantes. Le résumé structuré est clair et bien organisé. C'est simple et efficace.",
+    avatarSrc: "/avatars/adrien-r.jpg",
   },
   {
     id: "10",
     name: "Mathieu C.",
     stars: 4,
     text: "Je prends moins de notes pendant les formations et je suis plus concentré. Le résumé généré est souvent plus clair que mes propres notes. Une petite option de personnalisation supplémentaire serait un plus.",
+    avatarSrc: "/avatars/mathieu-c.jpg",
   },
   {
     id: "11",
     name: "Sophie L.",
     stars: 5,
     text: "Les notions à retenir sont incroyables. Ça m'aide à structurer mes cours et à voir directement ce qui est vraiment important pour les examens.",
+    avatarSrc: "/avatars/sophie-l.jpg",
   },
   {
     id: "12",
     name: "Hugo M.",
     stars: 5,
     text: "Ce que j'aime, c'est la simplicité. J'enregistre, et tout est organisé automatiquement. Ça me permet de rester focus pendant mes rendez-vous sans penser à écrire.",
+    avatarSrc: "/avatars/hugo-m.jpg",
   },
 ];
 
@@ -109,7 +121,9 @@ function TestimonialCard({ testimonial }: { testimonial: Testimonial }) {
                   alt={testimonial.name}
                   width={48}
                   height={48}
-                  className="object-cover"
+                  className="rounded-full object-cover object-center"
+                  sizes="48px"
+                  priority={false}
                 />
               </div>
             ) : (
