@@ -13,12 +13,7 @@ interface BillingMeResponse {
   extraMinutesMonth?: number;
 }
 
-const planBadgeStyles: Record<string, string> = {
-  free: "bg-gray-100 text-gray-600",
-  student: "bg-blue-50 text-blue-600",
-  pro: "bg-emerald-50 text-emerald-600",
-  business: "bg-purple-50 text-purple-600",
-};
+// Les styles planBadgeStyles ne sont plus utilisés car on applique directement le gradient pour les plans payants
 
 export default function PlanBadge() {
   const router = useRouter();
@@ -69,15 +64,21 @@ export default function PlanBadge() {
       ? "Business"
       : plan;
 
+  const isPaid = plan !== "free";
+
   if (loading) {
     return (
       <div
-        className="bg-white/30 backdrop-blur-md border border-white/30 rounded-full px-4 py-2 flex items-center gap-2 h-9 animate-pulse"
+        className={`rounded-full px-4 py-2 flex items-center gap-2 h-9 animate-pulse ${
+          isPaid
+            ? "bg-gradient-to-r from-[#99f6e4] via-[#7dd3fc] to-[#a5b4fc]"
+            : "bg-white/30 backdrop-blur-md border border-white/30"
+        }`}
         style={{ minWidth: 120 }}
       >
-        <div className="w-4 h-4 rounded bg-white/40" />
-        <div className="h-3 bg-white/40 rounded w-8" />
-        <div className="h-3 bg-white/40 rounded w-12" />
+        <div className={`w-4 h-4 rounded ${isPaid ? "bg-gray-900/20" : "bg-white/40"}`} />
+        <div className={`h-3 rounded w-8 ${isPaid ? "bg-gray-900/20" : "bg-white/40"}`} />
+        <div className={`h-3 rounded w-12 ${isPaid ? "bg-gray-900/20" : "bg-white/40"}`} />
       </div>
     );
   }
@@ -92,12 +93,18 @@ export default function PlanBadge() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       onClick={() => router.push("/settings")}
-      className="bg-white/30 backdrop-blur-md border border-white/30 rounded-full px-4 py-2 flex items-center gap-2 text-sm font-bold cursor-pointer hover:bg-white/40 transition-all"
+      className={`
+        rounded-full px-4 py-2 flex items-center gap-2 text-sm font-bold cursor-pointer transition-all hover:scale-105
+        ${isPaid
+          ? "bg-gradient-to-r from-[#99f6e4] via-[#7dd3fc] to-[#a5b4fc] text-gray-900 shadow-lg hover:shadow-xl"
+          : "bg-white/60 backdrop-blur-md border border-white/40 text-gray-700 hover:bg-white/80"
+        }
+      `}
     >
-      <Clock className="w-4 h-4 text-gray-600" />
-      <span>{minutesLeft} min</span>
-      <span className="text-gray-400">|</span>
-      <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${planBadgeStyles[plan] || planBadgeStyles.free}`}>
+      <Clock className={`w-4 h-4 ${isPaid ? "text-gray-900" : "text-gray-600"}`} />
+      <span className={isPaid ? "font-extrabold" : "font-bold"}>{minutesLeft} min</span>
+      <span className={isPaid ? "text-gray-700 opacity-60" : "text-gray-400"}>|</span>
+      <span className={isPaid ? "font-extrabold" : "font-bold"}>
         {planLabel}
       </span>
     </motion.button>
