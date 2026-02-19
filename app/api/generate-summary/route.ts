@@ -166,12 +166,86 @@ export async function POST(req: NextRequest) {
     const maxChars = 12000;
     const truncated = textLength > maxChars ? textToSend.slice(0, maxChars) + "\n[...]" : textToSend;
 
+    // Calculer la durée en minutes depuis durationMs ou durationSeconds
+    const durationMs = recording.durationMs || (recording.durationSeconds ? recording.durationSeconds * 1000 : null);
+    const durationMinutes = durationMs ? durationMs / 60000 : null;
+    const durationMinutesRounded = durationMinutes ? Math.round(durationMinutes * 10) / 10 : null;
+
+    // Déterminer le niveau de détail selon la durée
+    let detailLevel: 'minimal' | 'moyen' | 'détaillé';
+    let maxPointsCles: number;
+    let maxNotions: number;
+    let maxTokens: number;
+
+    if (!durationMinutesRounded || durationMinutesRounded < 2) {
+      detailLevel = 'minimal';
+      maxPointsCles = 3;
+      maxNotions = 2;
+      maxTokens = 300;
+    } else if (durationMinutesRounded < 10) {
+      detailLevel = 'moyen';
+      maxPointsCles = 5;
+      maxNotions = 4;
+      maxTokens = 800;
+    } else {
+      detailLevel = 'détaillé';
+      maxPointsCles = Math.min(15, Math.floor(durationMinutesRounded / 2)); // ~1 point toutes les 2 min
+      maxNotions = Math.min(10, Math.floor(durationMinutesRounded / 3)); // ~1 notion toutes les 3 min
+      maxTokens = 1500;
+    }
+
     console.log("[generate-summary] Appel OpenAI", {
       recordingId,
       model: AI_SUMMARY_MODEL,
       transcriptionLength: textLength,
       sentLength: truncated.length,
+      durationMinutes: durationMinutesRounded,
+      detailLevel,
+      maxPointsCles,
+      maxNotions,
+      maxTokens,
     });
+
+    // Construire le prompt système adapté selon la durée
+    const systemPrompt = `Tu es un assistant IA expert en structuration de connaissances.
+Niveau de détail requis : ${detailLevel}
+Durée audio : ${durationMinutesRounded ? durationMinutesRounded.toFixed(1) : 'inconnue'} minutes
+
+RÈGLES STRICTES :
+${detailLevel === 'minimal' ? `
+- Résumé : 2-3 phrases maximum, très concis
+- Points clés : ${maxPointsCles} maximum, phrases courtes
+- Notions : ${maxNotions} maximum, mots-clés simples
+` : detailLevel === 'moyen' ? `
+- Résumé : 1 paragraphe de 4-6 phrases structuré
+- Points clés : ${maxPointsCles} phrases complètes et actionnables
+- Notions : ${maxNotions} concepts principaux
+` : `
+- Résumé : Structure complète en 3 parties
+  * Introduction (1-2 phrases) : contexte et sujet principal
+  * Développement (4-8 phrases) : idées principales détaillées avec transitions
+  * Conclusion (1-2 phrases) : synthèse et message clé
+- Points clés : ${maxPointsCles} points détaillés couvrant TOUS les aspects importants
+- Notions : ${maxNotions} concepts principaux et termes techniques
+`}
+
+IMPORTANT :
+- N'oublie AUCUN point important de la transcription
+- Adapte la longueur du résumé à la richesse du contenu
+- Si le contenu est dense, priorise la complétude sur la brièveté
+- Si le contenu est simple, reste concis
+
+Réponds UNIQUEMENT avec un JSON strict :
+{
+  "titre": "Titre court (max 60 caractères)",
+  "resume": "Résumé selon le niveau de détail ci-dessus",
+  "pointsCles": ["Point 1", "Point 2", ...],
+  "notions": ["Notion 1", "Notion 2", ...]
+}`;
+
+    const userPrompt = `Transcription de l'enregistrement audio${durationMinutesRounded ? ` (${durationMinutesRounded.toFixed(1)} minutes)` : ''} :
+
+${truncated}`;
 
     const gptStart = performance.now();
     const completion = await openai.chat.completions.create({
@@ -179,58 +253,72 @@ export async function POST(req: NextRequest) {
       messages: [
         {
           role: "system",
-          content:
-            "Tu es un assistant IA. Réponds UNIQUEMENT avec un objet JSON valide, sans texte avant ou après, sans Markdown.",
+          content: systemPrompt,
         },
         {
           role: "user",
-          content: `Génère un résumé structuré à partir de cette transcription. Réponds UNIQUEMENT avec le JSON suivant (pas d'intro, pas de markdown):
-
-{
-  "structuredSummary": {
-    "title": "Titre court (max 60 caractères)",
-    "sections": [
-      { "heading": "Section 1", "content": "Contenu 1-2 phrases max" },
-      { "heading": "Section 2", "content": "Contenu 1-2 phrases max" }
-    ]
-  },
-  "keyPoints": ["Point 1", "Point 2", "Point 3", "Point 4", "Point 5"],
-  "notions": [
-    { "term": "Terme 1", "definition": "Définition courte 1 ligne" },
-    { "term": "Terme 2", "definition": "Définition courte 1 ligne" }
-  ]
-}
-
-Contraintes strictes:
-- structuredSummary.sections: 3 max
-- keyPoints: 5-8 bullets
-- notions: 5-10 items, définition 1 ligne max
-- Répondre UNIQUEMENT avec le JSON
-
-Transcription:
-"""${truncated}"""`,
+          content: userPrompt,
         },
       ],
-      temperature: 0.3,
+      temperature: 0.3, // Plus créatif que 0.1 mais reste précis
       response_format: { type: "json_object" },
+      max_tokens: maxTokens,
     });
 
     timings.gptSummary = performance.now() - gptStart;
 
     const summaryContent =
       completion.choices[0]?.message?.content ??
-      '{"structuredSummary":{"title":"Résumé","sections":[]},"keyPoints":[],"notions":[]}';
+      '{"titre":"Résumé","resume":"","pointsCles":[],"notions":[]}';
 
-    let rawSummary: StructuredSummary;
     let summary: { titre: string; resume: string; pointsCles: string[]; notions: string[] };
 
     try {
-      rawSummary = JSON.parse(summaryContent) as StructuredSummary;
-      summary = toLegacyFormat(rawSummary);
+      const parsed = JSON.parse(summaryContent) as {
+        titre?: string;
+        resume?: string;
+        pointsCles?: string[];
+        notions?: string[];
+        // Support du format ancien pour rétrocompatibilité
+        structuredSummary?: StructuredSummary['structuredSummary'];
+        keyPoints?: string[];
+      };
+
+      // Si format nouveau (titre/resume/pointsCles/notions), utiliser directement
+      if (parsed.titre && parsed.resume !== undefined) {
+        summary = {
+          titre: parsed.titre || "Résumé",
+          resume: parsed.resume || "",
+          pointsCles: Array.isArray(parsed.pointsCles) ? parsed.pointsCles : [],
+          notions: Array.isArray(parsed.notions) ? parsed.notions : [],
+        };
+      } else if (parsed.structuredSummary) {
+        // Format ancien (structuredSummary) → convertir
+        const rawSummary: StructuredSummary = {
+          structuredSummary: parsed.structuredSummary,
+          keyPoints: parsed.keyPoints || [],
+          notions: parsed.notions?.map((n: unknown) =>
+            typeof n === "string" ? { term: n, definition: "" } : (n as { term: string; definition: string })
+          ) || [],
+        };
+        summary = toLegacyFormat(rawSummary);
+      } else {
+        // Fallback
+        summary = {
+          titre: "Résumé",
+          resume: textToSend.substring(0, 200) + "...",
+          pointsCles: [],
+          notions: [],
+        };
+      }
+
       console.log("[generate-summary] Résumé parsé", {
         hasTitre: !!summary.titre,
+        resumeLength: summary.resume?.length || 0,
         pointsClesCount: summary.pointsCles?.length || 0,
         notionsCount: summary.notions?.length || 0,
+        detailLevel,
+        durationMinutes: durationMinutesRounded,
         gptMs: timings.gptSummary.toFixed(2),
       });
     } catch (parseError) {
