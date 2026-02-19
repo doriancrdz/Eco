@@ -78,9 +78,10 @@ function CopyButton({ text }: { text: string }) {
 interface EcoViewProps {
   eco: Eco | null;
   onRefresh?: () => void;
+  onBack?: () => void;
 }
 
-export default function EcoView({ eco, onRefresh }: EcoViewProps) {
+export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
   const [showRetryHint, setShowRetryHint] = useState(false);
   const [lastSummaryStatus, setLastSummaryStatus] = useState<number | null>(null);
   const [lastEcoFetch, setLastEcoFetch] = useState<{

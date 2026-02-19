@@ -183,6 +183,14 @@ export default function Home() {
     isNavigatingHome: isNavigatingHomeRef.current,
   }), []);
 
+  // Sécurité : garder selectedEco et currentEco cohérents (éviter fond vide / état cassé)
+  useEffect(() => {
+    if (!selectedEco && currentEco) {
+      console.warn("[Safety] État incohérent détecté (selectedEco vide mais currentEco présent), sync currentEco → null");
+      setCurrentEco(null);
+    }
+  }, [selectedEco, currentEco]);
+
   // Charger l'ECO sélectionné depuis l'API
   useEffect(() => {
     if (isNavigatingHomeRef.current) return;
@@ -697,17 +705,10 @@ export default function Home() {
     }
   };
 
-  /** Une seule fonction pour revenir à l'accueil : reset + navigation réelle vers "/" + kill-switch overlays. */
-  const goHome = useCallback((from?: "back" | "logo" | "sidebar") => {
+  /** Retour à l'accueil : réinitialisation complète de l'état (sans router.push pour éviter fond vide / état cassé). */
+  const resetToHome = useCallback((from?: "back" | "logo" | "sidebar") => {
     if (process.env.NODE_ENV !== "production") {
-      console.log("[NAV] goHome clicked", {
-        from: from ?? "unknown",
-        ts: Date.now(),
-        selectedEco,
-        isProcessing,
-        isFocusMode,
-        viewAllEcos,
-      });
+      console.log("[resetToHome] Retour à la home, état réinitialisé", { from: from ?? "unknown", ts: Date.now() });
     }
     isNavigatingHomeRef.current = true;
     if (refreshCurrentEcoTimeoutRef.current) {
@@ -718,29 +719,29 @@ export default function Home() {
     setSelectedFolder(null);
     setViewAllEcos(false);
     setIsFocusMode(false);
+    setIsRecording(false);
+    setIsPaused(false);
     setIsProcessing(false);
+    setShowStopConfirm(false);
     setCurrentEco(null);
     setSidebarOpen(false);
     setShowProfile(false);
-    setShowStopConfirm(false);
     setRefreshKey((prev) => prev + 1);
     currentEcoCacheRef.current = null;
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
     if (typeof document !== "undefined") document.body.style.overflow = "unset";
-    router.push("/");
-    setTimeout(() => {
-      if (process.env.NODE_ENV !== "production") {
-        console.log("[NAV] after goHome 0ms", snapshotState());
-      }
-    }, 0);
-    setTimeout(() => {
-      if (process.env.NODE_ENV !== "production") {
-        console.log("[NAV] after goHome 50ms", snapshotState());
-      }
-    }, 50);
     setTimeout(() => {
       isNavigatingHomeRef.current = false;
-    }, 600);
-  }, [router, selectedEco, isProcessing, isFocusMode, viewAllEcos, snapshotState]);
+    }, 300);
+  }, []);
+
+  const goHome = resetToHome;
 
   const handleEcoClick = (eco: Eco) => {
     setSelectedEco(eco.id);
@@ -1018,6 +1019,7 @@ export default function Home() {
             >
               <EcoView
                 eco={currentEco}
+                onBack={resetToHome}
                 onRefresh={() => {
                   if (selectedEco) {
                     // Invalider le cache
