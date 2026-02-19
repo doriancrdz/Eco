@@ -10,6 +10,7 @@ import { MAX_RECORDING_DURATION_MINUTES } from "@/lib/billingConfig";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+  timeout: 120000, // 120 secondes pour les longs audios (25+ min)
 });
 
 /**
@@ -66,6 +67,15 @@ export async function POST(req: NextRequest) {
       console.error("[transcribe] Fichier audio vide");
       return NextResponse.json(
         { error: "Le fichier audio est vide." },
+        { status: 400 }
+      );
+    }
+
+    const fileSizeInMB = audioFile.size / (1024 * 1024);
+    console.log("[transcribe] Taille fichier:", fileSizeInMB.toFixed(2), "MB");
+    if (fileSizeInMB > 24) {
+      return NextResponse.json(
+        { error: "Fichier audio trop volumineux (max 24MB). Veuillez raccourcir votre enregistrement." },
         { status: 400 }
       );
     }
@@ -186,14 +196,37 @@ export async function POST(req: NextRequest) {
       remainingSeconds: debitResult.remainingSeconds,
     });
 
+    async function transcribeWithRetry(file: File, maxRetries = 3): Promise<string> {
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          console.log(`[transcribe] Tentative ${attempt}/${maxRetries}`);
+          const fileForAttempt = new File([buffer], file.name, { type: file.type });
+          const response = await openai.audio.transcriptions.create({
+            file: fileForAttempt,
+            model: "whisper-1",
+            language: "fr",
+            response_format: "text",
+          });
+          const text = typeof response === "string" ? response : (response as { text?: string }).text ?? "";
+          console.log("[transcribe] Succès, longueur:", text.length, "caractères");
+          return text;
+        } catch (err: unknown) {
+          const errMsg = err instanceof Error ? err.message : String(err);
+          console.error(`[transcribe] Tentative ${attempt} échouée:`, errMsg);
+          if (attempt === maxRetries) throw err;
+          const delay = Math.min(1000 * Math.pow(2, attempt), 10000);
+          console.log(`[transcribe] Retry dans ${delay}ms...`);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+      }
+      throw new Error("Transcription échouée après retries");
+    }
+
     try {
       const whisperStart = performance.now();
-      const transcriptionResponse = await openai.audio.transcriptions.create({
-        file: audioFile,
-        model: "whisper-1",
-        language: "fr",
-      });
-      const transcription = transcriptionResponse.text;
+      const transcription = await transcribeWithRetry(audioFile);
       timings.whisperTranscription = performance.now() - whisperStart;
 
       const dbUpdateStart = performance.now();
@@ -224,20 +257,32 @@ export async function POST(req: NextRequest) {
         },
         { status: 200 }
       );
-    } catch (openaiError) {
-      console.error("[transcribe] Erreur OpenAI:", openaiError);
+    } catch (openaiError: unknown) {
+      const err = openaiError as { message?: string; status?: number; code?: string };
+      const errMsg = err?.message ?? String(openaiError);
+      console.error("[transcribe] Erreur OpenAI:", { message: errMsg, code: err?.code, status: err?.status });
       await prisma.recording.update({
         where: { id: recording.id },
         data: {
           status: "ERROR",
-          errorMessage: openaiError instanceof Error ? openaiError.message : String(openaiError),
+          errorMessage: errMsg,
         },
       }).catch(() => {});
-      // Note: Le débit a déjà été effectué via debitRecordingSeconds
-      // On ne peut pas facilement le rollback car c'est un système de secondes avec UsageEvent
-      // En production, on pourrait implémenter un système de crédit si nécessaire
+
+      if (err?.status === 413) {
+        return NextResponse.json(
+          { error: "Fichier audio trop volumineux. Veuillez raccourcir votre enregistrement." },
+          { status: 400 }
+        );
+      }
+      if (err?.code === "ETIMEDOUT" || errMsg?.toLowerCase?.().includes("timeout")) {
+        return NextResponse.json(
+          { error: "Le traitement a pris trop de temps. Veuillez réessayer ou raccourcir votre enregistrement." },
+          { status: 408 }
+        );
+      }
       return NextResponse.json(
-        { error: "Impossible de générer la transcription. Les secondes ont été débitées." },
+        { error: "Erreur lors de la transcription. Veuillez réessayer." },
         { status: 500 }
       );
     }

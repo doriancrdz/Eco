@@ -55,6 +55,7 @@ export default function Home() {
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [viewAllEcos, setViewAllEcos] = useState(false);
   const [recordingElapsedSeconds, setRecordingElapsedSeconds] = useState(0);
+  const [processingDurationMinutes, setProcessingDurationMinutes] = useState(0);
   const [ecos, setEcos] = useState<Eco[]>([]);
 
   const { soundLevel, frequencyData, isAvailable, startAudioLevel, stopAudioLevel, analyserRef } = useAudioLevel(isPaused);
@@ -382,9 +383,9 @@ export default function Home() {
       console.log("[startRecording] Format:", mimeType || "default");
       console.log("[startRecording] Format supporté?", mimeType ? MediaRecorder.isTypeSupported(mimeType) : "n/a");
 
-      // Créer MediaRecorder
+      // Créer MediaRecorder (96 kbps pour réduire la taille des longs enregistrements)
       const mediaRecorder = mimeType
-        ? new MediaRecorder(stream, { mimeType })
+        ? new MediaRecorder(stream, { mimeType, audioBitsPerSecond: 96000 })
         : new MediaRecorder(stream);
       console.log("[startRecording] MediaRecorder créé, state:", mediaRecorder.state);
 
@@ -524,6 +525,7 @@ export default function Home() {
         isRecording,
       });
     }
+    setProcessingDurationMinutes(durationSeconds / 60);
     setIsRecording(false);
     setIsProcessing(true);
     setIsFocusMode(false);
@@ -1074,7 +1076,11 @@ export default function Home() {
             >
               <div className="text-center flex flex-col items-center gap-6">
                 <Logo state="generating" size={120} showMicroWarning={false} />
-                <p className="text-gray-600 font-medium">Traitement en cours...</p>
+                <p className="text-xl font-bold text-gray-800">Traitement en cours...</p>
+                <p className="text-sm text-gray-600 max-w-sm">
+                  Transcription et analyse de votre enregistrement.
+                  {processingDurationMinutes > 10 && " Cela peut prendre 1-2 minutes pour les longs audios."}
+                </p>
               </div>
             </motion.div>
           )}

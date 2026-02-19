@@ -1,3 +1,7 @@
 {
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "functions": {
+    "app/api/transcribe/route.ts": { "maxDuration": 300 },
+    "app/api/recordings/[id]/transcribe/route.ts": { "maxDuration": 300 }
+  }
 }

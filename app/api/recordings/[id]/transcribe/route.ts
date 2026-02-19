@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
+  timeout: 120000, // 120 secondes pour les longs audios (25+ min)
 });
 
 /**
@@ -72,16 +73,52 @@ export async function POST(
       );
     }
 
+    const fileSizeInMB = audioFile.size / (1024 * 1024);
+    console.log("[transcribe] Taille fichier:", fileSizeInMB.toFixed(2), "MB");
+    if (fileSizeInMB > 24) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Fichier audio trop volumineux (max 24MB). Veuillez raccourcir votre enregistrement.",
+          code: "FILE_TOO_LARGE",
+        },
+        { status: 400 }
+      );
+    }
+
     const recordingId = params.id;
     console.log("[transcribe] start", { traceId, recordingId, userId: user.id, fileSize, ts: Date.now() });
 
+    async function transcribeWithRetry(file: File, maxRetries = 3): Promise<string> {
+      const arrayBuffer = await file.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          console.log(`[transcribe] Tentative ${attempt}/${maxRetries}`);
+          const fileForAttempt = new File([buffer], file.name, { type: file.type });
+          const response = await openai.audio.transcriptions.create({
+            file: fileForAttempt,
+            model: "whisper-1",
+            language: "fr",
+            response_format: "text",
+          });
+          const text = typeof response === "string" ? response : (response as { text?: string }).text ?? "";
+          console.log("[transcribe] Succès, longueur:", text.length, "caractères");
+          return text;
+        } catch (err: unknown) {
+          const errMsg = err instanceof Error ? err.message : String(err);
+          console.error(`[transcribe] Tentative ${attempt} échouée:`, errMsg);
+          if (attempt === maxRetries) throw err;
+          const delay = Math.min(1000 * Math.pow(2, attempt), 10000);
+          console.log(`[transcribe] Retry dans ${delay}ms...`);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+      }
+      throw new Error("Transcription échouée après retries");
+    }
+
     const whisperStart = performance.now();
-    const transcriptionResponse = await openai.audio.transcriptions.create({
-      file: audioFile,
-      model: "whisper-1",
-      language: "fr",
-    });
-    const transcription = transcriptionResponse.text;
+    const transcription = await transcribeWithRetry(audioFile);
     const whisperMs = performance.now() - whisperStart;
 
     const dbUpdateStart = performance.now();
@@ -140,10 +177,16 @@ export async function POST(
       status: "TRANSCRIBED",
       transcriptionLen,
     });
-  } catch (error) {
-    const errMsg = error instanceof Error ? error.message : String(error);
-    const errStack = error instanceof Error ? error.stack : undefined;
-    console.error("[recordings/transcribe] Erreur:", errMsg, errStack);
+  } catch (error: unknown) {
+    const err = error as { message?: string; status?: number; code?: string; type?: string };
+    const errMsg = err?.message ?? String(error);
+    const errStack = error instanceof Error ? (error as Error).stack : undefined;
+    console.error("[recordings/transcribe] Erreur complète:", {
+      message: errMsg,
+      code: err?.code,
+      status: err?.status,
+      type: err?.type,
+    }, errStack);
 
     try {
       const { userId } = await auth();
@@ -168,13 +211,21 @@ export async function POST(
       console.error("[recordings/transcribe] Update ERROR:", e);
     }
 
-    const isOpenAI = errMsg.includes("OpenAI") || errMsg.includes("whisper");
+    if (err?.status === 413) {
+      return NextResponse.json(
+        { ok: false, error: "Fichier audio trop volumineux. Veuillez raccourcir votre enregistrement.", code: "FILE_TOO_LARGE" },
+        { status: 400 }
+      );
+    }
+    if (err?.code === "ETIMEDOUT" || errMsg?.toLowerCase?.().includes("timeout")) {
+      return NextResponse.json(
+        { ok: false, error: "Le traitement a pris trop de temps. Veuillez réessayer ou raccourcir votre enregistrement.", code: "TIMEOUT" },
+        { status: 408 }
+      );
+    }
+
     return NextResponse.json(
-      {
-        ok: false,
-        error: errMsg,
-        code: isOpenAI ? "OPENAI_ERROR" : "TRANSCRIBE_ERROR",
-      },
+      { ok: false, error: "Erreur lors de la transcription. Veuillez réessayer.", code: "TRANSCRIBE_ERROR" },
       { status: 500 }
     );
   }
