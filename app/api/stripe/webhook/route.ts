@@ -7,7 +7,7 @@ import { getOrCreateUserWithQuota, updateUserPlan, creditExtraMinutes } from "@/
 import { getOrCreateUserWithQuotaSeconds, updateUserQuotaTotal, creditExtraSeconds } from "@/lib/usage";
 import { getCurrentMonthKey } from "@/lib/billing";
 import { prisma } from "@/lib/prisma";
-import { PlanType, isAnnualCommitMonthlyPriceId } from "@/lib/billingConfig";
+import { PlanType, isAnnualCommitMonthlyPriceId, PACKS } from "@/lib/billingConfig";
 
 export async function POST(req: NextRequest) {
   const stripe = getStripeOrNull();
@@ -117,8 +117,9 @@ export async function POST(req: NextRequest) {
         const packIndex = parseInt(session.metadata.packIndex || "0", 10);
         const customerId = session.customer as string;
 
-        // Déterminer les minutes du pack (hardcodé pour l'instant, peut être amélioré)
-        const packMinutes = [120, 600, 3000][packIndex] || 0;
+        // Déterminer les minutes du pack depuis la configuration
+        const pack = PACKS[packIndex];
+        const packMinutes = pack ? pack.minutes : 0;
 
         if (packMinutes > 0) {
           const currentMonthKey = getCurrentMonthKey();

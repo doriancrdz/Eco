@@ -9,9 +9,9 @@ const comparisonData = [
   {
     label: "Minutes/mois",
     free: "10 min",
-    student: "120 min",
-    pro: "600 min",
-    business: "3000 min",
+    student: "800 min",
+    pro: "2000 min",
+    business: "6000 min",
   },
   {
     label: "Packs",

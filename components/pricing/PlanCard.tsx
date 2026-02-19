@@ -37,14 +37,6 @@ function PlanCard({
 
   const price = isYearly ? plan.priceYearly : plan.priceMonthly;
   const isFree = planKey === "free";
-  // Vue annuelle : prix mensuel effectif (total/12), format FR 1 décimale
-  const effectiveMonthlyPrice =
-    !isFree && isYearly && plan.priceYearly > 0
-      ? (Math.round((plan.priceYearly / 12) * 10) / 10).toLocaleString("fr-FR", {
-          minimumFractionDigits: 1,
-          maximumFractionDigits: 1,
-        })
-      : null;
 
   return (
     <motion.div
@@ -144,81 +136,37 @@ function PlanCard({
               {plan.name}
             </motion.h3>
             <div className="mb-8">
-              {effectiveMonthlyPrice !== null ? (
-                <>
-                  <div className="flex items-baseline gap-2">
-                    <motion.span
-                      key={`${effectiveMonthlyPrice}-annual`}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                      className="text-5xl font-bold text-gray-900"
-                    >
-                      {effectiveMonthlyPrice}€
-                    </motion.span>
-                    <motion.span
-                      key="period-mois"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.1 }}
-                      className="text-gray-500 text-base"
-                    >
-                      /mois
-                    </motion.span>
-                  </div>
-                  <motion.p
-                    initial={{ opacity: 0, y: -5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.15 }}
-                    className="text-sm text-emerald-600 font-semibold mt-2"
-                  >
-                    2 mois offerts
-                  </motion.p>
-                  <motion.p
+              <div className="flex items-baseline gap-2">
+                <motion.span
+                  key={`${price}-${isYearly}`}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                  className="text-5xl font-bold text-gray-900"
+                >
+                  {isFree ? "Gratuit" : `${price}€`}
+                </motion.span>
+                {!isFree && (
+                  <motion.span
+                    key={`period-${isYearly}`}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    transition={{ delay: 0.2 }}
-                    className="text-sm text-gray-500 mt-1"
+                    transition={{ delay: 0.1 }}
+                    className="text-gray-500 text-base"
                   >
-                    {plan.priceYearly}€ / an
-                  </motion.p>
-                </>
-              ) : (
-                <>
-                  <div className="flex items-baseline gap-2">
-                    <motion.span
-                      key={`${price}-${isYearly}`}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                      className="text-5xl font-bold text-gray-900"
-                    >
-                      {isFree ? "Gratuit" : `${price}€`}
-                    </motion.span>
-                    {!isFree && (
-                      <motion.span
-                        key={`period-${isYearly}`}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.1 }}
-                        className="text-gray-500 text-base"
-                      >
-                        /{isYearly ? "an" : "mois"}
-                      </motion.span>
-                    )}
-                  </div>
-                  {!isFree && isYearly && plan.yearlyDiscountPercent > 0 && (
-                    <motion.p
-                      initial={{ opacity: 0, y: -5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.2 }}
-                      className="text-sm text-emerald-600 font-semibold mt-2 flex items-center gap-1"
-                    >
-                      <span className="inline-block">💰</span>
-                      Économise ~{plan.yearlyDiscountPercent}%
-                    </motion.p>
-                  )}
-                </>
+                    /{isYearly ? "an" : "mois"}
+                  </motion.span>
+                )}
+              </div>
+              {!isFree && isYearly && (
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                  className="text-sm text-gray-500 mt-2"
+                >
+                  Choisissez votre mode de paiement
+                </motion.p>
               )}
             </div>
 

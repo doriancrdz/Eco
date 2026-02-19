@@ -15,9 +15,9 @@
  * STRIPE_PRICE_STUDENT_ANNUAL_COMMIT_MONTHLY=price_xxx  (paiement mensuel, engagement 12 mois)
  * STRIPE_PRICE_PRO_ANNUAL_COMMIT_MONTHLY=price_xxx
  * STRIPE_PRICE_BUSINESS_ANNUAL_COMMIT_MONTHLY=price_xxx
- * STRIPE_PRICE_PACK_120=price_xxx
- * STRIPE_PRICE_PACK_600=price_xxx
- * STRIPE_PRICE_PACK_3000=price_xxx
+ * STRIPE_PRICE_PACK_800=price_xxx
+ * STRIPE_PRICE_PACK_2000=price_xxx
+ * STRIPE_PRICE_PACK_6000=price_xxx
  */
 
 export type PlanType = "free" | "student" | "pro" | "business";
@@ -43,24 +43,24 @@ export const PLANS: Record<PlanType, PlanConfig> = {
   },
   student: {
     name: "Student",
-    minutesPerMonth: 120,
-    priceMonthly: 19,
-    priceYearly: 190,
-    yearlyDiscountPercent: 17,
+    minutesPerMonth: 800,
+    priceMonthly: 16, // Engagement 12 mois (paiement mensuel)
+    priceYearly: 192, // Annuel upfront (paiement en une fois)
+    yearlyDiscountPercent: 0, // Pas de réduction, juste deux modes de paiement différents
   },
   pro: {
     name: "Pro",
-    minutesPerMonth: 600,
-    priceMonthly: 49,
-    priceYearly: 490,
-    yearlyDiscountPercent: 17,
+    minutesPerMonth: 2000,
+    priceMonthly: 40, // Engagement 12 mois (paiement mensuel)
+    priceYearly: 480, // Annuel upfront (paiement en une fois)
+    yearlyDiscountPercent: 0, // Pas de réduction, juste deux modes de paiement différents
   },
   business: {
     name: "Business",
-    minutesPerMonth: 3000,
-    priceMonthly: 149,
-    priceYearly: 1490,
-    yearlyDiscountPercent: 17,
+    minutesPerMonth: 6000,
+    priceMonthly: 125, // Engagement 12 mois (paiement mensuel)
+    priceYearly: 1500, // Annuel upfront (paiement en une fois)
+    yearlyDiscountPercent: 0, // Pas de réduction, juste deux modes de paiement différents
   },
 };
 
@@ -71,9 +71,9 @@ export interface PackConfig {
 }
 
 export const PACKS: PackConfig[] = [
-  { name: "Pack +120 min", minutes: 120, price: 15 },
-  { name: "Pack +600 min", minutes: 600, price: 49 },
-  { name: "Pack +3000 min", minutes: 3000, price: 149 },
+  { name: "Pack +800 min", minutes: 800, price: 15 },
+  { name: "Pack +2000 min", minutes: 2000, price: 49 },
+  { name: "Pack +6000 min", minutes: 6000, price: 149 },
 ];
 
 /**
@@ -103,6 +103,7 @@ export function getStripePriceIdForPack(packIndex: number): string {
     throw new Error(`Pack invalide à l'index ${packIndex}`);
   }
 
+  // Utiliser les minutes du pack pour construire la clé env (800, 2000, 6000)
   const envKey = `STRIPE_PRICE_PACK_${pack.minutes}`;
   const priceId = process.env[envKey];
 

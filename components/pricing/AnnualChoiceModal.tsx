@@ -10,15 +10,9 @@ interface AnnualChoiceModalProps {
   planName: string;
   planKey: string;
   priceYearly: number;
+  priceMonthly: number; // Prix mensuel pour engagement 12 mois
   onChoose: (choice: AnnualBillingChoice) => void;
   isLoading?: boolean;
-}
-
-function formatMonthlyFromYearly(yearly: number): string {
-  return (yearly / 12).toLocaleString("fr-FR", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
 }
 
 export default function AnnualChoiceModal({
@@ -27,10 +21,10 @@ export default function AnnualChoiceModal({
   planName,
   planKey,
   priceYearly,
+  priceMonthly,
   onChoose,
   isLoading = false,
 }: AnnualChoiceModalProps) {
-  const effectiveMonthly = formatMonthlyFromYearly(priceYearly);
 
   return (
     <AnimatePresence>
@@ -94,7 +88,7 @@ export default function AnnualChoiceModal({
                     Payer mensuellement (engagement 12 mois)
                   </div>
                   <div className="mt-1 text-sm text-gray-600">
-                    {effectiveMonthly}€/mois — engagement 12 mois
+                    {priceMonthly}€/mois — engagement 12 mois
                   </div>
                 </motion.button>
               </div>
