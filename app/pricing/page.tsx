@@ -278,7 +278,7 @@ export default function PricingPage() {
           planName={selectedPlanForModal ? PLANS[selectedPlanForModal].name : ""}
           planKey={selectedPlanForModal ?? ""}
           priceYearly={selectedPlanForModal ? PLANS[selectedPlanForModal].priceYearly : 0}
-          priceMonthly={selectedPlanForModal ? PLANS[selectedPlanForModal].priceMonthly : 0}
+          priceAnnualCommitMonthly={selectedPlanForModal ? PLANS[selectedPlanForModal].priceAnnualCommitMonthly : 0}
           onChoose={handleAnnualChoice}
           isLoading={!!loadingPlan}
         />

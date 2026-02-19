@@ -9,8 +9,8 @@ interface AnnualChoiceModalProps {
   onClose: () => void;
   planName: string;
   planKey: string;
-  priceYearly: number;
-  priceMonthly: number; // Prix mensuel pour engagement 12 mois
+  priceYearly: number; // Prix annuel upfront
+  priceAnnualCommitMonthly: number; // Prix mensuel avec engagement 12 mois
   onChoose: (choice: AnnualBillingChoice) => void;
   isLoading?: boolean;
 }
@@ -21,7 +21,7 @@ export default function AnnualChoiceModal({
   planName,
   planKey,
   priceYearly,
-  priceMonthly,
+  priceAnnualCommitMonthly,
   onChoose,
   isLoading = false,
 }: AnnualChoiceModalProps) {
@@ -85,10 +85,10 @@ export default function AnnualChoiceModal({
                   className="w-full rounded-xl border-2 border-white/50 bg-white/70 p-4 text-left backdrop-blur-sm transition-all hover:border-aura-blue/40 hover:bg-white/90 disabled:opacity-50"
                 >
                   <div className="font-semibold text-gray-900">
-                    Payer mensuellement (engagement 12 mois)
+                    Paiement mensuel avec engagement 12 mois
                   </div>
                   <div className="mt-1 text-sm text-gray-600">
-                    {priceMonthly}€/mois — engagement 12 mois
+                    {priceAnnualCommitMonthly}€/mois — engagement 12 mois, facturé chaque mois
                   </div>
                 </motion.button>
               </div>

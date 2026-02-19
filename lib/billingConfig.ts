@@ -28,9 +28,10 @@ export type BillingMode = "monthly" | "yearly_upfront" | "annual_commit_monthly"
 export interface PlanConfig {
   name: string;
   minutesPerMonth: number;
-  priceMonthly: number; // en euros
-  priceYearly: number; // en euros
-  yearlyDiscountPercent: number; // ~17%
+  priceMonthly: number; // Prix mensuel SANS engagement (en euros)
+  priceYearly: number; // Prix annuel upfront (paiement en une fois, en euros)
+  priceAnnualCommitMonthly: number; // Prix mensuel AVEC engagement 12 mois (en euros)
+  yearlyDiscountPercent: number; // Pourcentage d'économie en mode annuel
 }
 
 export const PLANS: Record<PlanType, PlanConfig> = {
@@ -44,23 +45,26 @@ export const PLANS: Record<PlanType, PlanConfig> = {
   student: {
     name: "Student",
     minutesPerMonth: 800,
-    priceMonthly: 16, // Engagement 12 mois (paiement mensuel)
-    priceYearly: 192, // Annuel upfront (paiement en une fois)
-    yearlyDiscountPercent: 0, // Pas de réduction, juste deux modes de paiement différents
+    priceMonthly: 19, // Prix mensuel SANS engagement
+    priceYearly: 192, // Prix annuel upfront (paiement en une fois)
+    priceAnnualCommitMonthly: 16, // Prix mensuel AVEC engagement 12 mois
+    yearlyDiscountPercent: 16, // Économie: (19-16)/19 * 100 ≈ 16% (2 mois offerts sur 12)
   },
   pro: {
     name: "Pro",
     minutesPerMonth: 2000,
-    priceMonthly: 40, // Engagement 12 mois (paiement mensuel)
-    priceYearly: 480, // Annuel upfront (paiement en une fois)
-    yearlyDiscountPercent: 0, // Pas de réduction, juste deux modes de paiement différents
+    priceMonthly: 49, // Prix mensuel SANS engagement
+    priceYearly: 480, // Prix annuel upfront (paiement en une fois)
+    priceAnnualCommitMonthly: 40, // Prix mensuel AVEC engagement 12 mois
+    yearlyDiscountPercent: 18, // Économie: (49-40)/49 * 100 ≈ 18% (2 mois offerts sur 12)
   },
   business: {
     name: "Business",
     minutesPerMonth: 6000,
-    priceMonthly: 125, // Engagement 12 mois (paiement mensuel)
-    priceYearly: 1500, // Annuel upfront (paiement en une fois)
-    yearlyDiscountPercent: 0, // Pas de réduction, juste deux modes de paiement différents
+    priceMonthly: 149, // Prix mensuel SANS engagement
+    priceYearly: 1500, // Prix annuel upfront (paiement en une fois)
+    priceAnnualCommitMonthly: 125, // Prix mensuel AVEC engagement 12 mois
+    yearlyDiscountPercent: 16, // Économie: (149-125)/149 * 100 ≈ 16% (2 mois offerts sur 12)
   },
 };
 
