@@ -1,20 +1,28 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
+import dynamic from "next/dynamic";
 import PricingTopbar from "@/components/pricing/PricingTopbar";
 import PricingToggle from "@/components/pricing/PricingToggle";
 import PlanCard from "@/components/pricing/PlanCard";
 import PackCard from "@/components/pricing/PackCard";
 import PricingComparison from "@/components/pricing/PricingComparison";
 import TrustLine from "@/components/pricing/TrustLine";
-import PricingFAQ from "@/components/pricing/PricingFAQ";
-import TestimonialsMarquee from "@/components/pricing/TestimonialsMarquee";
 import AnnualChoiceModal, { type AnnualBillingChoice } from "@/components/pricing/AnnualChoiceModal";
 import { PLANS, PACKS, PlanType } from "@/lib/billingConfig";
 import { Mic, FileText, List, Percent } from "lucide-react";
+
+// Lazy load des composants non critiques
+const PricingFAQ = dynamic(() => import("@/components/pricing/PricingFAQ"), {
+  ssr: true,
+});
+
+const TestimonialsMarquee = dynamic(() => import("@/components/pricing/TestimonialsMarquee"), {
+  ssr: false,
+});
 
 export default function PricingPage() {
   const { isSignedIn } = useAuth();
@@ -25,6 +33,10 @@ export default function PricingPage() {
   const [error, setError] = useState<string | null>(null);
   const [annualModalOpen, setAnnualModalOpen] = useState(false);
   const [selectedPlanForModal, setSelectedPlanForModal] = useState<PlanType | null>(null);
+
+  // Mémoriser les plans et packs pour éviter les recalculs
+  const plansEntries = useMemo(() => Object.entries(PLANS), []);
+  const packsArray = useMemo(() => PACKS, []);
 
   useEffect(() => {
     // Masquer l'erreur après 5 secondes
@@ -96,7 +108,6 @@ export default function PricingPage() {
         setSelectedPlanForModal(planKey);
         setAnnualModalOpen(true);
       } catch (error) {
-        console.error("Erreur ouverture modal annuel:", error);
         setError("Impossible d'ouvrir le modal de sélection. Veuillez réessayer.");
       }
       return;
@@ -178,30 +189,15 @@ export default function PricingPage() {
 
         {/* Header */}
         <div className="pt-12 pb-12 px-4 text-center">
-          <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            className="text-4xl md:text-5xl lg:text-6xl font-semibold text-gray-900 mb-6 tracking-tight"
-          >
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold text-gray-900 mb-6 tracking-tight">
             Choisissez votre plan
-          </motion.h1>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1, duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            className="text-lg md:text-xl lg:text-2xl text-gray-600 max-w-2xl mx-auto leading-relaxed mb-8"
-          >
+          </h1>
+          <p className="text-lg md:text-xl lg:text-2xl text-gray-600 max-w-2xl mx-auto leading-relaxed mb-8">
             Transformez votre voix en connaissance structurée. Plans flexibles pour tous vos besoins.
-          </motion.p>
+          </p>
 
           {/* Chips */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.3 }}
-            className="flex flex-wrap items-center justify-center gap-2 md:gap-3 max-w-3xl mx-auto"
-          >
+          <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3 max-w-3xl mx-auto">
             {[
               { icon: FileText, label: "Résumé structuré" },
               { icon: List, label: "Points clés / notions importantes" },
@@ -210,61 +206,36 @@ export default function PricingPage() {
             ].map((chip, idx) => {
               const Icon = chip.icon;
               return (
-                <motion.div
+                <div
                   key={idx}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.25 + idx * 0.05, duration: 0.25 }}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/60 backdrop-blur-sm border border-white/40 text-xs md:text-sm font-medium text-gray-700 hover:bg-white/70 hover:border-white/50 transition-all duration-200"
                 >
                   <Icon className="w-3.5 h-3.5" />
                   <span>{chip.label}</span>
-                </motion.div>
+                </div>
               );
             })}
-          </motion.div>
+          </div>
         </div>
 
         {/* Toggle Mensuel/Annuel */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.25, duration: 0.5 }}
-          className="px-4"
-        >
+        <div className="px-4">
           <PricingToggle isYearly={isYearly} onToggle={setIsYearly} />
-        </motion.div>
+        </div>
 
         {/* Message d'erreur */}
         {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="max-w-4xl mx-auto px-4 mb-8"
-          >
+          <div className="max-w-4xl mx-auto px-4 mb-8">
             <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-xl text-sm">
               {error}
             </div>
-          </motion.div>
+          </div>
         )}
 
         {/* Plans */}
         <div className="max-w-7xl mx-auto px-4 mb-16">
-          <motion.div
-            initial="hidden"
-            animate="visible"
-            variants={{
-              visible: {
-                transition: {
-                  staggerChildren: 0.05,
-                  delayChildren: 0.2,
-                },
-              },
-            }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 items-stretch"
-          >
-            {Object.entries(PLANS).map(([planKey, plan], index) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 items-stretch">
+            {plansEntries.map(([planKey, plan], index) => (
               <PlanCard
                 key={planKey}
                 plan={plan}
@@ -276,7 +247,7 @@ export default function PricingPage() {
                 index={index}
               />
             ))}
-          </motion.div>
+          </div>
         </div>
 
         <AnnualChoiceModal
@@ -295,19 +266,14 @@ export default function PricingPage() {
 
         {/* Comparaison rapide */}
         <div className="max-w-6xl mx-auto px-4 mb-16">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 0.3 }}
-            className="mb-8 text-center"
-          >
+          <div className="mb-8 text-center">
             <h2 className="text-2xl md:text-3xl font-semibold text-gray-900 mb-2">
               Comparaison rapide
             </h2>
             <p className="text-sm md:text-base text-gray-600">
               Tous les détails en un coup d&apos;œil
             </p>
-          </motion.div>
+          </div>
           <PricingComparison />
         </div>
 
@@ -318,34 +284,17 @@ export default function PricingPage() {
 
         {/* Packs de minutes */}
         <div id="packs" className="max-w-6xl mx-auto px-4 mb-24 scroll-mt-20">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="text-center mb-12"
-          >
+          <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-semibold text-gray-900 mb-4">
               Packs de minutes supplémentaires
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
               Achetez un pack pour bénéficier de minutes supplémentaires.
             </p>
-          </motion.div>
+          </div>
 
-          <motion.div
-            initial="hidden"
-            animate="visible"
-            variants={{
-              visible: {
-                transition: {
-                  staggerChildren: 0.05,
-                  delayChildren: 0.4,
-                },
-              },
-            }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8"
-          >
-            {PACKS.map((pack, index) => (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+            {packsArray.map((pack, index) => (
               <PackCard
                 key={index}
                 name={pack.name}
@@ -353,31 +302,20 @@ export default function PricingPage() {
                 price={pack.price}
                 onSelect={() => handlePackSelect(index)}
                 isLoading={loadingPack === index}
-                index={index}
               />
             ))}
-          </motion.div>
+          </div>
         </div>
 
         {/* Testimonials Marquee */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          className="max-w-full mx-auto px-4 mb-24"
-        >
+        <div className="max-w-full mx-auto px-4 mb-24">
           <TestimonialsMarquee />
-        </motion.div>
+        </div>
 
         {/* FAQ */}
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-          className="max-w-6xl mx-auto px-4 pb-20"
-        >
+        <div className="max-w-6xl mx-auto px-4 pb-20">
           <PricingFAQ />
-        </motion.div>
+        </div>
       </div>
     </div>
   );

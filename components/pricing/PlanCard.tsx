@@ -1,7 +1,6 @@
 "use client";
 
 import { memo, useState, useEffect } from "react";
-import { motion } from "framer-motion";
 import { Check, Sparkles } from "lucide-react";
 import { PlanConfig } from "@/lib/billingConfig";
 
@@ -50,29 +49,8 @@ function PlanCard({
   const savingsAmount = planKey !== "free" ? savings[planKey as keyof typeof savings] : 0;
 
   return (
-    <motion.div
-      initial="hidden"
-      animate="visible"
-      variants={{
-        hidden: { opacity: 0, y: 30, scale: 0.95 },
-        visible: {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          transition: {
-            duration: 0.4,
-            delay: index * 0.05,
-            ease: [0.22, 1, 0.36, 1],
-          },
-        },
-      }}
-      whileHover={isMobile ? {} : {
-        y: isMostPopular ? -8 : -6,
-        scale: isMostPopular ? 1.03 : 1.02,
-        transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] },
-      }}
-      style={{ willChange: isMobile ? 'auto' : 'transform' }}
-      className={`relative h-full ${
+    <div
+      className={`relative h-full transition-transform duration-200 hover:scale-[1.02] ${
         isMostPopular
           ? "md:scale-105 z-10"
           : ""
@@ -80,32 +58,16 @@ function PlanCard({
     >
       {isMostPopular && (
         <>
-          {/* Glow animé derrière la carte - optimisé */}
-          <motion.div
-            animate={isMobile ? { opacity: 0.5 } : {
-              opacity: [0.5, 0.6, 0.5],
-            }}
-            transition={isMobile ? {} : {
-              duration: 4,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
-            className="absolute inset-0 bg-gradient-to-r from-aura-emerald/30 via-aura-blue/30 to-aura-sand/30 rounded-card blur-2xl -z-10"
-            style={{ willChange: isMobile ? 'auto' : 'opacity' }}
-          />
+          {/* Glow statique derrière la carte */}
+          <div className="absolute inset-0 bg-gradient-to-r from-aura-emerald/30 via-aura-blue/30 to-aura-sand/30 rounded-card blur-2xl -z-10 opacity-50" />
           <div className="absolute inset-0 bg-gradient-to-r from-aura-emerald/20 via-aura-blue/20 to-aura-sand/20 rounded-card blur-xl -z-10 opacity-60"></div>
           
           {/* Badge Most Popular intégré */}
           <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8, y: -5 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.25 }}
-              className="px-4 py-1.5 bg-gradient-to-r from-aura-emerald via-aura-blue to-aura-sand text-gray-900 text-xs font-bold rounded-full shadow-lg flex items-center gap-1.5"
-            >
+            <div className="px-4 py-1.5 bg-gradient-to-r from-aura-emerald via-aura-blue to-aura-sand text-gray-900 text-xs font-bold rounded-full shadow-lg flex items-center gap-1.5">
               <Sparkles className="w-3 h-3" />
               Most Popular
-            </motion.div>
+            </div>
           </div>
         </>
       )}
@@ -123,12 +85,8 @@ function PlanCard({
       )}
 
       {/* Wrapper avec bordure dégradée pour Student */}
-      <motion.div
-        whileHover={{
-          y: -4,
-          transition: { duration: 0.25, ease: [0.22, 1, 0.36, 1] },
-        }}
-        className={`relative h-full ${isMostPopular ? "p-[2px] rounded-3xl bg-gradient-to-r from-aura-emerald/40 via-aura-blue/40 to-aura-sand/40" : ""}`}
+      <div
+        className={`relative h-full transition-transform duration-200 hover:-translate-y-1 ${isMostPopular ? "p-[2px] rounded-3xl bg-gradient-to-r from-aura-emerald/40 via-aura-blue/40 to-aura-sand/40" : ""}`}
       >
         <div
           className={`rounded-3xl border p-8 h-full flex flex-col transition-all duration-250 ${
@@ -139,78 +97,39 @@ function PlanCard({
         >
           {/* HEADER: Hauteur fixe pour réserver l'espace en mode annuel */}
           <div className="min-h-[120px] mb-5">
-            <motion.h3
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="text-2xl font-semibold text-gray-900 mb-3"
-            >
+            <h3 className="text-2xl font-semibold text-gray-900 mb-3">
               {plan.name}
-            </motion.h3>
+            </h3>
             <div>
               {isYearly && !isFree ? (
                 // Mode Annuel: prix mensuel équivalent en gros, badge "2 mois offerts", total annuel en petit
                 <>
                   <div className="flex items-baseline gap-2">
-                    <motion.span
-                      key={`${displayPrice}-annual`}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                      className="text-5xl font-bold text-gray-900"
-                    >
+                    <span className="text-5xl font-bold text-gray-900">
                       {displayPrice}€
-                    </motion.span>
-                    <motion.span
-                      key="period-mois-annual"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      transition={{ delay: 0.1 }}
-                      className="text-gray-500 text-base"
-                    >
+                    </span>
+                    <span className="text-gray-500 text-base">
                       /mois
-                    </motion.span>
+                    </span>
                   </div>
-                  <motion.p
-                    initial={{ opacity: 0, y: -5 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.15 }}
-                    className="text-sm text-emerald-600 font-semibold mt-2"
-                  >
+                  <p className="text-sm text-emerald-600 font-semibold mt-2">
                     {savingsAmount}€ économisés
-                  </motion.p>
-                  <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.2 }}
-                    className="text-sm text-gray-500 mt-1"
-                  >
+                  </p>
+                  <p className="text-sm text-gray-500 mt-1">
                     {plan.priceYearly}€ / an
-                  </motion.p>
+                  </p>
                 </>
               ) : (
                 // Mode Mensuel: prix mensuel simple
                 <>
                   <div className="flex items-baseline gap-2">
-                    <motion.span
-                      key={`${displayPrice}-monthly`}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                      className="text-5xl font-bold text-gray-900"
-                    >
+                    <span className="text-5xl font-bold text-gray-900">
                       {isFree ? "Gratuit" : `${displayPrice}€`}
-                    </motion.span>
+                    </span>
                     {!isFree && (
-                      <motion.span
-                        key="period-mois-monthly"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.1 }}
-                        className="text-gray-500 text-base"
-                      >
+                      <span className="text-gray-500 text-base">
                         /mois
-                      </motion.span>
+                      </span>
                     )}
                   </div>
                   {/* Placeholder invisible pour Free en mode annuel pour réserver l'espace */}
@@ -239,40 +158,27 @@ function PlanCard({
                   { text: "Transcription + résumés illimités + points clés et notions à retenir", delay: 0.4 },
                 ]
             ).map((item, idx) => (
-              <motion.div
+              <div
                 key={idx}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: item.delay, duration: 0.4 }}
                 className="flex items-start gap-3 group"
               >
-                <motion.div
-                  whileHover={isMobile ? {} : { scale: 1.1, rotate: 3 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 15 }}
-                  style={{ willChange: isMobile ? 'auto' : 'transform' }}
-                >
+                <div className="transition-transform duration-200 hover:scale-110">
                   <Check className="w-5 h-5 text-emerald-600 flex-shrink-0 mt-0.5 group-hover:text-emerald-700 transition-colors" />
-                </motion.div>
+                </div>
                 <span className="text-gray-700 text-sm leading-relaxed">
                   {item.text}
                 </span>
-              </motion.div>
+              </div>
             ))}
           </div>
 
           {/* FOOTER: Hauteur fixe pour toutes les cartes */}
           <div className="min-h-[56px] flex items-end">
             {!isFree ? (
-              <motion.button
-                whileHover={isMobile || isLoading ? {} : {
-                  scale: 1.02,
-                  y: -2,
-                }}
-                whileTap={{ scale: 0.98 }}
+              <button
                 onClick={onSelect}
                 disabled={isLoading}
-                style={{ willChange: isMobile ? 'auto' : 'transform' }}
-                className={`w-full py-3.5 px-4 rounded-xl font-semibold text-sm transition-all duration-200 relative overflow-hidden ${
+                className={`w-full py-3.5 px-4 rounded-xl font-semibold text-sm transition-all duration-200 relative overflow-hidden hover:scale-[1.02] active:scale-[0.98] ${
                   isMostPopular
                     ? "bg-gradient-to-r from-gray-900 to-gray-800 text-white hover:from-gray-800 hover:to-gray-700 shadow-xl hover:shadow-[0_10px_30px_rgba(0,0,0,0.3)] hover:shadow-emerald-500/20"
                     : "bg-gradient-to-r from-gray-800 to-gray-700 text-white hover:from-gray-700 hover:to-gray-600 shadow-lg"
@@ -280,31 +186,15 @@ function PlanCard({
               >
                 {isLoading ? (
                   <span className="flex items-center justify-center gap-2">
-                    <motion.span
-                      animate={{ rotate: 360 }}
-                      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                      className="w-4 h-4 border-2 border-current border-t-transparent rounded-full"
-                    />
+                    <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
                     Chargement...
                   </span>
                 ) : (
-                  <motion.span
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="relative z-10"
-                  >
+                  <span className="relative z-10">
                     Choisir ce plan
-                  </motion.span>
+                  </span>
                 )}
-                {!isLoading && isMostPopular && (
-                  <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                    initial={{ x: "-100%" }}
-                    whileHover={{ x: "100%" }}
-                    transition={{ duration: 0.6 }}
-                  />
-                )}
-              </motion.button>
+              </button>
             ) : (
               // Placeholder invisible pour Free qui garde la même hauteur que le bouton
               <div className="w-full py-3.5 px-4 opacity-0 pointer-events-none" aria-hidden="true">
@@ -313,8 +203,8 @@ function PlanCard({
             )}
           </div>
         </div>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 }
 
