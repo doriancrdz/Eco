@@ -28,10 +28,14 @@ export default function RootLayout({
       </head>
       <body className={`${inter.className} aura-gradient`}>
         <ClerkProvider
+          publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
           signInUrl="/sign-in"
           signUpUrl="/sign-up"
-          afterSignInUrl="/"
-          afterSignUpUrl="/"
+          appearance={{
+            variables: {
+              colorPrimary: '#1f2937',
+            },
+          }}
         >
           {children}
         </ClerkProvider>
