@@ -18,7 +18,7 @@ const faqs = [
   {
     question: "Y a-t-il une limite de durée par enregistrement ?",
     answer:
-      "Oui, chaque enregistrement est limité à 30 minutes maximum. Cette limite s'applique à tous les plans pour garantir une qualité optimale de transcription.",
+      "Oui, chaque enregistrement est limité à 60 minutes maximum. Cette limite s'applique à tous les plans pour garantir une qualité optimale de transcription.",
   },
   {
     question: "Puis-je changer de plan à tout moment ?",

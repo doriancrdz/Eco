@@ -5,6 +5,7 @@ import { auth } from "@clerk/nextjs/server";
 import { getOrCreateUserWithQuotaSeconds, getAvailableSeconds } from "@/lib/usage";
 import { canUseMinutes } from "@/lib/billing";
 import { prisma } from "@/lib/prisma";
+import { MAX_RECORDING_DURATION_MINUTES } from "@/lib/billingConfig";
 
 /**
  * Crée un Recording et retourne recordingId immédiatement (sans audio).
@@ -35,10 +36,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Durée invalide" }, { status: 400 });
     }
 
-    // Limite de 30 minutes par enregistrement
-    if (durationSeconds > 30 * 60) {
+    // Limite de 60 minutes par enregistrement
+    const maxDurationSeconds = MAX_RECORDING_DURATION_MINUTES * 60;
+    if (durationSeconds > maxDurationSeconds) {
+      const durationMinutes = durationSeconds / 60; // PRÉCIS
       return NextResponse.json(
-        { error: `Enregistrement trop long (${Math.ceil(durationSeconds / 60)} min). Limite 30 min.` },
+        { error: `Enregistrement trop long (${durationMinutes.toFixed(2)} min). Limite ${MAX_RECORDING_DURATION_MINUTES} min.` },
         { status: 400 }
       );
     }

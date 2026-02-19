@@ -205,7 +205,7 @@ export default function PricingPage() {
             {[
               { icon: Mic, label: "Transcription réelle" },
               { icon: FileText, label: "Résumé structuré" },
-              { icon: Clock, label: "30 min / Eco" },
+              { icon: Clock, label: "60 min / Eco" },
               { icon: Calendar, label: "Reset le 1er du mois" },
             ].map((chip, idx) => {
               const Icon = chip.icon;

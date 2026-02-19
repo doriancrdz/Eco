@@ -10,6 +10,7 @@ import {
 } from "@/lib/usage";
 import { canUseMinutes } from "@/lib/billing";
 import { probeDurationMs } from "@/lib/serverAudio";
+import { MAX_RECORDING_DURATION_MINUTES } from "@/lib/billingConfig";
 
 /**
  * POST /api/recordings/[id]/complete
@@ -142,18 +143,24 @@ export async function POST(
     // Normalisation: entier positif
     durationMs = Math.max(1, Math.round(durationMs));
 
-    // Limite de 30 minutes par enregistrement (après fallback éventuel)
-    const maxDurationMs = 30 * 60 * 1000;
+    // Limite de 60 minutes par enregistrement (après fallback éventuel)
+    const maxDurationMs = MAX_RECORDING_DURATION_MINUTES * 60 * 1000;
+    const durationMinutes = durationMs / 60000; // PRÉCIS à 2 décimales
     if (durationMs > maxDurationMs) {
       return NextResponse.json(
         {
-          error: `Enregistrement trop long (${Math.ceil(
-            durationMs / 60000
-          )} min). La limite est de 30 minutes.`,
+          error: `Enregistrement trop long (${durationMinutes.toFixed(2)} min). La limite est de ${MAX_RECORDING_DURATION_MINUTES} minutes.`,
         },
         { status: 400 }
       );
     }
+
+    console.log("[recordings/complete] Durée exacte calculée", {
+      durationMs,
+      durationSeconds: (durationMs / 1000).toFixed(2),
+      durationMinutes: durationMinutes.toFixed(2),
+      durationSource,
+    });
 
     console.log("[recordings/complete] start", {
       traceId,

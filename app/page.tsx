@@ -13,6 +13,7 @@ import { useAudioLevel } from "@/hooks/useAudioLevel";
 import { Eco } from "@/types";
 import { getEcos } from "@/lib/storage";
 import { createPipelineTraceId, initRecording, uploadAndComplete } from "@/lib/transcription";
+import { MAX_RECORDING_DURATION_MINUTES } from "@/lib/billingConfig";
 import { motion, AnimatePresence } from "framer-motion";
 
 // Lazy load components non critiques
@@ -471,8 +472,42 @@ export default function Home() {
 
   const confirmStop = () => {
     console.log("[confirmStop] T0 stop clicked", { ts: Date.now() });
+    
+    // Calculer la durée EXACTE en millisecondes
+    const endTime = Date.now();
+    const startTime = startTimeRef.current;
+    if (startTime === null) {
+      console.error("[confirmStop] startTimeRef.current est null");
+      setIsRecording(false);
+      setIsProcessing(false);
+      setIsFocusMode(false);
+      setShowStopConfirm(false);
+      return;
+    }
+    
+    const durationMs = endTime - startTime - totalPausedMsRef.current;
+    const durationSeconds = durationMs / 1000; // PRÉCIS à 2 décimales
+    const durationMinutes = durationSeconds / 60; // PRÉCIS
+    
+    console.log("[confirmStop] Durée exacte calculée", {
+      durationMs: durationMs.toFixed(0),
+      durationSeconds: durationSeconds.toFixed(2),
+      durationMinutes: durationMinutes.toFixed(2),
+    });
+    
+    // Vérifier la limite AVANT de continuer
+    if (durationMinutes > MAX_RECORDING_DURATION_MINUTES) {
+      alert(`Enregistrement trop long (${durationMinutes.toFixed(2)} min). La limite est de ${MAX_RECORDING_DURATION_MINUTES} minutes.`);
+      setIsRecording(false);
+      setIsProcessing(false);
+      setIsFocusMode(false);
+      setShowStopConfirm(false);
+      return;
+    }
+    
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-      elapsedAtStopRef.current = recordingElapsedSeconds;
+      // Stocker la durée exacte pour processRecording
+      elapsedAtStopRef.current = durationSeconds;
       mediaRecorderRef.current.stop();
       console.log("[confirmStop] MediaRecorder.stop() appelé");
 

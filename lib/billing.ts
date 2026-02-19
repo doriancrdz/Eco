@@ -87,13 +87,22 @@ export function getAvailableMinutes(
 }
 
 /**
- * Débite des minutes pour un utilisateur
+ * Débite des minutes pour un utilisateur (LEGACY - utilisez debitRecordingSeconds pour la précision)
+ * Arrondit à 2 décimales pour éviter les erreurs de floating point
  * @returns true si le débit a réussi, false si quota insuffisant
  */
 export async function debitMinutes(
   userId: string,
   minutesToDebit: number
 ): Promise<boolean> {
+  // Arrondir à 2 décimales pour éviter les erreurs de floating point
+  const minutesToDebitRounded = Math.round(minutesToDebit * 100) / 100;
+  
+  console.log("[debitMinutes] Débit exact", {
+    userId,
+    minutes: minutesToDebitRounded.toFixed(2),
+    original: minutesToDebit,
+  });
   const user = await prisma.user.findUnique({
     where: { id: userId },
   });
@@ -150,7 +159,7 @@ export async function debitMinutes(
   });
   if (!updatedUser) throw new Error("Utilisateur introuvable");
 
-  let remainingToDebit = minutesToDebit;
+  let remainingToDebit = minutesToDebitRounded;
   let newExtraMinutes = updatedUser.extraMinutesMonth;
   let newUsedMinutes = updatedUser.minutesUsedMonth;
 

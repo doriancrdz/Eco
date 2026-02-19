@@ -217,7 +217,7 @@ function PlanCard({
                   ]
                 : [
                     { text: <><strong>{plan.minutesPerMonth} minutes</strong> par mois</>, delay: 0.3 },
-                    { text: <>Maximum <strong>30 minutes</strong> par enregistrement</>, delay: 0.35 },
+                    { text: <>Maximum <strong>60 minutes</strong> par enregistrement</>, delay: 0.35 },
                     { text: "Transcription + résumés illimités + points clés et notions à retenir", delay: 0.4 },
                   ]
               ).map((item, idx) => (

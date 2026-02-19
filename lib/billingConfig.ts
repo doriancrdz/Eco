@@ -82,6 +82,11 @@ export const PACKS: PackConfig[] = [
 ];
 
 /**
+ * Durée maximale d'un enregistrement en minutes
+ */
+export const MAX_RECORDING_DURATION_MINUTES = 60;
+
+/**
  * Récupère le PRICE_ID Stripe pour un plan donné
  * @throws Error si le PRICE_ID n'est pas configuré
  */
