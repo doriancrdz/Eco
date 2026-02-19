@@ -171,28 +171,8 @@ export async function POST(req: NextRequest) {
     const durationMinutes = durationMs ? durationMs / 60000 : null;
     const durationMinutesRounded = durationMinutes ? Math.round(durationMinutes * 10) / 10 : null;
 
-    // Déterminer le niveau de détail selon la durée
-    let detailLevel: 'minimal' | 'moyen' | 'détaillé';
-    let maxPointsCles: number;
-    let maxNotions: number;
-    let maxTokens: number;
-
-    if (!durationMinutesRounded || durationMinutesRounded < 2) {
-      detailLevel = 'minimal';
-      maxPointsCles = 3;
-      maxNotions = 2;
-      maxTokens = 300;
-    } else if (durationMinutesRounded < 10) {
-      detailLevel = 'moyen';
-      maxPointsCles = 5;
-      maxNotions = 4;
-      maxTokens = 800;
-    } else {
-      detailLevel = 'détaillé';
-      maxPointsCles = Math.min(15, Math.floor(durationMinutesRounded / 2)); // ~1 point toutes les 2 min
-      maxNotions = Math.min(10, Math.floor(durationMinutesRounded / 3)); // ~1 notion toutes les 3 min
-      maxTokens = 1500;
-    }
+    // Adapter max_tokens selon la durée
+    const maxTokens = !durationMinutesRounded || durationMinutesRounded < 2 ? 500 : durationMinutesRounded < 10 ? 1200 : 2000;
 
     console.log("[generate-summary] Appel OpenAI", {
       recordingId,
@@ -200,50 +180,55 @@ export async function POST(req: NextRequest) {
       transcriptionLength: textLength,
       sentLength: truncated.length,
       durationMinutes: durationMinutesRounded,
-      detailLevel,
-      maxPointsCles,
-      maxNotions,
       maxTokens,
     });
 
     // Construire le prompt système adapté selon la durée
     const systemPrompt = `Tu es un assistant IA expert en structuration de connaissances.
-Niveau de détail requis : ${detailLevel}
 Durée audio : ${durationMinutesRounded ? durationMinutesRounded.toFixed(1) : 'inconnue'} minutes
 
-RÈGLES STRICTES :
-${detailLevel === 'minimal' ? `
-- Résumé : 2-3 phrases maximum, très concis
-- Points clés : ${maxPointsCles} maximum, phrases courtes
-- Notions : ${maxNotions} maximum, mots-clés simples
-` : detailLevel === 'moyen' ? `
-- Résumé : 1 paragraphe de 4-6 phrases structuré
-- Points clés : ${maxPointsCles} phrases complètes et actionnables
-- Notions : ${maxNotions} concepts principaux
+RÈGLES STRICTES SELON LA DURÉE :
+
+${!durationMinutesRounded || durationMinutesRounded < 2 ? `
+RÉSUMÉ : 3-4 phrases simples mais complètes couvrant l'essentiel
+POINTS CLÉS : Minimum 5 points, phrases complètes et actionnables
+NOTIONS : Minimum 4 termes avec définitions courtes
+` : durationMinutesRounded < 10 ? `
+RÉSUMÉ : Structure en 3 parties
+- Introduction (2-3 phrases) : contexte et sujet
+- Développement (3-5 phrases) : points importants rédigés
+- Conclusion (2-3 phrases) : synthèse
+
+POINTS CLÉS : Minimum 8 points détaillés, n'oublie AUCUN point important
+NOTIONS : Minimum 6 termes avec définitions
 ` : `
-- Résumé : Structure complète en 3 parties
-  * Introduction (1-2 phrases) : contexte et sujet principal
-  * Développement (4-8 phrases) : idées principales détaillées avec transitions
-  * Conclusion (1-2 phrases) : synthèse et message clé
-- Points clés : ${maxPointsCles} points détaillés couvrant TOUS les aspects importants
-- Notions : ${maxNotions} concepts principaux et termes techniques
+RÉSUMÉ : Structure détaillée en 3 parties
+- Introduction (2-3 phrases) : contextualisation du sujet
+- Développement (6-10 phrases) : TOUS les points importants rédigés avec transitions naturelles
+- Conclusion (2-3 phrases) : synthèse et message clé à retenir
+
+POINTS CLÉS : Minimum 15 points très détaillés couvrant TOUS les aspects importants
+NOTIONS : Minimum 10 termes avec définitions précises
 `}
 
-IMPORTANT :
-- N'oublie AUCUN point important de la transcription
-- Adapte la longueur du résumé à la richesse du contenu
-- Si le contenu est dense, priorise la complétude sur la brièveté
-- Si le contenu est simple, reste concis
+IMPÉRATIF :
+- Ne sacrifie JAMAIS la complétude pour la brièveté
+- Si le contenu est dense, ajoute plus de points clés et notions
+- Chaque point clé doit être une phrase complète et actionnable
+- Chaque notion doit avoir sa définition
 
-Réponds UNIQUEMENT avec un JSON strict :
+Format JSON strict :
 {
   "titre": "Titre court (max 60 caractères)",
-  "resume": "Résumé selon le niveau de détail ci-dessus",
-  "pointsCles": ["Point 1", "Point 2", ...],
-  "notions": ["Notion 1", "Notion 2", ...]
+  "resume": "Résumé selon la structure ci-dessus",
+  "pointsCles": ["Point 1 complet", "Point 2 complet", ...],
+  "notions": [
+    {"terme": "Terme 1", "definition": "Définition courte"},
+    {"terme": "Terme 2", "definition": "Définition courte"}
+  ]
 }`;
 
-    const userPrompt = `Transcription de l'enregistrement audio${durationMinutesRounded ? ` (${durationMinutesRounded.toFixed(1)} minutes)` : ''} :
+    const userPrompt = `Transcription (${durationMinutesRounded ? durationMinutesRounded.toFixed(1) : 'inconnue'} min) :
 
 ${truncated}`;
 
@@ -260,7 +245,7 @@ ${truncated}`;
           content: userPrompt,
         },
       ],
-      temperature: 0.3, // Plus créatif que 0.1 mais reste précis
+      temperature: 0.4, // Plus créatif que 0.3 mais reste précis
       response_format: { type: "json_object" },
       max_tokens: maxTokens,
     });
@@ -271,17 +256,43 @@ ${truncated}`;
       completion.choices[0]?.message?.content ??
       '{"titre":"Résumé","resume":"","pointsCles":[],"notions":[]}';
 
-    let summary: { titre: string; resume: string; pointsCles: string[]; notions: string[] };
+    let summary: { titre: string; resume: string; pointsCles: string[]; notions: Array<{ terme: string; definition: string }> | string[] };
 
     try {
       const parsed = JSON.parse(summaryContent) as {
         titre?: string;
         resume?: string;
         pointsCles?: string[];
-        notions?: string[];
+        notions?: Array<{ terme: string; definition: string }> | string[];
         // Support du format ancien pour rétrocompatibilité
         structuredSummary?: StructuredSummary['structuredSummary'];
         keyPoints?: string[];
+      };
+
+      // Normaliser les notions : convertir en format { terme, definition }
+      const normalizeNotions = (notions: unknown): Array<{ terme: string; definition: string }> => {
+        if (!Array.isArray(notions)) return [];
+        return notions.map((n) => {
+          if (typeof n === "string") {
+            // Format ancien : string simple → convertir en objet avec définition vide
+            return { terme: n, definition: "" };
+          }
+          if (typeof n === "object" && n !== null && "terme" in n) {
+            // Format nouveau : { terme, definition }
+            return {
+              terme: typeof n.terme === "string" ? n.terme : "",
+              definition: typeof n.definition === "string" ? n.definition : "",
+            };
+          }
+          if (typeof n === "object" && n !== null && "term" in n) {
+            // Format alternatif : { term, definition }
+            return {
+              terme: typeof (n as { term?: string }).term === "string" ? (n as { term: string }).term : "",
+              definition: typeof (n as { definition?: string }).definition === "string" ? (n as { definition: string }).definition : "",
+            };
+          }
+          return { terme: String(n), definition: "" };
+        });
       };
 
       // Si format nouveau (titre/resume/pointsCles/notions), utiliser directement
@@ -290,7 +301,7 @@ ${truncated}`;
           titre: parsed.titre || "Résumé",
           resume: parsed.resume || "",
           pointsCles: Array.isArray(parsed.pointsCles) ? parsed.pointsCles : [],
-          notions: Array.isArray(parsed.notions) ? parsed.notions : [],
+          notions: normalizeNotions(parsed.notions),
         };
       } else if (parsed.structuredSummary) {
         // Format ancien (structuredSummary) → convertir
@@ -301,7 +312,13 @@ ${truncated}`;
             typeof n === "string" ? { term: n, definition: "" } : (n as { term: string; definition: string })
           ) || [],
         };
-        summary = toLegacyFormat(rawSummary);
+        const legacySummary = toLegacyFormat(rawSummary);
+        summary = {
+          titre: legacySummary.titre,
+          resume: legacySummary.resume,
+          pointsCles: legacySummary.pointsCles,
+          notions: normalizeNotions(legacySummary.notions),
+        };
       } else {
         // Fallback
         summary = {
@@ -317,7 +334,6 @@ ${truncated}`;
         resumeLength: summary.resume?.length || 0,
         pointsClesCount: summary.pointsCles?.length || 0,
         notionsCount: summary.notions?.length || 0,
-        detailLevel,
         durationMinutes: durationMinutesRounded,
         gptMs: timings.gptSummary.toFixed(2),
       });

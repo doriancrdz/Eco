@@ -12,7 +12,7 @@ export interface Summary {
   titre: string;
   resume: string;
   pointsCles: string[];
-  notions: string[];
+  notions: Array<{ terme: string; definition: string }> | string[]; // Support ancien format (string[]) pour rétrocompatibilité
 }
 
 export interface TranscriptionResult {
