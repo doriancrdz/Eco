@@ -30,8 +30,8 @@ export default function RootLayout({
         <ClerkProvider
           signInUrl="/sign-in"
           signUpUrl="/sign-up"
-          afterSignInUrl="/settings"
-          afterSignUpUrl="/settings"
+          afterSignInUrl="/"
+          afterSignUpUrl="/"
         >
           {children}
         </ClerkProvider>

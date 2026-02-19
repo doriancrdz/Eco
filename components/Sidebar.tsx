@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Home, CreditCard, Settings, LogOut } from "lucide-react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth, useClerk } from "@clerk/nextjs";
 import FolderList from "./FolderList";
 import EcoHistory from "./EcoHistory";
 
@@ -42,7 +42,9 @@ export default function Sidebar({
   refreshKey = 0,
 }: SidebarProps) {
   const { isSignedIn } = useAuth();
+  const { signOut } = useClerk();
   const [, setRefresh] = useState(0);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
     const handleStorageChange = () => setRefresh((r) => r + 1);
@@ -193,17 +195,15 @@ export default function Sidebar({
                         </span>
                       </motion.button>
                     )}
-                    {onSignOut && (
-                      <motion.button
-                        whileHover={{ x: 2 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => { onSignOut(); onClose?.(); }}
-                        className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-white/20 transition-all cursor-pointer"
-                      >
-                        <LogOut className="w-4 h-4 shrink-0" />
-                        Déconnexion
-                      </motion.button>
-                    )}
+                    <motion.button
+                      whileHover={{ x: 2 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setShowLogoutConfirm(true)}
+                      className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-white/20 transition-all cursor-pointer"
+                    >
+                      <LogOut className="w-4 h-4 shrink-0" />
+                      Déconnexion
+                    </motion.button>
                   </div>
                 )}
               </motion.div>
@@ -211,6 +211,62 @@ export default function Sidebar({
           </AnimatePresence>
         </div>
       </motion.div>
+
+      {/* Modale de confirmation de déconnexion */}
+      <AnimatePresence>
+        {showLogoutConfirm && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowLogoutConfirm(false)}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100]"
+              aria-hidden="true"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="fixed left-1/2 top-1/2 z-[101] w-full max-w-sm -translate-x-1/2 -translate-y-1/2 px-4"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="logout-confirm-title-sidebar"
+            >
+              <div className="bg-white rounded-3xl p-8 shadow-2xl border border-white/40">
+                <h3 id="logout-confirm-title-sidebar" className="text-xl font-bold text-gray-900 mb-4">
+                  Se déconnecter ?
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  Êtes-vous sûr de vouloir vous déconnecter ?
+                </p>
+                <div className="flex gap-3">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setShowLogoutConfirm(false)}
+                    className="flex-1 px-4 py-2 bg-gray-100 rounded-xl font-medium text-gray-900 hover:bg-gray-200 transition-colors"
+                  >
+                    Annuler
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={async () => {
+                      await signOut({ redirectUrl: '/sign-in' });
+                      onClose?.();
+                    }}
+                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors"
+                  >
+                    Oui, déconnecter
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </>
   );
 }

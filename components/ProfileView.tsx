@@ -23,6 +23,7 @@ export default function ProfileView({
   const router = useRouter();
   const [userPlan, setUserPlan] = useState<string>("free");
   const [isLoadingPortal, setIsLoadingPortal] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -41,8 +42,8 @@ export default function ProfileView({
     }
   }, [isOpen]);
 
-  const handleSignOut = () => {
-    signOut();
+  const handleSignOut = async () => {
+    await signOut({ redirectUrl: '/sign-in' });
     onClose();
   };
 
@@ -166,7 +167,7 @@ export default function ProfileView({
             <motion.button
               whileHover={{ x: 4 }}
               whileTap={{ scale: 0.98 }}
-              onClick={handleSignOut}
+              onClick={() => setShowLogoutConfirm(true)}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-gray-900 text-white font-bold hover:bg-gray-800 transition-all"
             >
               <LogOut className="w-5 h-5" />
@@ -175,6 +176,59 @@ export default function ProfileView({
           </div>
         </div>
       </motion.div>
+
+      {/* Modale de confirmation de déconnexion */}
+      <AnimatePresence>
+        {showLogoutConfirm && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowLogoutConfirm(false)}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60]"
+              aria-hidden="true"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="fixed left-1/2 top-1/2 z-[61] w-full max-w-sm -translate-x-1/2 -translate-y-1/2 px-4"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="logout-confirm-title"
+            >
+              <div className="bg-white rounded-3xl p-8 shadow-2xl border border-white/40">
+                <h3 id="logout-confirm-title" className="text-xl font-bold text-gray-900 mb-4">
+                  Se déconnecter ?
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  Êtes-vous sûr de vouloir vous déconnecter ?
+                </p>
+                <div className="flex gap-3">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setShowLogoutConfirm(false)}
+                    className="flex-1 px-4 py-2 bg-gray-100 rounded-xl font-medium text-gray-900 hover:bg-gray-200 transition-colors"
+                  >
+                    Annuler
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleSignOut}
+                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors"
+                  >
+                    Oui, déconnecter
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
         </React.Fragment>
       )}
     </AnimatePresence>

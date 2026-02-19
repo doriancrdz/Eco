@@ -58,6 +58,20 @@ export default function Home() {
 
   const { soundLevel, frequencyData, isAvailable, startAudioLevel, stopAudioLevel, analyserRef } = useAudioLevel(isPaused);
 
+  // Empêcher la fermeture accidentelle pendant l'enregistrement
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Seulement si un enregistrement est en cours
+      if (isRecording) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isRecording]);
+
   // Charger les ECOs depuis l'API (source unique)
   const loadEcos = useCallback(async () => {
     const t0 = performance.now();
