@@ -129,7 +129,7 @@ function PlanCard({
               : "border-white/30 bg-white/70 backdrop-blur-md shadow-[0_10px_40px_rgba(0,0,0,0.06)] hover:border-white/50 hover:shadow-[0_15px_50px_rgba(0,0,0,0.08)]"
           }`}
         >
-          <div className="flex-1">
+          <div className="flex-1 flex flex-col">
             <motion.h3
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -208,7 +208,7 @@ function PlanCard({
               )}
             </div>
 
-            <div className="space-y-4 mb-8">
+            <div className="space-y-4 mb-8 flex-1">
               {(planKey === "free"
                 ? [
                     { text: "10 minutes offertes", delay: 0.3 },
@@ -243,7 +243,7 @@ function PlanCard({
             </div>
           </div>
 
-          {!isFree && (
+          {!isFree ? (
             <motion.button
               whileHover={isMobile || isLoading ? {} : {
                 scale: 1.02,
@@ -253,7 +253,7 @@ function PlanCard({
               onClick={onSelect}
               disabled={isLoading}
               style={{ willChange: isMobile ? 'auto' : 'transform' }}
-              className={`w-full py-3.5 px-4 rounded-xl font-semibold text-sm transition-all duration-200 relative overflow-hidden ${
+              className={`w-full py-3.5 px-4 rounded-xl font-semibold text-sm transition-all duration-200 relative overflow-hidden mt-auto ${
                 isMostPopular
                   ? "bg-gradient-to-r from-gray-900 to-gray-800 text-white hover:from-gray-800 hover:to-gray-700 shadow-xl hover:shadow-[0_10px_30px_rgba(0,0,0,0.3)] hover:shadow-emerald-500/20"
                   : "bg-gradient-to-r from-gray-800 to-gray-700 text-white hover:from-gray-700 hover:to-gray-600 shadow-lg"
@@ -286,6 +286,9 @@ function PlanCard({
                 />
               )}
             </motion.button>
+          ) : (
+            // Espacement pour Free pour aligner avec les autres cartes (hauteur du bouton)
+            <div className="h-[50px] mt-auto" aria-hidden="true" />
           )}
         </div>
       </motion.div>

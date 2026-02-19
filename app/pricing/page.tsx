@@ -262,7 +262,7 @@ export default function PricingPage() {
                 },
               },
             }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8"
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 items-stretch"
           >
             {Object.entries(PLANS).map(([planKey, plan], index) => (
               <PlanCard
@@ -270,7 +270,7 @@ export default function PricingPage() {
                 plan={plan}
                 planKey={planKey}
                 isYearly={isYearly}
-                isMostPopular={planKey === "pro"}
+                isMostPopular={planKey === "student"}
                 onSelect={() => handlePlanSelect(planKey as PlanType)}
                 isLoading={loadingPlan === planKey}
                 index={index}
