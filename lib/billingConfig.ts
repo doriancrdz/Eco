@@ -40,6 +40,7 @@ export const PLANS: Record<PlanType, PlanConfig> = {
     minutesPerMonth: 10,
     priceMonthly: 0,
     priceYearly: 0,
+    priceAnnualCommitMonthly: 0,
     yearlyDiscountPercent: 0,
   },
   student: {
