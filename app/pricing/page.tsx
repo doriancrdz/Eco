@@ -328,7 +328,7 @@ export default function PricingPage() {
               Packs de minutes supplémentaires
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Besoin de plus de minutes ce mois-ci ? Achetez un pack valable pour le mois en cours.
+              Achetez un pack pour bénéficier de minutes supplémentaires.
             </p>
           </motion.div>
 

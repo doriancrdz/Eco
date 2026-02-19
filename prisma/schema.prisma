@@ -19,7 +19,8 @@ model User {
   extraMinutesMonth   Int       @default(0) // Minutes de packs achetés ce mois (legacy, deprecated)
   quotaSecondsTotal   Int       @default(600) // Quota total en secondes (10 min par défaut pour free)
   quotaSecondsUsed    Int       @default(0) // Secondes consommées ce mois
-  quotaExtraSeconds   Int       @default(0) // Secondes supplémentaires de packs achetés ce mois
+  quotaExtraSeconds   Int       @default(0) // Secondes supplémentaires de packs achetés ce mois (legacy, deprecated)
+  bonusSeconds        Int       @default(0) // Secondes bonus permanentes de packs achetés (jamais reset)
   quotaResetAt        DateTime? // Date de reset du quota (basé sur currentPeriodEnd ou monthKey)
   stripeCustomerId    String?   @unique // ID Stripe Customer
   stripeSubscriptionId String?  @unique // ID Stripe Subscription (si abonné)

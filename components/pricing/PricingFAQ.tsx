@@ -28,7 +28,7 @@ const faqs = [
   {
     question: "Les minutes sont-elles cumulables d'un mois sur l'autre ?",
     answer:
-      "Non, les minutes incluses dans votre plan sont valables uniquement pour le mois en cours. Elles se réinitialisent automatiquement le 1er de chaque mois. Cependant, les packs de minutes achetés sont valables pour le mois d'achat.",
+      "Les minutes incluses dans votre plan sont valables uniquement pour le mois en cours et se réinitialisent automatiquement le 1er de chaque mois. Cependant, les packs de minutes achetés sont permanents et cumulatifs : ils ne se réinitialisent jamais et s'ajoutent à vos minutes disponibles.",
   },
 ];
 

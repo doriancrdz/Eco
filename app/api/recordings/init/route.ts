@@ -63,7 +63,8 @@ export async function POST(req: NextRequest) {
     const available = getAvailableSeconds(
       user.quotaSecondsTotal,
       user.quotaSecondsUsed,
-      user.quotaExtraSeconds
+      user.quotaExtraSeconds,
+      user.bonusSeconds
     );
 
     // Si quota complètement épuisé, refuser dès maintenant

@@ -76,15 +76,6 @@ function PackCard({
             </motion.div>
             <h4 className="text-xl font-bold text-gray-900">{name}</h4>
           </motion.div>
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.25 }}
-            className="text-gray-600 text-sm flex items-center gap-1.5"
-          >
-            <Clock className="w-3.5 h-3.5" />
-            Valable ce mois uniquement
-          </motion.p>
         </div>
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}

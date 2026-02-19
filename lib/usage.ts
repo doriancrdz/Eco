@@ -30,6 +30,7 @@ export async function getOrCreateUserWithQuotaSeconds(
   quotaSecondsTotal: number;
   quotaSecondsUsed: number;
   quotaExtraSeconds: number;
+  bonusSeconds: number;
   quotaResetAt: Date | null;
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
@@ -53,6 +54,7 @@ export async function getOrCreateUserWithQuotaSeconds(
         quotaSecondsTotal: defaultQuotaSeconds,
         quotaSecondsUsed: 0,
         quotaExtraSeconds: 0,
+        bonusSeconds: 0,
         quotaResetAt: null,
       },
     });
@@ -85,6 +87,7 @@ export async function getOrCreateUserWithQuotaSeconds(
           quotaSecondsTotal: newQuotaTotal,
           quotaSecondsUsed: 0,
           quotaExtraSeconds: 0,
+          // bonusSeconds: JAMAIS RESET (permanent)
           quotaResetAt: resetAt,
           // Legacy fields reset aussi
           minutesUsedMonth: 0,
@@ -112,6 +115,7 @@ export async function getOrCreateUserWithQuotaSeconds(
     quotaSecondsTotal: user.quotaSecondsTotal,
     quotaSecondsUsed: user.quotaSecondsUsed,
     quotaExtraSeconds: user.quotaExtraSeconds,
+    bonusSeconds: user.bonusSeconds,
     quotaResetAt: user.quotaResetAt,
     stripeCustomerId: user.stripeCustomerId,
     stripeSubscriptionId: user.stripeSubscriptionId,
@@ -121,13 +125,18 @@ export async function getOrCreateUserWithQuotaSeconds(
 
 /**
  * Calcule les secondes disponibles pour un utilisateur
+ * Les bonusSeconds sont permanents et s'ajoutent aux minutes du plan
  */
 export function getAvailableSeconds(
   quotaSecondsTotal: number,
   quotaSecondsUsed: number,
-  quotaExtraSeconds: number
+  quotaExtraSeconds: number,
+  bonusSeconds: number = 0
 ): number {
-  return quotaSecondsTotal - quotaSecondsUsed + quotaExtraSeconds;
+  // Minutes du plan encore disponibles ce mois-ci
+  const planSecondsLeft = Math.max(0, quotaSecondsTotal - quotaSecondsUsed);
+  // Total = minutes du plan + bonus permanents + extra (legacy)
+  return planSecondsLeft + bonusSeconds + quotaExtraSeconds;
 }
 
 /**
@@ -164,6 +173,7 @@ export async function debitRecordingSeconds(
           quotaSecondsTotal: true,
           quotaSecondsUsed: true,
           quotaExtraSeconds: true,
+          bonusSeconds: true,
         },
       });
       if (!user) throw new Error("Utilisateur introuvable");
@@ -171,7 +181,8 @@ export async function debitRecordingSeconds(
       const remaining = getAvailableSeconds(
         user.quotaSecondsTotal,
         user.quotaSecondsUsed,
-        user.quotaExtraSeconds
+        user.quotaExtraSeconds,
+        user.bonusSeconds
       );
 
       // Récupérer le montant déjà débité depuis UsageEvent
@@ -216,6 +227,7 @@ export async function debitRecordingSeconds(
           quotaSecondsTotal: newQuotaTotal,
           quotaSecondsUsed: 0,
           quotaExtraSeconds: 0,
+          // bonusSeconds: JAMAIS RESET (permanent)
           minutesUsedMonth: 0,
           extraMinutesMonth: 0,
         },
@@ -235,7 +247,8 @@ export async function debitRecordingSeconds(
     const available = getAvailableSeconds(
       updatedUser.quotaSecondsTotal,
       updatedUser.quotaSecondsUsed,
-      updatedUser.quotaExtraSeconds
+      updatedUser.quotaExtraSeconds,
+      updatedUser.bonusSeconds
     );
 
     // 6. Vérifier si quota suffisant
@@ -247,26 +260,29 @@ export async function debitRecordingSeconds(
       if (partialSeconds > 0) {
         // Débiter partiellement
         let remainingToDebit = partialSeconds;
-        let newExtraSeconds = updatedUser.quotaExtraSeconds;
+        let newBonusSeconds = updatedUser.bonusSeconds;
         let newUsedSeconds = updatedUser.quotaSecondsUsed;
+        const planSecondsLeft = Math.max(0, updatedUser.quotaSecondsTotal - updatedUser.quotaSecondsUsed);
 
-        // Débiter d'abord les extra seconds
-        if (newExtraSeconds > 0 && remainingToDebit > 0) {
-          const debitFromExtra = Math.min(newExtraSeconds, remainingToDebit);
-          newExtraSeconds -= debitFromExtra;
-          remainingToDebit -= debitFromExtra;
+        // Débiter d'abord les secondes du plan
+        if (planSecondsLeft > 0 && remainingToDebit > 0) {
+          const debitFromPlan = Math.min(planSecondsLeft, remainingToDebit);
+          newUsedSeconds += debitFromPlan;
+          remainingToDebit -= debitFromPlan;
         }
 
-        // Débiter ensuite les secondes incluses
-        if (remainingToDebit > 0) {
-          newUsedSeconds += remainingToDebit;
+        // Débiter ensuite les bonus permanents
+        if (newBonusSeconds > 0 && remainingToDebit > 0) {
+          const debitFromBonus = Math.min(newBonusSeconds, remainingToDebit);
+          newBonusSeconds -= debitFromBonus;
+          remainingToDebit -= debitFromBonus;
         }
 
         await tx.user.update({
           where: { id: userId },
           data: {
             quotaSecondsUsed: newUsedSeconds,
-            quotaExtraSeconds: newExtraSeconds,
+            bonusSeconds: newBonusSeconds,
           },
         });
 
@@ -302,21 +318,24 @@ export async function debitRecordingSeconds(
       };
     }
 
-    // 7. Débiter les secondes (d'abord les extra, puis les incluses)
+    // 7. Débiter les secondes (d'abord le plan, puis les bonus permanents)
     let remainingToDebit = secondsToDebit;
-    let newExtraSeconds = updatedUser.quotaExtraSeconds;
+    let newBonusSeconds = updatedUser.bonusSeconds;
     let newUsedSeconds = updatedUser.quotaSecondsUsed;
+    const planSecondsLeft = Math.max(0, updatedUser.quotaSecondsTotal - updatedUser.quotaSecondsUsed);
 
-    // Débiter d'abord les extra seconds
-    if (newExtraSeconds > 0 && remainingToDebit > 0) {
-      const debitFromExtra = Math.min(newExtraSeconds, remainingToDebit);
-      newExtraSeconds -= debitFromExtra;
-      remainingToDebit -= debitFromExtra;
+    // Débiter d'abord les secondes du plan
+    if (planSecondsLeft > 0 && remainingToDebit > 0) {
+      const debitFromPlan = Math.min(planSecondsLeft, remainingToDebit);
+      newUsedSeconds += debitFromPlan;
+      remainingToDebit -= debitFromPlan;
     }
 
-    // Débiter ensuite les secondes incluses
-    if (remainingToDebit > 0) {
-      newUsedSeconds += remainingToDebit;
+    // Débiter ensuite les bonus permanents
+    if (newBonusSeconds > 0 && remainingToDebit > 0) {
+      const debitFromBonus = Math.min(newBonusSeconds, remainingToDebit);
+      newBonusSeconds -= debitFromBonus;
+      remainingToDebit -= debitFromBonus;
     }
 
     // 8. Mettre à jour l'utilisateur
@@ -324,7 +343,7 @@ export async function debitRecordingSeconds(
       where: { id: userId },
       data: {
         quotaSecondsUsed: newUsedSeconds,
-        quotaExtraSeconds: newExtraSeconds,
+        bonusSeconds: newBonusSeconds,
       },
     });
 
@@ -353,6 +372,7 @@ export async function debitRecordingSeconds(
         quotaSecondsTotal: true,
         quotaSecondsUsed: true,
         quotaExtraSeconds: true,
+        bonusSeconds: true,
       },
     });
 
@@ -363,7 +383,8 @@ export async function debitRecordingSeconds(
     const remaining = getAvailableSeconds(
       finalUser.quotaSecondsTotal,
       finalUser.quotaSecondsUsed,
-      finalUser.quotaExtraSeconds
+      finalUser.quotaExtraSeconds,
+      finalUser.bonusSeconds
     );
 
     return {
@@ -409,7 +430,8 @@ export async function updateUserQuotaTotal(
 }
 
 /**
- * Ajoute des secondes supplémentaires (pour packs)
+ * Ajoute des secondes supplémentaires (pour packs) - LEGACY
+ * Utiliser creditBonusSeconds pour les nouveaux packs permanents
  */
 export async function creditExtraSeconds(
   userId: string,
@@ -434,6 +456,7 @@ export async function creditExtraSeconds(
         monthKey: currentMonthKey,
         quotaSecondsUsed: 0,
         quotaExtraSeconds: 0,
+        // bonusSeconds: JAMAIS RESET (permanent)
         minutesUsedMonth: 0,
         extraMinutesMonth: 0,
       },
@@ -455,4 +478,31 @@ export async function creditExtraSeconds(
       },
     });
   }
+}
+
+/**
+ * Ajoute des secondes bonus permanentes (pour packs) - NOUVEAU
+ * Les bonusSeconds ne sont JAMAIS reset, contrairement à quotaExtraSeconds
+ */
+export async function creditBonusSeconds(
+  userId: string,
+  seconds: number
+): Promise<void> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user) {
+    throw new Error("Utilisateur introuvable");
+  }
+
+  // Ajouter les secondes bonus de manière permanente (jamais reset)
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      bonusSeconds: {
+        increment: seconds,
+      },
+    },
+  });
 }

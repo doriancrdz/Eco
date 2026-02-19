@@ -19,7 +19,7 @@ export async function GET() {
     const user = await getOrCreateUserWithQuotaSeconds(userId);
     const fullUser = await prisma.user.findUnique({
       where: { id: user.id },
-      select: { commitmentEndAt: true, billingMode: true, stripeSubscriptionId: true, subscriptionStatus: true },
+      select: { commitmentEndAt: true, billingMode: true, stripeSubscriptionId: true, subscriptionStatus: true, bonusSeconds: true },
     });
 
     // Déterminer le type d'abonnement depuis Stripe
@@ -59,7 +59,8 @@ export async function GET() {
       : getAvailableSeconds(
           user.quotaSecondsTotal,
           user.quotaSecondsUsed,
-          user.quotaExtraSeconds
+          user.quotaExtraSeconds,
+          user.bonusSeconds
         );
     
     // Convertir en minutes pour compatibilité (arrondi vers le bas)
@@ -89,6 +90,7 @@ export async function GET() {
       quotaSecondsTotal: user.quotaSecondsTotal,
       quotaSecondsUsed: user.quotaSecondsUsed,
       quotaExtraSeconds: user.quotaExtraSeconds,
+      bonusSeconds: user.bonusSeconds,
       availableSeconds,
       availableSecondsFormatted: formatSecondsToMMSS(availableSeconds),
       monthKey: user.monthKey,

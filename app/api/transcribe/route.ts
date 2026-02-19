@@ -128,7 +128,8 @@ export async function POST(req: NextRequest) {
     const availableSeconds = getAvailableSeconds(
       user.quotaSecondsTotal,
       user.quotaSecondsUsed,
-      user.quotaExtraSeconds
+      user.quotaExtraSeconds,
+      user.bonusSeconds
     );
 
     // Si quota insuffisant → retourner 403

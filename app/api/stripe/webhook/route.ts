@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { getStripeOrNull } from "@/lib/stripe";
 import { getOrCreateUserWithQuota, updateUserPlan, creditExtraMinutes } from "@/lib/billing";
-import { getOrCreateUserWithQuotaSeconds, updateUserQuotaTotal, creditExtraSeconds } from "@/lib/usage";
+import { getOrCreateUserWithQuotaSeconds, updateUserQuotaTotal, creditExtraSeconds, creditBonusSeconds } from "@/lib/usage";
 import { getCurrentMonthKey } from "@/lib/billing";
 import { prisma } from "@/lib/prisma";
 import { PlanType, isAnnualCommitMonthlyPriceId, PACKS } from "@/lib/billingConfig";
@@ -122,10 +122,12 @@ export async function POST(req: NextRequest) {
         const packMinutes = pack ? pack.minutes : 0;
 
         if (packMinutes > 0) {
+          const packSeconds = packMinutes * 60;
+          // Créditer les bonus permanents (jamais reset)
+          await creditBonusSeconds(user.id, packSeconds);
+          // Legacy: aussi créditer en minutes (deprecated)
           const currentMonthKey = getCurrentMonthKey();
-          // Créditer en minutes (legacy) et en secondes (nouveau)
           await creditExtraMinutes(user.id, packMinutes, currentMonthKey);
-          await creditExtraSeconds(user.id, packMinutes * 60, currentMonthKey);
 
           // Logger la transaction
           await prisma.transaction.create({
