@@ -41,6 +41,14 @@ function PlanCard({
   const displayPrice = isYearly ? plan.priceAnnualCommitMonthly : plan.priceMonthly;
   const displayPeriod = isYearly ? "mois" : "mois"; // En mode annuel, on affiche aussi "/mois" pour le prix principal
 
+  // Calcul des économies réelles en mode annuel
+  const savings = {
+    student: (19 * 12) - 192,  // 36€
+    pro: (49 * 12) - 480,       // 108€
+    business: (149 * 12) - 1500 // 288€
+  };
+  const savingsAmount = planKey !== "free" ? savings[planKey as keyof typeof savings] : 0;
+
   return (
     <motion.div
       initial="hidden"
@@ -169,7 +177,7 @@ function PlanCard({
                     transition={{ delay: 0.15 }}
                     className="text-sm text-emerald-600 font-semibold mt-2"
                   >
-                    2 mois offerts
+                    {savingsAmount}€ économisés
                   </motion.p>
                   <motion.p
                     initial={{ opacity: 0 }}

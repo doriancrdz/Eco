@@ -78,7 +78,7 @@ export default function PricingToggle({ isYearly, onToggle }: PricingToggleProps
             transition={{ duration: 0.2 }}
             className="text-xs text-gray-500"
           >
-            Facturé annuellement — 2 mois off
+            Facturé annuellement
           </motion.p>
         )}
       </div>
