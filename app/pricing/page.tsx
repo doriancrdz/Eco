@@ -11,6 +11,7 @@ import PackCard from "@/components/pricing/PackCard";
 import PricingComparison from "@/components/pricing/PricingComparison";
 import TrustLine from "@/components/pricing/TrustLine";
 import PricingFAQ from "@/components/pricing/PricingFAQ";
+import TestimonialsMarquee from "@/components/pricing/TestimonialsMarquee";
 import AnnualChoiceModal, { type AnnualBillingChoice } from "@/components/pricing/AnnualChoiceModal";
 import { PLANS, PACKS, PlanType } from "@/lib/billingConfig";
 import { Mic, FileText, Clock, Calendar } from "lucide-react";
@@ -346,6 +347,16 @@ export default function PricingPage() {
             ))}
           </motion.div>
         </div>
+
+        {/* Testimonials Marquee */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="max-w-full mx-auto px-4 mb-24"
+        >
+          <TestimonialsMarquee />
+        </motion.div>
 
         {/* FAQ */}
         <motion.div

@@ -199,3 +199,55 @@ body {
 .bg-gradient-radial {
   background: radial-gradient(circle, var(--tw-gradient-stops));
 }
+
+/* Marquee animation pour testimonials */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-container {
+  animation: marquee 36s linear infinite;
+  will-change: transform;
+}
+
+.marquee-container:hover {
+  animation-play-state: paused;
+}
+
+/* Style glassmorphism pour les cartes testimonials */
+.testimonial-card-glass {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.6) 0%,
+    rgba(255, 255, 255, 0.5) 100%
+  );
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.testimonial-card-glass::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: radial-gradient(
+    ellipse at top left,
+    rgba(255, 255, 255, 0.5) 0%,
+    transparent 70%
+  );
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+}
