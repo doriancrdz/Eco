@@ -1,30 +1,22 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
-// Routes publiques qui ne nécessitent PAS d'auth
-// IMPORTANT: /sign-in et /sign-up doivent être publiques pour que Clerk fonctionne correctement
+// Routes publiques essentielles (sign-in/sign-up gérées automatiquement par Clerk)
 const isPublicRoute = createRouteMatcher([
   '/',
-  '/sign-in(.*)',
-  '/sign-up(.*)',
-  '/api/webhooks(.*)',
-  '/api/stripe/webhook(.*)', // Webhook Stripe doit être public
   '/pricing',
+  '/api/stripe/webhook(.*)', // Webhook Stripe doit être public
 ]);
 
 export default clerkMiddleware(async (auth, request) => {
-  // Ne RIEN faire pour les routes publiques (sign-in/sign-up)
-  // Cela permet à Clerk de gérer le processus d'authentification sans interférence
-  if (isPublicRoute(request)) {
-    return;
+  // Laisser Clerk gérer sign-in/sign-up automatiquement
+  // Protéger uniquement les autres routes sauf les publiques
+  if (!isPublicRoute(request)) {
+    await auth.protect();
   }
-
-  // Protéger toutes les autres routes
-  await auth.protect();
 });
 
 export const config = {
   matcher: [
-    // Exclure les fichiers statiques Next.js et Vercel
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

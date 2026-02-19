@@ -27,16 +27,7 @@ export default function RootLayout({
         <link rel="preload" href="/logo-eco.png" as="image" />
       </head>
       <body className={`${inter.className} aura-gradient`}>
-        <ClerkProvider
-          publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}
-          signInUrl="/sign-in"
-          signUpUrl="/sign-up"
-          appearance={{
-            variables: {
-              colorPrimary: '#1f2937',
-            },
-          }}
-        >
+        <ClerkProvider>
           {children}
         </ClerkProvider>
       </body>
