@@ -14,7 +14,7 @@ import PricingFAQ from "@/components/pricing/PricingFAQ";
 import TestimonialsMarquee from "@/components/pricing/TestimonialsMarquee";
 import AnnualChoiceModal, { type AnnualBillingChoice } from "@/components/pricing/AnnualChoiceModal";
 import { PLANS, PACKS, PlanType } from "@/lib/billingConfig";
-import { Mic, FileText, Clock, Calendar } from "lucide-react";
+import { Mic, FileText, List, Percent } from "lucide-react";
 
 export default function PricingPage() {
   const { isSignedIn } = useAuth();
@@ -203,10 +203,10 @@ export default function PricingPage() {
             className="flex flex-wrap items-center justify-center gap-2 md:gap-3 max-w-3xl mx-auto"
           >
             {[
-              { icon: Mic, label: "Transcription réelle" },
               { icon: FileText, label: "Résumé structuré" },
-              { icon: Clock, label: "60 min / Eco" },
-              { icon: Calendar, label: "Reset le 1er du mois" },
+              { icon: List, label: "Points clés / notions importantes" },
+              { icon: Mic, label: "Transcription réelle" },
+              { icon: Percent, label: "Économisez 17% en payant annuellement" },
             ].map((chip, idx) => {
               const Icon = chip.icon;
               return (
