@@ -137,6 +137,11 @@ export async function POST(req: NextRequest) {
               minutesDelta: packMinutes,
             },
           });
+        } else {
+          // PackIndex invalide ou pack inconnu - log warning mais ne pas crash
+          console.warn(
+            `[webhook] Pack invalide ou inconnu: packIndex=${packIndex}, priceId=${session.metadata.priceId || "N/A"}, customerId=${customerId}`
+          );
         }
       }
     } else if (event.type === "invoice.payment_failed") {
