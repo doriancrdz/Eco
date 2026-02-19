@@ -211,7 +211,7 @@ body {
 }
 
 .marquee-container {
-  animation: marquee 36s linear infinite;
+  animation: marquee 90s linear infinite;
   will-change: transform;
 }
 
