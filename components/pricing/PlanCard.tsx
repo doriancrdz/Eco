@@ -130,7 +130,7 @@ function PlanCard({
           }`}
         >
           {/* HEADER: Hauteur fixe pour réserver l'espace en mode annuel */}
-          <div className="min-h-[140px] mb-8">
+          <div className="min-h-[120px] mb-5">
             <motion.h3
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -218,7 +218,7 @@ function PlanCard({
           </div>
 
           {/* CONTENT: Zone flexible qui prend le reste */}
-          <div className="flex-1 space-y-4 mb-8">
+          <div className="flex-1 space-y-4 mb-6">
             {(planKey === "free"
               ? [
                   { text: "10 minutes offertes", delay: 0.3 },
