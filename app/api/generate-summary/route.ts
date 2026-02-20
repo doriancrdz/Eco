@@ -171,8 +171,16 @@ export async function POST(req: NextRequest) {
     const durationMinutes = durationMs ? durationMs / 60000 : null;
     const durationMinutesRounded = durationMinutes ? Math.round(durationMinutes * 10) / 10 : null;
 
-    // Adapter max_tokens selon la durée
-    const maxTokens = !durationMinutesRounded || durationMinutesRounded < 2 ? 500 : durationMinutesRounded < 10 ? 1200 : 2000;
+    const durationMinutes = durationMinutesRounded ?? 0;
+    // max_tokens adaptatif : ~1 mot ≈ 1.3 tokens (résumé + points clés + notions)
+    const maxTokens =
+      durationMinutes < 3
+        ? 500
+        : durationMinutes < 10
+          ? 1500
+          : durationMinutes < 30
+            ? 3000
+            : 5000;
 
     console.log("[generate-summary] Appel OpenAI", {
       recordingId,
@@ -183,44 +191,104 @@ export async function POST(req: NextRequest) {
       maxTokens,
     });
 
-    // Construire le prompt système adapté selon la durée
     const systemPrompt = `Tu es un assistant IA expert en structuration de connaissances.
-Durée audio : ${durationMinutesRounded ? durationMinutesRounded.toFixed(1) : 'inconnue'} minutes
+Durée audio : ${durationMinutesRounded ? durationMinutesRounded.toFixed(1) : "inconnue"} minutes
 
-RÈGLES STRICTES SELON LA DURÉE :
+RÈGLES STRICTES POUR LE RÉSUMÉ :
 
-${!durationMinutesRounded || durationMinutesRounded < 2 ? `
-RÉSUMÉ : 3-4 phrases simples mais complètes couvrant l'essentiel
-POINTS CLÉS : Minimum 5 points, phrases complètes et actionnables
-NOTIONS : Minimum 4 termes avec définitions courtes
-` : durationMinutesRounded < 10 ? `
-RÉSUMÉ : Structure en 3 parties
-- Introduction (2-3 phrases) : contexte et sujet
-- Développement (3-5 phrases) : points importants rédigés
-- Conclusion (2-3 phrases) : synthèse
+${
+  durationMinutes < 3
+    ? `
+RÉSUMÉ COURT (< 3 min) :
+- Un seul paragraphe concis
+- Capture l'essentiel de manière directe
+- LONGUEUR CIBLE : 40-80 mots
+`
+    : durationMinutes < 10
+      ? `
+RÉSUMÉ STRUCTURÉ (3-10 min) :
 
-POINTS CLÉS : Minimum 8 points détaillés, n'oublie AUCUN point important
-NOTIONS : Minimum 6 termes avec définitions
-` : `
-RÉSUMÉ : Structure détaillée en 3 parties
-- Introduction (2-3 phrases) : contextualisation du sujet
-- Développement (6-10 phrases) : TOUS les points importants rédigés avec transitions naturelles
-- Conclusion (2-3 phrases) : synthèse et message clé à retenir
+**INTRODUCTION** (3-4 phrases) :
+- Présente le sujet principal
+- Annonce les thématiques clés
+- Contextualise l'enregistrement
 
-POINTS CLÉS : Minimum 15 points très détaillés couvrant TOUS les aspects importants
-NOTIONS : Minimum 10 termes avec définitions précises
-`}
+**DÉVELOPPEMENT** (2-3 paragraphes bien développés) :
+- Paragraphe 1 : Première thématique ou partie de l'audio avec détails
+- Paragraphe 2 : Deuxième thématique ou partie avec exemples
+- Paragraphe 3 : Troisième thématique ou conclusion des points principaux
+- N'OMETS AUCUNE information importante
+- Inclus les détails, arguments, et exemples clés
+
+**CONCLUSION** (2-3 phrases) :
+- Synthétise les points principaux
+- Rappelle le message clé
+
+LONGUEUR CIBLE : 150-250 mots
+`
+      : durationMinutes < 30
+        ? `
+RÉSUMÉ DÉTAILLÉ (10-30 min) :
+
+**INTRODUCTION** (4-5 phrases) :
+- Présente le contexte et le sujet global
+- Énumère les principales thématiques abordées
+- Explique l'objectif ou l'angle de l'enregistrement
+
+**DÉVELOPPEMENT** (4-6 paragraphes substantiels) :
+- Chaque paragraphe traite une thématique ou partie chronologique
+- Développe les arguments, exemples, et détails importants
+- Suit la progression logique de l'audio
+- N'OMETS AUCUNE information importante
+- Inclus toutes les nuances et subtilités évoquées
+
+**CONCLUSION** (3-4 phrases) :
+- Synthétise l'ensemble des points abordés
+- Dégage le message ou l'enseignement principal
+- Propose une ouverture ou une perspective finale
+
+LONGUEUR CIBLE : 400-550 mots
+`
+        : `
+RÉSUMÉ COMPLET (30-60 min) :
+
+**INTRODUCTION** (5-6 phrases) :
+- Contextualise le sujet de manière approfondie
+- Présente l'architecture globale de l'enregistrement
+- Annonce les parties ou thématiques principales
+
+**DÉVELOPPEMENT** (6-10 paragraphes développés) :
+- Chaque paragraphe correspond à une section ou thématique majeure
+- Développe en profondeur les arguments, théories, exemples
+- Suit rigoureusement la chronologie ou la logique de l'audio
+- Capture TOUTES les informations importantes
+- Inclus les détails techniques, les nuances, les débats éventuels
+- Relie les différentes parties entre elles
+
+**CONCLUSION** (4-5 phrases) :
+- Synthétise l'ensemble du contenu
+- Rappelle les points clés de chaque partie
+- Dégage les enseignements principaux
+- Propose une conclusion générale
+
+LONGUEUR CIBLE : 700-900 mots
+`
+}
+
+POINTS CLÉS : Minimum ${durationMinutes < 3 ? "5" : durationMinutes < 10 ? "10" : durationMinutes < 30 ? "20" : "30"} points détaillés
+NOTIONS : Minimum ${durationMinutes < 3 ? "4" : durationMinutes < 10 ? "8" : durationMinutes < 30 ? "15" : "25"} termes avec définitions
 
 IMPÉRATIF :
-- Ne sacrifie JAMAIS la complétude pour la brièveté
-- Si le contenu est dense, ajoute plus de points clés et notions
-- Chaque point clé doit être une phrase complète et actionnable
-- Chaque notion doit avoir sa définition
+- Le résumé doit être PROPORTIONNEL à la durée de l'audio
+- N'OMETS JAMAIS d'information importante
+- Structure claire avec sauts de ligne entre intro / développement / conclusion
+- Phrases complètes et bien rédigées
+- RESPECTE STRICTEMENT LA LONGUEUR CIBLE EN MOTS
 
 Format JSON strict :
 {
   "titre": "Titre court (max 60 caractères)",
-  "resume": "Résumé selon la structure ci-dessus",
+  "resume": "RÉSUMÉ STRUCTURÉ SELON LES RÈGLES CI-DESSUS (avec sauts de ligne entre parties)",
   "pointsCles": ["Point 1 complet", "Point 2 complet", ...],
   "notions": [
     {"terme": "Terme 1", "definition": "Définition courte"},
@@ -228,7 +296,7 @@ Format JSON strict :
   ]
 }`;
 
-    const userPrompt = `Transcription (${durationMinutesRounded ? durationMinutesRounded.toFixed(1) : 'inconnue'} min) :
+    const userPrompt = `Transcription complète (${durationMinutesRounded ? durationMinutesRounded.toFixed(1) : "inconnue"} min) :
 
 ${truncated}`;
 
@@ -236,17 +304,11 @@ ${truncated}`;
     const completion = await openai.chat.completions.create({
       model: AI_SUMMARY_MODEL,
       messages: [
-        {
-          role: "system",
-          content: systemPrompt,
-        },
-        {
-          role: "user",
-          content: userPrompt,
-        },
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
       ],
-      temperature: 0.4, // Plus créatif que 0.3 mais reste précis
       response_format: { type: "json_object" },
+      temperature: 0.5,
       max_tokens: maxTokens,
     });
 

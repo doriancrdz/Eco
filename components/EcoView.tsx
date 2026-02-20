@@ -324,7 +324,9 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
         ) : summary && summary.titre && summary.resume ? (
           <>
             <h3 className="text-xl font-semibold mt-0 mb-4 text-gray-900">{summary.titre}</h3>
-            <p className="mb-4 text-gray-700">{summary.resume}</p>
+            <div className="prose prose-sm max-w-none">
+              <p className="whitespace-pre-line text-gray-700 leading-relaxed">{summary.resume}</p>
+            </div>
           </>
         ) : summaryJson ? (
           <div>
