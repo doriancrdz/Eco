@@ -574,50 +574,54 @@ export default function Home() {
     };
 
     try {
-      let useR2 = false;
-      let r2AudioUrl: string | null = null;
-      let fileId: string | null = null;
-      let r2Key: string | null = null;
-
-      // Créer un File avec le bon nom et type pour l'upload R2
-      const extension = audioBlob.type.includes("mp4") || mimeType.includes("mp4") ? "mp4" : "webm";
-      const fileName = `recording.${extension}`;
-      const audioFile = new File([audioBlob], fileName, { type: audioBlob.type || "audio/webm" });
-      
-      console.log("[UPLOAD] Préparation fichier pour R2", {
-        name: audioFile.name,
-        type: audioFile.type,
-        sizeBytes: audioFile.size,
-        sizeMB: `${(audioFile.size / 1024 / 1024).toFixed(2)} MB`,
+      const contentType = audioBlob.type || "audio/webm";
+      const fileSize = audioBlob.size;
+      console.log("[processRecording] Demande presigned URL…", {
+        contentType,
+        fileSizeBytes: fileSize,
+        sizeMB: (fileSize / 1024 / 1024).toFixed(2),
       });
 
-      const uploadFormData = new FormData();
-      uploadFormData.append("audio", audioFile);
-      const uploadRes = await fetch("/api/upload-audio", {
+      const presignedRes = await fetch("/api/upload-audio/presigned-url", {
         method: "POST",
-        body: uploadFormData,
+        headers: { "Content-Type": "application/json", "x-eco-trace": traceId },
+        body: JSON.stringify({ contentType, fileSize }),
       });
-      logStep({ step: "uploadR2", status: uploadRes.status });
-      if (uploadRes.ok) {
-        const uploadJson = await uploadRes.json().catch(() => ({}));
-        fileId = uploadJson.fileId ?? null;
-        r2Key = uploadJson.r2Key ?? null;
-        r2AudioUrl = uploadJson.audioUrl ?? null;
-        if (fileId) {
-          useR2 = true;
-          console.log("[processRecording] Upload R2 réussi", { fileId, r2Key, audioUrl: r2AudioUrl });
+      logStep({ step: "presignedUrl", status: presignedRes.status });
+
+      if (!presignedRes.ok) {
+        const errData = await presignedRes.json().catch(() => ({}));
+        if (presignedRes.status === 503) {
+          throw new Error(errData.error || "Stockage audio non configuré. Réessayez plus tard.");
         }
+        throw new Error(errData.error || "Impossible d’obtenir l’URL d’upload");
       }
 
-      const audioUrl = useR2 && r2AudioUrl ? r2AudioUrl : URL.createObjectURL(audioBlob);
-
-      const initBody: Record<string, unknown> = { durationSeconds, mimeType, traceId };
-      if (useR2 && fileId) {
-        initBody.audioUrl = r2AudioUrl ?? undefined;
-        initBody.fileId = fileId;
-        initBody.r2Key = r2Key ?? undefined;
+      const { presignedUrl, fileId, r2Key } = await presignedRes.json();
+      if (!presignedUrl || !fileId || !r2Key) {
+        throw new Error("Réponse presigned URL invalide");
       }
 
+      console.log("[processRecording] Upload direct vers R2…");
+      const uploadPutRes = await fetch(presignedUrl, {
+        method: "PUT",
+        body: audioBlob,
+        headers: { "Content-Type": contentType },
+      });
+      logStep({ step: "uploadR2Direct", status: uploadPutRes.status });
+
+      if (!uploadPutRes.ok) {
+        throw new Error("Échec de l’upload vers le stockage (R2). Réessayez.");
+      }
+      console.log("[processRecording] Upload R2 réussi", { fileId, r2Key });
+
+      const initBody: Record<string, unknown> = {
+        durationSeconds,
+        mimeType,
+        traceId,
+        fileId,
+        r2Key,
+      };
       const initRes = await fetch("/api/recordings/init", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-eco-trace": traceId },
@@ -631,6 +635,7 @@ export default function Home() {
       recordingId = initJson.recordingId;
       if (!recordingId) throw new Error("recordingId manquant");
 
+      const audioUrl = URL.createObjectURL(audioBlob);
       const ecoTitle = `Eco du ${new Date().toLocaleDateString("fr-FR")}`;
       const minimalEco = {
         id: recordingId,
@@ -652,11 +657,7 @@ export default function Home() {
         throw new Error(createJson.error || "Erreur création Eco");
       }
 
-      if (useR2) {
-        await completeAndTranscribeFromR2(recordingId, durationSeconds, traceId, logStep);
-      } else {
-        await uploadAndComplete(recordingId, audioBlob, durationSeconds, mimeType, traceId, logStep);
-      }
+      await completeAndTranscribeFromR2(recordingId, durationSeconds, traceId, logStep);
 
       // 3b) Déclencher generate-summary tout de suite (EcoView le fera aussi au poll si besoin)
       try {
