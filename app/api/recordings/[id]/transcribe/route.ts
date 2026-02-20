@@ -100,8 +100,9 @@ export async function POST(
         );
       }
       const bytes = await body.transformToByteArray();
+      const buffer = Buffer.from(bytes);
       const mime = getRes.ContentType ?? "audio/webm";
-      audioFile = new File([bytes], "recording.webm", { type: mime });
+      audioFile = new File([buffer], "recording.webm", { type: mime });
       console.log("[transcribe] Fichier R2 récupéré:", audioFile.size, "bytes");
     } else {
       const formData = await req.formData();
