@@ -75,6 +75,11 @@ export async function GET() {
       billingMode !== "annual_commit_monthly" ||
       (fullUser?.commitmentEndAt ? now >= fullUser.commitmentEndAt : true);
 
+    const isCommit = Boolean(
+      billingMode === "annual_commit_monthly" ||
+        (fullUser?.commitmentEndAt && now < fullUser.commitmentEndAt)
+    );
+
     // Utiliser currentPeriodEnd depuis la DB (mis à jour par webhook Stripe)
     const quotaResetAt = user.currentPeriodEnd?.toISOString() ?? null;
 
@@ -99,6 +104,8 @@ export async function GET() {
       canCancel,
       subscriptionStatus: fullUser?.subscriptionStatus ?? null,
       subscriptionType, // "monthly" | "annual" | null
+      stripeSubscriptionId: fullUser?.stripeSubscriptionId ?? null,
+      isCommit,
       paymentBlocked: subscriptionBlocked ?? false,
     });
   } catch (error) {

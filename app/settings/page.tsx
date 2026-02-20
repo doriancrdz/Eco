@@ -20,6 +20,8 @@ interface BillingData {
   canCancel: boolean;
   subscriptionStatus: string | null;
   subscriptionType: "monthly" | "annual" | null;
+  stripeSubscriptionId: string | null;
+  isCommit: boolean;
   paymentBlocked: boolean;
 }
 
@@ -115,13 +117,22 @@ export default function SettingsPage() {
   const availableMinutes = billingData?.availableMinutes || 0;
   const usagePercent = totalMinutes > 0 ? (usedMinutes / totalMinutes) * 100 : 0;
 
-  // Déterminer quel bouton afficher selon le type d'abonnement
-  const isFree = billingData?.plan === "free";
-  const isMonthly = billingData?.subscriptionType === "monthly";
-  const isAnnual = billingData?.subscriptionType === "annual";
+  // Règles d'affichage des boutons selon le type d'abonnement
+  const isManualPlan = Boolean(
+    billingData && billingData.plan !== "free" && !billingData.stripeSubscriptionId
+  );
+  const isFree = billingData?.plan === "free" || isManualPlan;
+  const isMonthlyNoCommit =
+    Boolean(billingData && billingData.plan !== "free") &&
+    billingData?.subscriptionType === "monthly" &&
+    !billingData?.isCommit;
+  const isAnnualOrCommit =
+    Boolean(billingData && billingData.plan !== "free") &&
+    (billingData?.subscriptionType === "annual" || Boolean(billingData?.isCommit));
 
-  const showUpgradeButton = isFree || isAnnual;
-  const showCancelButton = !isFree && isMonthly && billingData?.canCancel;
+  const showUpgradeButton = isFree;
+  const showCancelButton = isMonthlyNoCommit;
+  const showPackButton = true;
 
   return (
     <div className="min-h-screen aura-gradient relative">
@@ -280,7 +291,7 @@ export default function SettingsPage() {
 
           {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-4">
-            {/* Bouton gauche */}
+            {/* Bouton gauche : upgrade (Free / plan manuel) ou résilier (mensuel sans engagement) */}
             {showUpgradeButton && (
               <motion.button
                 whileHover={{ scale: 1.02, y: -2 }}
@@ -319,19 +330,21 @@ export default function SettingsPage() {
               </motion.button>
             )}
 
-            {/* Bouton droite */}
-            <motion.button
-              whileHover={{ scale: 1.02, y: -2 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => router.push("/pricing#packs")}
-              className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-white border-2 border-gray-300 text-gray-900 rounded-xl font-semibold hover:bg-gray-50 hover:border-gray-400 transition-all"
-            >
-              <Package className="w-4 h-4" />
-              Acheter un pack
-            </motion.button>
+            {/* Bouton droite : toujours visible */}
+            {showPackButton && (
+              <motion.button
+                whileHover={{ scale: 1.02, y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => router.push("/pricing#packs")}
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-white border-2 border-gray-300 text-gray-900 rounded-xl font-semibold hover:bg-gray-50 hover:border-gray-400 transition-all"
+              >
+                <Package className="w-4 h-4" />
+                Acheter un pack
+              </motion.button>
+            )}
           </div>
 
-          {billingData && billingData.plan !== "free" && !showCancelButton && !billingData.canCancel && (
+          {billingData && isAnnualOrCommit && (
             <div className="mt-6 pt-6 border-t border-white/40">
               <p className="text-sm text-gray-500">
                 L&apos;annulation sera possible après la date d&apos;engagement.
