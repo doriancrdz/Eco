@@ -29,8 +29,14 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const traceId = req.headers.get("x-eco-trace") ?? (body && typeof body === "object" && "traceId" in body ? (body as { traceId?: string }).traceId : null);
-    const { durationSeconds: ds, mimeType } = body;
-    const durationSeconds = parseFloat(ds);
+    const { durationSeconds: ds, mimeType, audioUrl, fileId, r2Key } = body as {
+      durationSeconds?: unknown;
+      mimeType?: string;
+      audioUrl?: string;
+      fileId?: string;
+      r2Key?: string;
+    };
+    const durationSeconds = parseFloat(ds as string);
 
     if (isNaN(durationSeconds) || durationSeconds < 0) {
       return NextResponse.json({ error: "Durée invalide" }, { status: 400 });
@@ -83,9 +89,12 @@ export async function POST(req: NextRequest) {
       data: {
         userId: user.id,
         status: "PROCESSING",
-        durationSeconds, // Legacy field, sera remplacé par durationMs dans /complete
+        durationSeconds,
         mimeType: mimeType || "audio/webm",
-        usageRecorded: false, // Sera mis à true dans /complete
+        usageRecorded: false,
+        audioUrl: typeof audioUrl === "string" ? audioUrl : null,
+        fileId: typeof fileId === "string" ? fileId : null,
+        r2Key: typeof r2Key === "string" ? r2Key : null,
       },
     });
     timings.dbCreate = performance.now() - dbStart;

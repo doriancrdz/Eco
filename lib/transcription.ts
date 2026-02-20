@@ -149,6 +149,55 @@ export async function uploadAndComplete(
 }
 
 /**
+ * Complete (débit quota) puis transcribe en récupérant l’audio depuis R2.
+ * À utiliser quand l’audio a été uploadé via /api/upload-audio et que le Recording a fileId/r2Key.
+ */
+export async function completeAndTranscribeFromR2(
+  recordingId: string,
+  durationSeconds: number,
+  traceId?: string,
+  pipelineLog?: (entry: PipelineLogStep) => void
+): Promise<void> {
+  const durationMs = Math.max(1, Math.round(durationSeconds * 1000));
+  const completeHeaders: Record<string, string> = { "Content-Type": "application/json" };
+  if (traceId) completeHeaders["x-eco-trace"] = traceId;
+  const completeBody = { durationMs };
+  if (traceId) (completeBody as Record<string, unknown>).traceId = traceId;
+
+  const completeRes = await fetch(`/api/recordings/${recordingId}/complete`, {
+    method: "POST",
+    headers: completeHeaders,
+    body: JSON.stringify(completeBody),
+  });
+  const completeJson = await completeRes.json().catch(() => ({}));
+  pipelineLog?.({ step: "complete", status: completeRes.status, json: completeJson });
+  if (!completeRes.ok) {
+    const errorMsg = completeJson.error || "Erreur lors du débit du quota";
+    if (completeRes.status === 403) {
+      throw new Error(
+        completeJson.remainingFormatted
+          ? `Quota insuffisant. Il vous reste ${completeJson.remainingFormatted}.`
+          : errorMsg
+      );
+    }
+    throw new Error(errorMsg);
+  }
+
+  const transcribeUrl = `/api/recordings/${recordingId}/transcribe`;
+  const transcribeHeaders: Record<string, string> = {};
+  if (traceId) transcribeHeaders["x-eco-trace"] = traceId;
+  const transcribeRes = await fetch(transcribeUrl, {
+    method: "POST",
+    headers: transcribeHeaders,
+  });
+  const transcribeJson = await transcribeRes.json().catch(() => ({}));
+  pipelineLog?.({ step: "transcribe", status: transcribeRes.status, json: transcribeJson });
+  if (!transcribeRes.ok) {
+    throw new Error(transcribeJson.error || "Erreur transcription");
+  }
+}
+
+/**
  * PHASE A: Init (rapide) + Upload + Complete (débit quota)
  * Retourne après le débit du quota. La transcription arrive via polling.
  */

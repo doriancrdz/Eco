@@ -3,12 +3,25 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import OpenAI from "openai";
+import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { prisma } from "@/lib/prisma";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-  timeout: 120000, // 120 secondes pour les longs audios (25+ min)
+  timeout: 120000,
 });
+
+function getR2Client(): S3Client | null {
+  const accountId = process.env.R2_ACCOUNT_ID;
+  const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+  if (!accountId || !accessKeyId || !secretAccessKey) return null;
+  return new S3Client({
+    region: "auto",
+    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+    credentials: { accessKeyId, secretAccessKey },
+  });
+}
 
 /**
  * Reçoit l'audio et lance Whisper. Appelé en fire-and-forget par le client.
@@ -43,6 +56,14 @@ export async function POST(
 
     const recording = await prisma.recording.findFirst({
       where: { id: params.id, userId: user.id },
+      select: {
+        id: true,
+        userId: true,
+        status: true,
+        transcriptionText: true,
+        fileId: true,
+        r2Key: true,
+      },
     });
     if (!recording) {
       return NextResponse.json({ error: "Recording introuvable" }, { status: 404 });
@@ -54,39 +75,61 @@ export async function POST(
       );
     }
 
-    const formData = await req.formData();
-    const audioFile = formData.get("audio");
-    const fileSize = audioFile && audioFile instanceof File ? audioFile.size : 0;
-    console.log("[transcribe] formData received", {
-      traceId,
-      recordingId: params.id,
-      hasAudio: !!audioFile,
-      isFile: audioFile instanceof File,
-      fileSize,
-      ts: Date.now(),
-    });
-    if (!audioFile || !(audioFile instanceof File) || audioFile.size === 0) {
-      console.log("[transcribe] AUDIO_MISSING", { traceId, recordingId: params.id, userId: user.id });
-      return NextResponse.json(
-        { ok: false, error: "AUDIO_MISSING", code: "AUDIO_MISSING", detail: "Fichier audio absent ou vide" },
-        { status: 400 }
-      );
-    }
-
-    const fileSizeInMB = audioFile.size / (1024 * 1024);
-    console.log("[transcribe] Taille fichier:", fileSizeInMB.toFixed(2), "MB");
-    if (fileSizeInMB > 24) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error: "Fichier audio trop volumineux (max 24MB). Veuillez raccourcir votre enregistrement.",
-          code: "FILE_TOO_LARGE",
-        },
-        { status: 400 }
-      );
-    }
-
     const recordingId = params.id;
+    let audioFile: File;
+
+    if (recording.r2Key || recording.fileId) {
+      const s3 = getR2Client();
+      const bucket = process.env.R2_BUCKET_NAME;
+      if (!s3 || !bucket) {
+        return NextResponse.json(
+          { ok: false, error: "R2 non configuré", code: "R2_NOT_CONFIGURED" },
+          { status: 503 }
+        );
+      }
+      const key = recording.r2Key ?? `${recording.userId}/${recording.fileId}.webm`;
+      console.log("[transcribe] Téléchargement depuis R2:", key);
+      const getRes = await s3.send(
+        new GetObjectCommand({ Bucket: bucket, Key: key })
+      );
+      const body = getRes.Body;
+      if (!body) {
+        return NextResponse.json(
+          { ok: false, error: "Fichier R2 introuvable", code: "R2_MISSING" },
+          { status: 404 }
+        );
+      }
+      const bytes = await body.transformToByteArray();
+      const mime = getRes.ContentType ?? "audio/webm";
+      audioFile = new File([bytes], "recording.webm", { type: mime });
+      console.log("[transcribe] Fichier R2 récupéré:", audioFile.size, "bytes");
+    } else {
+      const formData = await req.formData();
+      const file = formData.get("audio");
+      const fileSize = file && file instanceof File ? file.size : 0;
+      console.log("[transcribe] formData received", {
+        traceId,
+        recordingId,
+        hasAudio: !!file,
+        isFile: file instanceof File,
+        fileSize,
+        ts: Date.now(),
+      });
+      if (!file || !(file instanceof File) || file.size === 0) {
+        return NextResponse.json(
+          { ok: false, error: "AUDIO_MISSING", code: "AUDIO_MISSING", detail: "Fichier audio absent ou vide" },
+          { status: 400 }
+        );
+      }
+      const fileSizeInMB = file.size / (1024 * 1024);
+      if (fileSizeInMB > 24) {
+        return NextResponse.json(
+          { ok: false, error: "Fichier audio trop volumineux (max 24MB).", code: "FILE_TOO_LARGE" },
+          { status: 400 }
+        );
+      }
+      audioFile = file;
+    }
     console.log("[transcribe] start", { traceId, recordingId, userId: user.id, fileSize, ts: Date.now() });
 
     async function transcribeWithRetry(file: File, maxRetries = 3): Promise<string> {

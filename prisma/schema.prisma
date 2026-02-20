@@ -62,7 +62,9 @@ model Recording {
   userId            String
   user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   status            String    @default("PROCESSING") // "PROCESSING" | "TRANSCRIBED" | "DONE" | "ERROR"
-  audioUrl          String?   // URL de l'audio (local ou cloud)
+  audioUrl          String?   // URL de l'audio (R2 ou local)
+  fileId            String?   // ID fichier R2
+  r2Key             String?   // Clé R2 complète (ex: userId/fileId.webm)
   audioBlobSize     Int?      // Taille du blob audio en bytes
   durationSeconds   Float?    // Durée de l'enregistrement (legacy)
   durationMs        Int?      // Durée précise en millisecondes

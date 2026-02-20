@@ -12,7 +12,7 @@ import RecordButton from "@/components/RecordButton";
 import { useAudioLevel } from "@/hooks/useAudioLevel";
 import { Eco } from "@/types";
 import { getEcos } from "@/lib/storage";
-import { createPipelineTraceId, initRecording, uploadAndComplete } from "@/lib/transcription";
+import { createPipelineTraceId, uploadAndComplete, completeAndTranscribeFromR2 } from "@/lib/transcription";
 import { MAX_RECORDING_DURATION_MINUTES } from "@/lib/billingConfig";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -391,9 +391,9 @@ export default function Home() {
       console.log("[startRecording] Format:", mimeType || "default");
       console.log("[startRecording] Format supporté?", mimeType ? MediaRecorder.isTypeSupported(mimeType) : "n/a");
 
-      // Créer MediaRecorder (96 kbps pour réduire la taille des longs enregistrements)
+      // Créer MediaRecorder (48 kbps pour longs enregistrements jusqu'à 60 min, compatible R2)
       const mediaRecorder = mimeType
-        ? new MediaRecorder(stream, { mimeType, audioBitsPerSecond: 96000 })
+        ? new MediaRecorder(stream, { mimeType, audioBitsPerSecond: 48000 })
         : new MediaRecorder(stream);
       console.log("[startRecording] MediaRecorder créé, state:", mediaRecorder.state);
 
@@ -554,13 +554,42 @@ export default function Home() {
     };
 
     try {
-      const audioUrl = URL.createObjectURL(audioBlob);
+      let useR2 = false;
+      let r2AudioUrl: string | null = null;
+      let fileId: string | null = null;
+      let r2Key: string | null = null;
 
-      // 1) Init recording
+      const uploadFormData = new FormData();
+      uploadFormData.append("audio", audioBlob, "recording.webm");
+      const uploadRes = await fetch("/api/upload-audio", {
+        method: "POST",
+        body: uploadFormData,
+      });
+      logStep({ step: "uploadR2", status: uploadRes.status });
+      if (uploadRes.ok) {
+        const uploadJson = await uploadRes.json().catch(() => ({}));
+        fileId = uploadJson.fileId ?? null;
+        r2Key = uploadJson.r2Key ?? null;
+        r2AudioUrl = uploadJson.audioUrl ?? null;
+        if (fileId) {
+          useR2 = true;
+          console.log("[processRecording] Upload R2 réussi:", r2Key);
+        }
+      }
+
+      const audioUrl = useR2 && r2AudioUrl ? r2AudioUrl : URL.createObjectURL(audioBlob);
+
+      const initBody: Record<string, unknown> = { durationSeconds, mimeType, traceId };
+      if (useR2 && fileId) {
+        initBody.audioUrl = r2AudioUrl ?? undefined;
+        initBody.fileId = fileId;
+        initBody.r2Key = r2Key ?? undefined;
+      }
+
       const initRes = await fetch("/api/recordings/init", {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-eco-trace": traceId },
-        body: JSON.stringify({ durationSeconds, mimeType, traceId }),
+        body: JSON.stringify(initBody),
       });
       const initJson = await initRes.json().catch(() => ({}));
       logStep({ step: "initRecording", status: initRes.status, json: initJson });
@@ -570,7 +599,6 @@ export default function Home() {
       recordingId = initJson.recordingId;
       if (!recordingId) throw new Error("recordingId manquant");
 
-      // 2) Créer l'Eco en DB
       const ecoTitle = `Eco du ${new Date().toLocaleDateString("fr-FR")}`;
       const minimalEco = {
         id: recordingId,
@@ -592,8 +620,11 @@ export default function Home() {
         throw new Error(createJson.error || "Erreur création Eco");
       }
 
-      // 3) Complete (débit quota) puis Transcribe (await)
-      await uploadAndComplete(recordingId, audioBlob, durationSeconds, mimeType, traceId, logStep);
+      if (useR2) {
+        await completeAndTranscribeFromR2(recordingId, durationSeconds, traceId, logStep);
+      } else {
+        await uploadAndComplete(recordingId, audioBlob, durationSeconds, mimeType, traceId, logStep);
+      }
 
       // 3b) Déclencher generate-summary tout de suite (EcoView le fera aussi au poll si besoin)
       try {
