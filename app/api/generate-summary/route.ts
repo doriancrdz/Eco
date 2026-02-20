@@ -168,9 +168,7 @@ export async function POST(req: NextRequest) {
 
     // Calculer la durée en minutes depuis durationMs ou durationSeconds
     const durationMs = recording.durationMs || (recording.durationSeconds ? recording.durationSeconds * 1000 : null);
-    const durationMinutes = durationMs ? durationMs / 60000 : null;
-    const durationMinutesRounded = durationMinutes ? Math.round(durationMinutes * 10) / 10 : null;
-
+    const durationMinutesRounded = durationMs ? Math.round((durationMs / 60000) * 10) / 10 : null;
     const durationMinutes = durationMinutesRounded ?? 0;
     // max_tokens adaptatif : ~1 mot ≈ 1.3 tokens (résumé + points clés + notions)
     const maxTokens =
