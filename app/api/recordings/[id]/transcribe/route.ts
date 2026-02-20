@@ -131,6 +131,8 @@ export async function POST(
       }
       audioFile = file;
     }
+
+    const fileSize = audioFile.size;
     console.log("[transcribe] start", { traceId, recordingId, userId: user.id, fileSize, ts: Date.now() });
 
     async function transcribeWithRetry(file: File, maxRetries = 3): Promise<string> {
