@@ -40,7 +40,14 @@ export default function Home() {
   const { signOut } = useClerk();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
-  const [userPlan, setUserPlan] = useState<string>("free");
+  const [userPlan, setUserPlan] = useState<string>(() => {
+    if (typeof window === "undefined") return "free";
+    return sessionStorage.getItem("eco_billing_plan") || "free";
+  });
+  const [isBillingLoading, setIsBillingLoading] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    return !sessionStorage.getItem("eco_billing_plan");
+  });
   const [paymentBlocked, setPaymentBlocked] = useState(false);
   const [upgradeHovered, setUpgradeHovered] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
@@ -335,21 +342,34 @@ export default function Home() {
   }, [isRecording, isPaused]);
 
   useEffect(() => {
+    if (!isSignedIn) {
+      setUserPlan("free");
+      setIsBillingLoading(false);
+      if (typeof window !== "undefined") sessionStorage.removeItem("eco_billing_plan");
+      return;
+    }
     const fetchPlan = async () => {
+      setIsBillingLoading(true);
       try {
         const res = await fetch("/api/billing/me", { credentials: "include" });
         if (res.ok) {
           const data = await res.json();
-          setUserPlan(data.plan || "free");
+          const plan = data.plan || "free";
+          setUserPlan(plan);
           setPaymentBlocked(data.paymentBlocked === true);
+          if (typeof window !== "undefined") {
+            sessionStorage.setItem("eco_billing_plan", plan);
+          }
         }
       } catch {
         setUserPlan("free");
         setPaymentBlocked(false);
+      } finally {
+        setIsBillingLoading(false);
       }
     };
     fetchPlan();
-  }, []);
+  }, [isSignedIn]);
 
   const startRecording = async () => {
     setIsPaused(false);
@@ -943,7 +963,15 @@ export default function Home() {
                 Appuyez pour commencer
               </motion.p>
 
-              {userPlan === "free" ? (
+              {isBillingLoading ? (
+                <div
+                  className="mt-6 px-7 py-3 rounded-full flex items-center gap-2 bg-gray-100 animate-pulse"
+                  style={{ minHeight: 44 }}
+                >
+                  <div className="w-4 h-4 rounded bg-gray-300 shrink-0" />
+                  <div className="h-4 w-40 rounded bg-gray-300" />
+                </div>
+              ) : userPlan === "free" ? (
                 <motion.button
                   whileHover={{ scale: 1.05, y: -2 }}
                   whileTap={{ scale: 0.97 }}

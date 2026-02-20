@@ -82,6 +82,9 @@ export default function SettingsPage() {
 
       const data = await res.json();
       setBillingData(data);
+      if (typeof window !== "undefined" && data?.plan) {
+        sessionStorage.setItem("eco_billing_plan", data.plan);
+      }
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Une erreur est survenue"
