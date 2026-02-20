@@ -52,9 +52,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Aucun fichier audio" }, { status: 400 });
     }
 
+    const sizeMB = (audioFile.size / 1024 / 1024).toFixed(2);
+    console.log("[API] Audio reçu pour upload R2", {
+      filename: audioFile.name,
+      contentType: audioFile.type,
+      sizeBytes: audioFile.size,
+      sizeMB: `${sizeMB} MB`,
+    });
+
     const fileId = crypto.randomUUID().replace(/-/g, "").slice(0, 21);
     const ext = audioFile.type?.includes("mp4") || audioFile.name?.endsWith(".mp4") ? "mp4" : "webm";
     const key = `${user.id}/${fileId}.${ext}`;
+    const contentType = audioFile.type || "audio/webm";
 
     const buffer = Buffer.from(await audioFile.arrayBuffer());
     await s3.send(
@@ -62,11 +71,16 @@ export async function POST(request: NextRequest) {
         Bucket: bucket,
         Key: key,
         Body: buffer,
-        ContentType: audioFile.type || "audio/webm",
+        ContentType: contentType,
       })
     );
 
-    console.log("[upload-audio] Uploaded:", key, buffer.length, "bytes");
+    console.log("[upload-audio] R2 upload success", {
+      key,
+      contentType,
+      sizeBytes: buffer.length,
+      sizeMB: `${(buffer.length / 1024 / 1024).toFixed(2)} MB`,
+    });
 
     const publicBase = process.env.R2_PUBLIC_URL;
     const audioUrl = publicBase ? `${publicBase.replace(/\/$/, "")}/${key}` : null;

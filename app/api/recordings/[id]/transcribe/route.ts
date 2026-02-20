@@ -103,19 +103,17 @@ export async function POST(
       const buffer = Buffer.from(bytes);
       const mime = getRes.ContentType ?? "audio/webm";
       audioFile = new File([buffer], "recording.webm", { type: mime });
-      console.log("[transcribe] Fichier R2 récupéré:", audioFile.size, "bytes");
+      const sizeMB = (audioFile.size / 1024 / 1024).toFixed(2);
+      console.log("[transcribe] Fichier R2 récupéré", {
+        key,
+        contentType: mime,
+        sizeBytes: audioFile.size,
+        sizeMB: `${sizeMB} MB`,
+      });
     } else {
       const formData = await req.formData();
       const file = formData.get("audio");
       const fileSize = file && file instanceof File ? file.size : 0;
-      console.log("[transcribe] formData received", {
-        traceId,
-        recordingId,
-        hasAudio: !!file,
-        isFile: file instanceof File,
-        fileSize,
-        ts: Date.now(),
-      });
       if (!file || !(file instanceof File) || file.size === 0) {
         return NextResponse.json(
           { ok: false, error: "AUDIO_MISSING", code: "AUDIO_MISSING", detail: "Fichier audio absent ou vide" },
@@ -123,6 +121,15 @@ export async function POST(
         );
       }
       const fileSizeInMB = file.size / (1024 * 1024);
+      console.log("[API] Audio reçu via formData", {
+        traceId,
+        recordingId,
+        filename: file.name,
+        contentType: file.type,
+        sizeBytes: file.size,
+        sizeMB: `${fileSizeInMB.toFixed(2)} MB`,
+        ts: Date.now(),
+      });
       if (fileSizeInMB > 24) {
         return NextResponse.json(
           { ok: false, error: "Fichier audio trop volumineux (max 24MB).", code: "FILE_TOO_LARGE" },

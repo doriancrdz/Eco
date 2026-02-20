@@ -375,27 +375,38 @@ export default function Home() {
       audioChunksRef.current = [];
       console.log("[startRecording] Chunks réinitialisés");
 
-      // Détection format (webm;codecs=opus en premier pour Chrome)
-      let mimeType = "";
-      if (MediaRecorder.isTypeSupported("audio/webm;codecs=opus")) {
-        mimeType = "audio/webm;codecs=opus";
-      } else if (MediaRecorder.isTypeSupported("audio/webm")) {
-        mimeType = "audio/webm";
-      } else if (MediaRecorder.isTypeSupported("audio/mp4")) {
-        mimeType = "audio/mp4";
-      } else {
-        mimeType = "";
+      // Détection format robuste : priorité WEBM/OPUS pour compatibilité Whisper
+      const preferredMimeTypes = [
+        "audio/webm;codecs=opus", // Format optimal (Chrome, Firefox moderne)
+        "audio/webm", // Fallback webm sans codec spécifié
+        "audio/ogg;codecs=opus", // Fallback rare (Firefox ancien)
+      ];
+      let chosenMimeType: string | undefined = undefined;
+      for (const mime of preferredMimeTypes) {
+        if (MediaRecorder.isTypeSupported(mime)) {
+          chosenMimeType = mime;
+          break;
+        }
       }
+      // Si aucun format préféré supporté, laisser undefined (navigateur choisira)
 
-      mimeTypeRef.current = mimeType || "audio/webm";
-      console.log("[startRecording] Format:", mimeType || "default");
-      console.log("[startRecording] Format supporté?", mimeType ? MediaRecorder.isTypeSupported(mimeType) : "n/a");
+      mimeTypeRef.current = chosenMimeType || "audio/webm";
+      console.log("[RECORDER] Format choisi:", chosenMimeType || "navigateur par défaut");
 
-      // Créer MediaRecorder (48 kbps pour longs enregistrements jusqu'à 60 min, compatible R2)
-      const mediaRecorder = mimeType
-        ? new MediaRecorder(stream, { mimeType, audioBitsPerSecond: 48000 })
-        : new MediaRecorder(stream);
-      console.log("[startRecording] MediaRecorder créé, state:", mediaRecorder.state);
+      // Créer MediaRecorder avec bitrate 96 kbps (bon compromis qualité/taille pour 60 min)
+      const recorderOptions: MediaRecorderOptions = {};
+      if (chosenMimeType) {
+        recorderOptions.mimeType = chosenMimeType;
+      }
+      recorderOptions.audioBitsPerSecond = 96000; // 96 kbps (60 min ≈ 41 MB)
+      const mediaRecorder = new MediaRecorder(stream, recorderOptions);
+      
+      console.log("[RECORDER] MediaRecorder créé", {
+        requestedMimeType: chosenMimeType || "navigateur par défaut",
+        actualMimeType: mediaRecorder.mimeType,
+        audioBitsPerSecond: recorderOptions.audioBitsPerSecond,
+        state: mediaRecorder.state,
+      });
 
       // IMPORTANT: Définir TOUS les handlers AVANT start()
       mediaRecorder.ondataavailable = (e) => {
@@ -426,10 +437,19 @@ export default function Home() {
           return;
         }
 
-        const mimeTypeUsed =
-          audioChunksRef.current[0].type || mimeTypeRef.current || "audio/webm";
+        // Déterminer le mimeType final depuis les chunks ou le recorder
+        const chunkType = audioChunksRef.current[0]?.type;
+        const mimeTypeUsed = chunkType || mimeTypeRef.current || "audio/webm";
         const audioBlob = new Blob(audioChunksRef.current, { type: mimeTypeUsed });
-        console.log("[onstop] Blob créé:", audioBlob.size, "bytes, type:", audioBlob.type);
+        
+        const sizeMB = (audioBlob.size / 1024 / 1024).toFixed(2);
+        console.log("[RECORDER] Blob final créé", {
+          type: audioBlob.type,
+          sizeBytes: audioBlob.size,
+          sizeMB: `${sizeMB} MB`,
+          chunksCount: audioChunksRef.current.length,
+          durationSeconds: elapsedAtStopRef.current,
+        });
 
         const durationSeconds = elapsedAtStopRef.current;
         await processRecording(audioBlob, durationSeconds, mimeTypeUsed);
@@ -559,8 +579,20 @@ export default function Home() {
       let fileId: string | null = null;
       let r2Key: string | null = null;
 
+      // Créer un File avec le bon nom et type pour l'upload R2
+      const extension = audioBlob.type.includes("mp4") || mimeType.includes("mp4") ? "mp4" : "webm";
+      const fileName = `recording.${extension}`;
+      const audioFile = new File([audioBlob], fileName, { type: audioBlob.type || "audio/webm" });
+      
+      console.log("[UPLOAD] Préparation fichier pour R2", {
+        name: audioFile.name,
+        type: audioFile.type,
+        sizeBytes: audioFile.size,
+        sizeMB: `${(audioFile.size / 1024 / 1024).toFixed(2)} MB`,
+      });
+
       const uploadFormData = new FormData();
-      uploadFormData.append("audio", audioBlob, "recording.webm");
+      uploadFormData.append("audio", audioFile);
       const uploadRes = await fetch("/api/upload-audio", {
         method: "POST",
         body: uploadFormData,
@@ -573,7 +605,7 @@ export default function Home() {
         r2AudioUrl = uploadJson.audioUrl ?? null;
         if (fileId) {
           useR2 = true;
-          console.log("[processRecording] Upload R2 réussi:", r2Key);
+          console.log("[processRecording] Upload R2 réussi", { fileId, r2Key, audioUrl: r2AudioUrl });
         }
       }
 
