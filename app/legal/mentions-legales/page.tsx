@@ -1,14 +1,24 @@
-import Link from "next/link";
+"use client";
 
-export const metadata = {
-  title: "Mentions légales | ECO",
-  description: "Mentions légales du site ECO",
-};
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 
 export default function MentionsLegalesPage() {
+  const router = useRouter();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 py-12 px-4">
-      <div className="max-w-4xl mx-auto bg-white rounded-3xl shadow-xl p-8 md:p-12">
+      <div className="max-w-4xl mx-auto">
+        <button
+          onClick={() => router.back()}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
+          type="button"
+        >
+          <ArrowLeft className="w-5 h-5" />
+          <span className="font-medium">Retour</span>
+        </button>
+        <div className="bg-white rounded-3xl shadow-xl p-8 md:p-12">
         <h1 className="text-4xl font-bold mb-8">Mentions légales</h1>
         <p className="text-sm text-gray-500 mb-8">Dernière mise à jour : février 2026</p>
         <div className="prose prose-lg max-w-none">
@@ -68,6 +78,7 @@ export default function MentionsLegalesPage() {
         <p className="mt-8 text-sm text-gray-500">
           <Link href="/" className="text-blue-600 hover:underline">← Retour à l&apos;accueil</Link>
         </p>
+        </div>
       </div>
     </div>
   );
