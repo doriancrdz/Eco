@@ -166,20 +166,26 @@ export async function POST(req: NextRequest) {
     const maxChars = 12000;
     const truncated = textLength > maxChars ? textToSend.slice(0, maxChars) + "\n[...]" : textToSend;
 
-    // Calculer la durée en minutes depuis durationMs ou durationSeconds
+    // Nombre de mots de la transcription (base pour le ratio 12-18%)
+    const transcriptionWordCount = textToSend.trim().split(/\s+/).filter(Boolean).length;
+    const minSummaryWords = Math.floor(transcriptionWordCount * 0.12);
+    const maxSummaryWords = Math.ceil(transcriptionWordCount * 0.18);
+    const targetSummaryWords = Math.round(transcriptionWordCount * 0.15);
+
+    // Calculer la durée en minutes (pour points clés et notions — logique existante conservée)
     const durationMs = recording.durationMs || (recording.durationSeconds ? recording.durationSeconds * 1000 : null);
     const durationMinutesRounded = durationMs ? Math.round((durationMs / 60000) * 10) / 10 : null;
     const durationMinutes = durationMinutesRounded ?? 0;
-    // max_tokens adaptatif : ~1 mot ≈ 1.3 tokens (résumé + points clés + notions)
-    const maxTokens =
-      durationMinutes < 3
-        ? 500
-        : durationMinutes < 10
-          ? 1500
-          : durationMinutes < 30
-            ? 3000
-            : 5000;
 
+    // max_tokens : marge pour résumé (12-18%) + points clés + notions
+    const maxTokens = Math.ceil(maxSummaryWords * 1.3 * 2 + 3000);
+
+    console.log("[generate-summary] Calcul résumé:", {
+      transcriptionWords: transcriptionWordCount,
+      summaryMin: minSummaryWords,
+      summaryMax: maxSummaryWords,
+      summaryTarget: targetSummaryWords,
+    });
     console.log("[generate-summary] Appel OpenAI", {
       recordingId,
       model: AI_SUMMARY_MODEL,
@@ -190,111 +196,83 @@ export async function POST(req: NextRequest) {
     });
 
     const systemPrompt = `Tu es un assistant IA expert en structuration de connaissances.
-Durée audio : ${durationMinutesRounded ? durationMinutesRounded.toFixed(1) : "inconnue"} minutes
 
-RÈGLES STRICTES POUR LE RÉSUMÉ :
+TRANSCRIPTION : ${transcriptionWordCount} mots
+RÉSUMÉ CIBLE : ${targetSummaryWords} mots (entre ${minSummaryWords} et ${maxSummaryWords} mots)
 
 ${
-  durationMinutes < 3
+  transcriptionWordCount < 300
     ? `
-RÉSUMÉ COURT (< 3 min) :
-- Un seul paragraphe concis
-- Capture l'essentiel de manière directe
-- LONGUEUR CIBLE : 40-80 mots
+RÉSUMÉ COURT (< 300 mots de transcription) :
+- Un seul paragraphe concis de ${minSummaryWords}-${maxSummaryWords} mots
 `
-    : durationMinutes < 10
-      ? `
-RÉSUMÉ STRUCTURÉ (3-10 min) :
+    : `
+RÉSUMÉ STRUCTURÉ :
 
-**INTRODUCTION** (3-4 phrases) :
-- Présente le sujet principal
-- Annonce les thématiques clés
-- Contextualise l'enregistrement
+⚠️ IMPÉRATIF ABSOLU : Le résumé DOIT faire ENTRE ${minSummaryWords} et ${maxSummaryWords} mots.
+CIBLE : ${targetSummaryWords} mots (15% de la transcription)
 
-**DÉVELOPPEMENT** (2-3 paragraphes bien développés) :
-- Paragraphe 1 : Première thématique ou partie de l'audio avec détails
-- Paragraphe 2 : Deuxième thématique ou partie avec exemples
-- Paragraphe 3 : Troisième thématique ou conclusion des points principaux
-- N'OMETS AUCUNE information importante
-- Inclus les détails, arguments, et exemples clés
+Structure OBLIGATOIRE :
 
-**CONCLUSION** (2-3 phrases) :
+**INTRODUCTION** (15-20% du résumé) :
+- Contextualise le sujet principal
+- Présente les thématiques ou arguments principaux
+- Annonce l'architecture du contenu
+
+**DÉVELOPPEMENT** (65-75% du résumé) :
+- Divisé en paragraphes thématiques
+- Chaque paragraphe développe une section majeure
+- Inclut les arguments, exemples, et détails importants
+- Suit la chronologie ou la logique de l'audio
+- N'OMETS AUCUNE INFORMATION IMPORTANTE
+- Si le contenu est très dense → développe davantage (proche de ${maxSummaryWords} mots)
+- Si le contenu est moins dense → synthétise (proche de ${minSummaryWords} mots)
+
+**CONCLUSION** (10-15% du résumé) :
 - Synthétise les points principaux
 - Rappelle le message clé
+- Propose une ouverture si pertinent
 
-LONGUEUR CIBLE : 150-250 mots
-`
-      : durationMinutes < 30
-        ? `
-RÉSUMÉ DÉTAILLÉ (10-30 min) :
-
-**INTRODUCTION** (4-5 phrases) :
-- Présente le contexte et le sujet global
-- Énumère les principales thématiques abordées
-- Explique l'objectif ou l'angle de l'enregistrement
-
-**DÉVELOPPEMENT** (4-6 paragraphes substantiels) :
-- Chaque paragraphe traite une thématique ou partie chronologique
-- Développe les arguments, exemples, et détails importants
-- Suit la progression logique de l'audio
-- N'OMETS AUCUNE information importante
-- Inclus toutes les nuances et subtilités évoquées
-
-**CONCLUSION** (3-4 phrases) :
-- Synthétise l'ensemble des points abordés
-- Dégage le message ou l'enseignement principal
-- Propose une ouverture ou une perspective finale
-
-LONGUEUR CIBLE : 400-550 mots
-`
-        : `
-RÉSUMÉ COMPLET (30-60 min) :
-
-**INTRODUCTION** (5-6 phrases) :
-- Contextualise le sujet de manière approfondie
-- Présente l'architecture globale de l'enregistrement
-- Annonce les parties ou thématiques principales
-
-**DÉVELOPPEMENT** (6-10 paragraphes développés) :
-- Chaque paragraphe correspond à une section ou thématique majeure
-- Développe en profondeur les arguments, théories, exemples
-- Suit rigoureusement la chronologie ou la logique de l'audio
-- Capture TOUTES les informations importantes
-- Inclus les détails techniques, les nuances, les débats éventuels
-- Relie les différentes parties entre elles
-
-**CONCLUSION** (4-5 phrases) :
-- Synthétise l'ensemble du contenu
-- Rappelle les points clés de chaque partie
-- Dégage les enseignements principaux
-- Propose une conclusion générale
-
-LONGUEUR CIBLE : 700-900 mots
+COMPTE TES MOTS PENDANT QUE TU ÉCRIS :
+- Si tu arrives à ${minSummaryWords} mots et qu'il reste des infos importantes → CONTINUE
+- Si tu arrives à ${maxSummaryWords} mots → ARRÊTE-TOI
+- Cible optimale : ${targetSummaryWords} mots
 `
 }
 
-POINTS CLÉS : Minimum ${durationMinutes < 3 ? "5" : durationMinutes < 10 ? "10" : durationMinutes < 30 ? "20" : "30"} points détaillés
-NOTIONS : Minimum ${durationMinutes < 3 ? "4" : durationMinutes < 10 ? "8" : durationMinutes < 30 ? "15" : "25"} termes avec définitions
+${durationMinutes < 3 ? `
+POINTS CLÉS : Minimum 5 points détaillés
+NOTIONS : Minimum 4 termes avec définitions
+` : durationMinutes < 10 ? `
+POINTS CLÉS : 8-10 points détaillés
+NOTIONS : 6-8 termes avec définitions
+` : durationMinutes < 30 ? `
+POINTS CLÉS : 15-20 points détaillés
+NOTIONS : 10-15 termes avec définitions
+` : `
+POINTS CLÉS : 20-30 points très détaillés
+NOTIONS : 15-25 termes avec définitions
+`}
 
-IMPÉRATIF :
-- Le résumé doit être PROPORTIONNEL à la durée de l'audio
-- N'OMETS JAMAIS d'information importante
-- Structure claire avec sauts de ligne entre intro / développement / conclusion
-- Phrases complètes et bien rédigées
-- RESPECTE STRICTEMENT LA LONGUEUR CIBLE EN MOTS
+RÈGLES ABSOLUES :
+- Le résumé DOIT faire entre ${minSummaryWords} et ${maxSummaryWords} mots
+- Structure intro/dév/conclu OBLIGATOIRE pour résumés > 100 mots
+- N'OMETS AUCUNE INFORMATION IMPORTANTE dans le résumé
+- Si tu génères moins de ${minSummaryWords} mots, DÉVELOPPE DAVANTAGE
+- Si tu dépasses ${maxSummaryWords} mots, SYNTHÉTISE
 
 Format JSON strict :
 {
   "titre": "Titre court (max 60 caractères)",
-  "resume": "RÉSUMÉ STRUCTURÉ SELON LES RÈGLES CI-DESSUS (avec sauts de ligne entre parties)",
-  "pointsCles": ["Point 1 complet", "Point 2 complet", ...],
+  "resume": "RÉSUMÉ STRUCTURÉ AVEC SAUTS DE LIGNE ENTRE INTRO/DÉV/CONCLU",
+  "pointsCles": ["Point 1", "Point 2", ...],
   "notions": [
-    {"terme": "Terme 1", "definition": "Définition courte"},
-    {"terme": "Terme 2", "definition": "Définition courte"}
+    {"terme": "Terme 1", "definition": "Définition"},
+    {"terme": "Terme 2", "definition": "Définition"}
   ]
 }`;
 
-    const userPrompt = `Transcription complète (${durationMinutesRounded ? durationMinutesRounded.toFixed(1) : "inconnue"} min) :
+    const userPrompt = `Transcription complète (${transcriptionWordCount} mots) :
 
 ${truncated}`;
 
@@ -389,6 +367,15 @@ ${truncated}`;
         };
       }
 
+      const resumeWordCount = summary.resume?.trim().split(/\s+/).filter(Boolean).length ?? 0;
+      const ratioPct = transcriptionWordCount > 0 ? ((resumeWordCount / transcriptionWordCount) * 100).toFixed(1) : "0";
+      console.log("[generate-summary] Résumé généré:", {
+        resumeWords: resumeWordCount,
+        targetRange: `${minSummaryWords}-${maxSummaryWords}`,
+        ratio: `${ratioPct}%`,
+        pointsCles: summary.pointsCles?.length ?? 0,
+        notions: summary.notions?.length ?? 0,
+      });
       console.log("[generate-summary] Résumé parsé", {
         hasTitre: !!summary.titre,
         resumeLength: summary.resume?.length || 0,
