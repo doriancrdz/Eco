@@ -177,8 +177,12 @@ export async function POST(req: NextRequest) {
     const durationMinutesRounded = durationMs ? Math.round((durationMs / 60000) * 10) / 10 : null;
     const durationMinutes = durationMinutesRounded ?? 0;
 
-    // max_tokens : marge pour résumé (12-18%) + points clés + notions
-    const maxTokens = Math.ceil(maxSummaryWords * 1.3 * 2 + 3000);
+    // max_tokens très généreux pour forcer GPT à générer assez (12-18% de la transcription)
+    const maxTokens = Math.max(
+      4000,
+      Math.ceil(maxSummaryWords * 1.5 + 4000)
+    );
+    console.log("[generate-summary] max_tokens:", maxTokens, "(très généreux pour forcer GPT à générer assez)");
 
     console.log("[generate-summary] Calcul résumé:", {
       transcriptionWords: transcriptionWordCount,
@@ -197,80 +201,121 @@ export async function POST(req: NextRequest) {
 
     const systemPrompt = `Tu es un assistant IA expert en structuration de connaissances.
 
+═══════════════════════════════════════════════════════════════
+📊 DONNÉES DE BASE
+═══════════════════════════════════════════════════════════════
 TRANSCRIPTION : ${transcriptionWordCount} mots
-RÉSUMÉ CIBLE : ${targetSummaryWords} mots (entre ${minSummaryWords} et ${maxSummaryWords} mots)
+RÉSUMÉ MINIMUM ABSOLU : ${minSummaryWords} mots (12%)
+RÉSUMÉ MAXIMUM ABSOLU : ${maxSummaryWords} mots (18%)
+RÉSUMÉ CIBLE RECOMMANDÉE : ${targetSummaryWords} mots (15%)
 
 ${
   transcriptionWordCount < 300
     ? `
-RÉSUMÉ COURT (< 300 mots de transcription) :
-- Un seul paragraphe concis de ${minSummaryWords}-${maxSummaryWords} mots
+═══════════════════════════════════════════════════════════════
+RÉSUMÉ COURT (< 300 mots de transcription)
+═══════════════════════════════════════════════════════════════
+- Format : UN SEUL PARAGRAPHE
+- Longueur : ${minSummaryWords}-${maxSummaryWords} mots EXACTEMENT
 `
     : `
-RÉSUMÉ STRUCTURÉ :
+═══════════════════════════════════════════════════════════════
+⚠️⚠️⚠️ RÈGLES ABSOLUES - LIRE ATTENTIVEMENT ⚠️⚠️⚠️
+═══════════════════════════════════════════════════════════════
 
-⚠️ IMPÉRATIF ABSOLU : Le résumé DOIT faire ENTRE ${minSummaryWords} et ${maxSummaryWords} mots.
-CIBLE : ${targetSummaryWords} mots (15% de la transcription)
+1. TON RÉSUMÉ DOIT FAIRE AU MINIMUM ${minSummaryWords} MOTS
+2. TON RÉSUMÉ NE DOIT PAS DÉPASSER ${maxSummaryWords} MOTS
+3. LA LONGUEUR IDÉALE EST ${targetSummaryWords} MOTS
 
-Structure OBLIGATOIRE :
+SI TON RÉSUMÉ FAIT MOINS DE ${minSummaryWords} MOTS :
+❌ TU AS ÉCHOUÉ - RECOMMENCE ET DÉVELOPPE BEAUCOUP PLUS
 
-**INTRODUCTION** (15-20% du résumé) :
-- Contextualise le sujet principal
-- Présente les thématiques ou arguments principaux
-- Annonce l'architecture du contenu
+SI TON RÉSUMÉ FAIT PLUS DE ${maxSummaryWords} MOTS :
+❌ TU AS ÉCHOUÉ - RECOMMENCE ET SYNTHÉTISE
 
-**DÉVELOPPEMENT** (65-75% du résumé) :
-- Divisé en paragraphes thématiques
-- Chaque paragraphe développe une section majeure
-- Inclut les arguments, exemples, et détails importants
-- Suit la chronologie ou la logique de l'audio
+═══════════════════════════════════════════════════════════════
+📝 STRUCTURE OBLIGATOIRE DU RÉSUMÉ
+═══════════════════════════════════════════════════════════════
+
+Ton résumé DOIT suivre cette structure EXACTE :
+
+**INTRODUCTION**
+Longueur : ${Math.floor(targetSummaryWords * 0.15)}-${Math.ceil(targetSummaryWords * 0.2)} mots (15-20% du résumé)
+Contenu :
+- Phrase 1 : Présente le sujet principal et le contexte
+- Phrase 2 : Annonce les thématiques ou arguments principaux
+- Phrase 3 : Explique l'objectif ou l'angle de l'enregistrement
+
+**DÉVELOPPEMENT**
+Longueur : ${Math.floor(targetSummaryWords * 0.65)}-${Math.ceil(targetSummaryWords * 0.75)} mots (65-75% du résumé)
+Contenu :
+- Divise en 4-8 paragraphes thématiques
+- Chaque paragraphe = une section ou thématique majeure de l'audio
+- Développe les arguments, exemples, données, détails importants
+- Suis la chronologie ou la logique de l'audio
 - N'OMETS AUCUNE INFORMATION IMPORTANTE
-- Si le contenu est très dense → développe davantage (proche de ${maxSummaryWords} mots)
-- Si le contenu est moins dense → synthétise (proche de ${minSummaryWords} mots)
+- Si la transcription est dense → développe davantage (proche de ${maxSummaryWords} mots)
+- Si la transcription est moins dense → synthétise (proche de ${minSummaryWords} mots)
 
-**CONCLUSION** (10-15% du résumé) :
-- Synthétise les points principaux
-- Rappelle le message clé
-- Propose une ouverture si pertinent
+**CONCLUSION**
+Longueur : ${Math.floor(targetSummaryWords * 0.1)}-${Math.ceil(targetSummaryWords * 0.15)} mots (10-15% du résumé)
+Contenu :
+- Phrase 1 : Synthétise les points principaux abordés
+- Phrase 2 : Rappelle le message clé ou l'enseignement principal
+- Phrase 3 (optionnelle) : Propose une ouverture ou perspective
 
-COMPTE TES MOTS PENDANT QUE TU ÉCRIS :
-- Si tu arrives à ${minSummaryWords} mots et qu'il reste des infos importantes → CONTINUE
-- Si tu arrives à ${maxSummaryWords} mots → ARRÊTE-TOI
-- Cible optimale : ${targetSummaryWords} mots
+═══════════════════════════════════════════════════════════════
+✅ COMMENT RESPECTER LA LONGUEUR CIBLE
+═══════════════════════════════════════════════════════════════
+
+ÉTAPE 1 : Compte tes mots pendant que tu écris
+ÉTAPE 2 : Si tu atteins ${minSummaryWords} mots et qu'il reste des infos importantes → CONTINUE D'ÉCRIRE
+ÉTAPE 3 : Vise ${targetSummaryWords} mots comme longueur idéale
+ÉTAPE 4 : Arrête-toi quand tu atteins ${maxSummaryWords} mots maximum
+
+EXEMPLES DE LONGUEURS ATTENDUES :
+
+Transcription 2000 mots → Résumé 240-360 mots (cible 300 mots)
+Transcription 5000 mots → Résumé 600-900 mots (cible 750 mots)
+Transcription 10000 mots → Résumé 1200-1800 mots (cible 1500 mots)
+
+TON CAS ACTUEL :
+Transcription ${transcriptionWordCount} mots → Résumé ${minSummaryWords}-${maxSummaryWords} mots (cible ${targetSummaryWords} mots)
+
+═══════════════════════════════════════════════════════════════
+⚠️ VÉRIFICATION FINALE AVANT DE SOUMETTRE TON RÉSUMÉ
+═══════════════════════════════════════════════════════════════
+
+Avant de générer le JSON final, VÉRIFIE :
+☐ Mon résumé a une INTRODUCTION distincte
+☐ Mon résumé a un DÉVELOPPEMENT en plusieurs paragraphes
+☐ Mon résumé a une CONCLUSION distincte
+☐ Mon résumé fait AU MOINS ${minSummaryWords} mots
+☐ Mon résumé fait AU MAXIMUM ${maxSummaryWords} mots
+☐ Mon résumé vise ${targetSummaryWords} mots
+
+Si une seule case n'est pas cochée → RECOMMENCE TON RÉSUMÉ
 `
 }
 
-${durationMinutes < 3 ? `
-POINTS CLÉS : Minimum 5 points détaillés
-NOTIONS : Minimum 4 termes avec définitions
-` : durationMinutes < 10 ? `
-POINTS CLÉS : 8-10 points détaillés
-NOTIONS : 6-8 termes avec définitions
-` : durationMinutes < 30 ? `
-POINTS CLÉS : 15-20 points détaillés
-NOTIONS : 10-15 termes avec définitions
-` : `
-POINTS CLÉS : 20-30 points très détaillés
-NOTIONS : 15-25 termes avec définitions
-`}
+POINTS CLÉS : ${durationMinutes < 3 ? "Minimum 5" : durationMinutes < 10 ? "8-10" : durationMinutes < 30 ? "15-20" : "20-30"} points détaillés
+NOTIONS : ${durationMinutes < 3 ? "Minimum 4" : durationMinutes < 10 ? "6-8" : durationMinutes < 30 ? "10-15" : "15-25"} termes avec définitions complètes
 
-RÈGLES ABSOLUES :
-- Le résumé DOIT faire entre ${minSummaryWords} et ${maxSummaryWords} mots
-- Structure intro/dév/conclu OBLIGATOIRE pour résumés > 100 mots
-- N'OMETS AUCUNE INFORMATION IMPORTANTE dans le résumé
-- Si tu génères moins de ${minSummaryWords} mots, DÉVELOPPE DAVANTAGE
-- Si tu dépasses ${maxSummaryWords} mots, SYNTHÉTISE
+═══════════════════════════════════════════════════════════════
+📋 FORMAT JSON À RETOURNER
+═══════════════════════════════════════════════════════════════
 
-Format JSON strict :
 {
-  "titre": "Titre court (max 60 caractères)",
-  "resume": "RÉSUMÉ STRUCTURÉ AVEC SAUTS DE LIGNE ENTRE INTRO/DÉV/CONCLU",
+  "titre": "Titre court et descriptif (max 60 caractères)",
+  "resume": "RÉSUMÉ AVEC STRUCTURE COMPLÈTE\\n\\n**INTRODUCTION**\\n[texte intro]\\n\\n**DÉVELOPPEMENT**\\n[paragraphe 1]\\n\\n[paragraphe 2]\\n\\n[etc.]\\n\\n**CONCLUSION**\\n[texte conclusion]",
   "pointsCles": ["Point 1", "Point 2", ...],
   "notions": [
-    {"terme": "Terme 1", "definition": "Définition"},
-    {"terme": "Terme 2", "definition": "Définition"}
+    {"terme": "Terme 1", "definition": "Définition complète"},
+    {"terme": "Terme 2", "definition": "Définition complète"}
   ]
-}`;
+}
+
+RAPPEL FINAL : TON RÉSUMÉ DOIT FAIRE ${targetSummaryWords} MOTS (entre ${minSummaryWords} et ${maxSummaryWords}).`;
 
     const userPrompt = `Transcription complète (${transcriptionWordCount} mots) :
 
@@ -372,10 +417,22 @@ ${truncated}`;
       console.log("[generate-summary] Résumé généré:", {
         resumeWords: resumeWordCount,
         targetRange: `${minSummaryWords}-${maxSummaryWords}`,
+        target: targetSummaryWords,
         ratio: `${ratioPct}%`,
         pointsCles: summary.pointsCles?.length ?? 0,
         notions: summary.notions?.length ?? 0,
       });
+      if (resumeWordCount < minSummaryWords) {
+        console.warn("⚠️ [generate-summary] RÉSUMÉ TROP COURT !", {
+          attendu: `${minSummaryWords}-${maxSummaryWords}`,
+          obtenu: resumeWordCount,
+        });
+      } else if (resumeWordCount > maxSummaryWords) {
+        console.warn("⚠️ [generate-summary] RÉSUMÉ TROP LONG !", {
+          attendu: `${minSummaryWords}-${maxSummaryWords}`,
+          obtenu: resumeWordCount,
+        });
+      }
       console.log("[generate-summary] Résumé parsé", {
         hasTitre: !!summary.titre,
         resumeLength: summary.resume?.length || 0,
