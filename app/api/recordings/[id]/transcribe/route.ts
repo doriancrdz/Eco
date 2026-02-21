@@ -5,6 +5,7 @@ import { auth } from "@clerk/nextjs/server";
 import OpenAI from "openai";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { prisma } from "@/lib/prisma";
+import { transcriptionLimiter } from "@/lib/ratelimit";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -43,6 +44,25 @@ export async function POST(
       return NextResponse.json(
         { error: userId ? "Clé API manquante" : "Non authentifié" },
         { status: userId ? 500 : 401 }
+      );
+    }
+
+    const { success, limit, remaining, reset } = await transcriptionLimiter.limit(userId);
+    if (!success) {
+      const retrySeconds = Math.ceil((reset - Date.now()) / 1000);
+      console.warn("[transcribe] Rate limit exceeded:", { userId, limit, reset });
+      return NextResponse.json(
+        {
+          error: `Trop de transcriptions. Limite : ${limit} par minute. Réessayez dans ${retrySeconds} seconde${retrySeconds > 1 ? "s" : ""}.`,
+        },
+        {
+          status: 429,
+          headers: {
+            "X-RateLimit-Limit": limit.toString(),
+            "X-RateLimit-Remaining": remaining.toString(),
+            "X-RateLimit-Reset": reset.toString(),
+          },
+        }
       );
     }
 

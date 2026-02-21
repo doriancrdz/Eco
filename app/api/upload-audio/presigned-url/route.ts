@@ -5,6 +5,7 @@ import { auth } from "@clerk/nextjs/server";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { prisma } from "@/lib/prisma";
+import { uploadLimiter } from "@/lib/ratelimit";
 
 function getR2Client(): S3Client | null {
   const accountId = process.env.R2_ACCOUNT_ID;
@@ -27,6 +28,14 @@ export async function POST(request: NextRequest) {
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    }
+
+    const { success } = await uploadLimiter.limit(userId);
+    if (!success) {
+      return NextResponse.json(
+        { error: "Trop d'uploads. Réessayez dans 1 minute." },
+        { status: 429 }
+      );
     }
 
     const s3 = getR2Client();

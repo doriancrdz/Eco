@@ -6,6 +6,7 @@ import { getOrCreateUserWithQuotaSeconds, getAvailableSeconds } from "@/lib/usag
 import { canUseMinutes } from "@/lib/billing";
 import { prisma } from "@/lib/prisma";
 import { MAX_RECORDING_DURATION_MINUTES } from "@/lib/billingConfig";
+import { recordingLimiter } from "@/lib/ratelimit";
 
 /**
  * Crée un Recording et retourne recordingId immédiatement (sans audio).
@@ -25,6 +26,28 @@ export async function POST(req: NextRequest) {
 
     if (!userId) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    }
+
+    const { success, limit, remaining, reset } = await recordingLimiter.limit(userId);
+    if (!success) {
+      const retryMinutes = Math.ceil((reset - Date.now()) / 60000);
+      console.warn("[recordings/init] Rate limit exceeded:", { userId, limit, reset });
+      return NextResponse.json(
+        {
+          error: `Trop d'enregistrements. Limite : ${limit} par heure. Réessayez dans ${retryMinutes} minute${retryMinutes > 1 ? "s" : ""}.`,
+        },
+        {
+          status: 429,
+          headers: {
+            "X-RateLimit-Limit": limit.toString(),
+            "X-RateLimit-Remaining": remaining.toString(),
+            "X-RateLimit-Reset": reset.toString(),
+          },
+        }
+      );
+    }
+    if (process.env.NODE_ENV !== "production") {
+      console.log("[recordings/init] Rate limit OK:", { userId, remaining, limit });
     }
 
     const body = await req.json();

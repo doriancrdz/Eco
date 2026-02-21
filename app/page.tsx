@@ -776,9 +776,17 @@ export default function Home() {
       console.error("[processRecording] Erreur:", error);
       setIsProcessing(false);
       setIsFocusMode(false);
-      const errorMessage =
-        error instanceof Error ? error.message : "Une erreur est survenue lors du traitement.";
-      alert(errorMessage);
+      const err = error as { message?: string; status?: number };
+      const isRateLimit =
+        err?.status === 429 ||
+        (err?.message != null && (err.message.includes("429") || err.message.includes("Trop d")));
+      if (isRateLimit) {
+        alert("Vous avez atteint la limite de requêtes. Veuillez patienter quelques minutes.");
+      } else {
+        const errorMessage =
+          error instanceof Error ? error.message : "Une erreur est survenue lors du traitement.";
+        alert(errorMessage);
+      }
     }
   };
 
