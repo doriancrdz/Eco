@@ -166,176 +166,153 @@ export async function POST(req: NextRequest) {
     const maxChars = 12000;
     const truncated = textLength > maxChars ? textToSend.slice(0, maxChars) + "\n[...]" : textToSend;
 
-    // Nombre de mots de la transcription — cible FIXE 15-16%
+    // Nombre de mots de la transcription — RÈGLES DÉFINITIVES STRICTES
     const transcriptionWordCount = textToSend.trim().split(/\s+/).filter(Boolean).length;
-    const targetSummaryWords = Math.round(transcriptionWordCount * 0.155); // 15.5% FIXE
-    const minSummaryWords = Math.floor(transcriptionWordCount * 0.14); // 14% minimum
-    const maxSummaryWords = Math.ceil(transcriptionWordCount * 0.17); // 17% maximum
+    // RÈGLE 1 : RÉSUMÉ = EXACTEMENT 16% DE LA TRANSCRIPTION
+    const targetSummaryWords = Math.round(transcriptionWordCount * 0.16);
+    const minSummaryWords = targetSummaryWords - 10;
+    const maxSummaryWords = targetSummaryWords + 10;
+    // RÈGLE 2 : POINTS CLÉS = 1 TOUS LES 800 MOTS
+    const targetPointsCles = Math.round(transcriptionWordCount / 800);
+    // RÈGLE 3 : NOTIONS = 1 TOUS LES 550 MOTS
+    const targetNotions = Math.round(transcriptionWordCount / 550);
 
-    // Calculer la durée en minutes (pour points clés et notions — logique existante conservée)
-    const durationMs = recording.durationMs || (recording.durationSeconds ? recording.durationSeconds * 1000 : null);
-    const durationMinutesRounded = durationMs ? Math.round((durationMs / 60000) * 10) / 10 : null;
-    const durationMinutes = durationMinutesRounded ?? 0;
+    const estimatedTokens = targetSummaryWords * 1.5 + targetPointsCles * 35 * 1.5 + targetNotions * 60 * 1.5;
+    const maxTokens = Math.max(3000, Math.ceil(estimatedTokens + 1000));
+    console.log("[generate-summary] max_tokens:", maxTokens);
 
-    // max_tokens très généreux pour forcer GPT à générer assez
-    const maxTokens = Math.max(
-      4000,
-      Math.ceil(maxSummaryWords * 1.5 + 4000)
-    );
-    console.log("[generate-summary] max_tokens:", maxTokens, "(très généreux pour forcer GPT à générer assez)");
-
-    console.log("[generate-summary] Calcul résumé STRICT:", {
+    console.log("[generate-summary] Calcul STRICT DÉFINITIF:", {
       transcriptionWords: transcriptionWordCount,
-      summaryTarget: targetSummaryWords,
-      summaryRange: `${minSummaryWords}-${maxSummaryWords} mots`,
-      targetPercentage: "15.5%",
+      summaryTarget: `${targetSummaryWords} mots (16%)`,
+      summaryRange: `${minSummaryWords}-${maxSummaryWords}`,
+      pointsClesTarget: targetPointsCles,
+      notionsTarget: targetNotions,
     });
     console.log("[generate-summary] Appel OpenAI", {
       recordingId,
       model: AI_SUMMARY_MODEL,
       transcriptionLength: textLength,
       sentLength: truncated.length,
-      durationMinutes: durationMinutesRounded,
       maxTokens,
     });
 
     const systemPrompt = `Tu es un assistant IA expert en structuration de connaissances.
 
 ═══════════════════════════════════════════════════════════════
-📊 DONNÉES DE BASE - LIRE ATTENTIVEMENT
+📊 RÈGLES ABSOLUES ET DÉFINITIVES
 ═══════════════════════════════════════════════════════════════
 TRANSCRIPTION : ${transcriptionWordCount} mots
-RÉSUMÉ CIBLE OBLIGATOIRE : ${targetSummaryWords} mots (15.5% de la transcription)
-RÉSUMÉ MINIMUM ABSOLU : ${minSummaryWords} mots (14%)
-RÉSUMÉ MAXIMUM ABSOLU : ${maxSummaryWords} mots (17%)
 
-⚠️⚠️⚠️ RÈGLE ABSOLUE ⚠️⚠️⚠️
-TON RÉSUMÉ DOIT FAIRE EXACTEMENT ${targetSummaryWords} MOTS (±5 mots)
-SI TON RÉSUMÉ FAIT MOINS DE ${minSummaryWords} MOTS → TU AS ÉCHOUÉ
-SI TON RÉSUMÉ FAIT PLUS DE ${maxSummaryWords} MOTS → TU AS ÉCHOUÉ
+RÉSUMÉ CIBLE EXACTE : ${targetSummaryWords} mots (16% de la transcription)
+RÉSUMÉ MINIMUM : ${minSummaryWords} mots
+RÉSUMÉ MAXIMUM : ${maxSummaryWords} mots
 
-${
-  transcriptionWordCount < 300
-    ? `
+POINTS CLÉS EXACTS : ${targetPointsCles} points (1 point tous les 800 mots)
+NOTIONS EXACTES : ${targetNotions} notions (1 notion tous les 550 mots)
+
+⚠️⚠️⚠️ CES RÈGLES SONT ABSOLUES - AUCUNE EXCEPTION ⚠️⚠️⚠️
+
+SI TON RÉSUMÉ NE FAIT PAS ${targetSummaryWords} MOTS (±10) → TU AS ÉCHOUÉ
+SI TU N'AS PAS EXACTEMENT ${targetPointsCles} POINTS CLÉS → TU AS ÉCHOUÉ
+SI TU N'AS PAS EXACTEMENT ${targetNotions} NOTIONS → TU AS ÉCHOUÉ
+
 ═══════════════════════════════════════════════════════════════
-RÉSUMÉ COURT (< 300 mots de transcription)
-═══════════════════════════════════════════════════════════════
-- Format : UN SEUL PARAGRAPHE
-- Longueur EXACTE : ${targetSummaryWords} mots
-- Points clés : 5-8 points détaillés
-- Notions : 4-6 termes avec définitions
-`
-    : `
-═══════════════════════════════════════════════════════════════
-📝 STRUCTURE OBLIGATOIRE AVEC SAUTS DE LIGNE
+📝 STRUCTURE DU RÉSUMÉ (AVEC SAUTS DE LIGNE)
 ═══════════════════════════════════════════════════════════════
 
-⚠️ IMPÉRATIF : Utilise des sauts de ligne (\\n\\n) pour séparer les parties !
+⚠️ IMPÉRATIF : Ton résumé doit faire EXACTEMENT ${targetSummaryWords} mots.
 
-PARTIE 1 - INTRODUCTION (${Math.floor(targetSummaryWords * 0.18)} mots environ)
-Commence directement par le contenu, sans titre.
-- Phrase 1 : Présente le sujet principal et le contexte
+PARTIE 1 - INTRODUCTION (~${Math.floor(targetSummaryWords * 0.18)} mots)
+Commence par des connecteurs : "Dans cet enregistrement,", "Cette présentation aborde...", etc.
+- Phrase 1 : Présente le sujet et le contexte
 - Phrase 2 : Annonce les thématiques principales
-- Phrase 3 : Explique l'objectif de l'enregistrement
+- Phrase 3 : Explique l'objectif
 
-Connecteurs : "Dans cet enregistrement,", "Cette présentation aborde...", "L'intervenant explique..."
+PUIS : **SAUT DE LIGNE (\\n\\n)**
 
-PUIS : **AJOUTE UN SAUT DE LIGNE (\\n\\n)** AVANT LE DÉVELOPPEMENT
+PARTIE 2 - DÉVELOPPEMENT (~${Math.floor(targetSummaryWords * 0.7)} mots)
+Divise en 4-8 paragraphes avec connecteurs :
+- "Premièrement," / "Tout d'abord,"
+- **\\n\\n**
+- "Ensuite," / "Par ailleurs,"
+- **\\n\\n**
+- "De plus," / "En outre,"
+- **\\n\\n**
+- "Quatrièmement," / "Également,"
+- **\\n\\n**
+- "Enfin," / "Pour finir,"
 
-PARTIE 2 - DÉVELOPPEMENT (${Math.floor(targetSummaryWords * 0.7)} mots environ)
-Divise en 4-6 paragraphes thématiques.
+Chaque paragraphe développe UNE thématique avec détails, arguments, exemples.
 
-**RÈGLE CRITIQUE : CHAQUE NOUVEAU PARAGRAPHE COMMENCE PAR UN SAUT DE LIGNE (\\n\\n)**
+PUIS : **SAUT DE LIGNE (\\n\\n)**
 
-Paragraphe 1 : Première thématique avec connecteur "Premièrement," ou "Tout d'abord,"
-**\\n\\n**
-Paragraphe 2 : Deuxième thématique avec connecteur "Ensuite," ou "Par ailleurs,"
-**\\n\\n**
-Paragraphe 3 : Troisième thématique avec connecteur "De plus," ou "En outre,"
-**\\n\\n**
-Paragraphe 4 : Quatrième thématique avec connecteur "Quatrièmement," ou "Également,"
-**\\n\\n**
-Paragraphe 5 : Cinquième thématique avec connecteur "Enfin," ou "Pour finir,"
-
-Chaque paragraphe développe UNE idée/thématique majeure avec arguments, exemples, détails.
-
-PUIS : **AJOUTE UN SAUT DE LIGNE (\\n\\n)** AVANT LA CONCLUSION
-
-PARTIE 3 - CONCLUSION (${Math.floor(targetSummaryWords * 0.12)} mots environ)
-Commence par un connecteur : "En résumé,", "En conclusion,", "Pour conclure,", "Ainsi,"
+PARTIE 3 - CONCLUSION (~${Math.floor(targetSummaryWords * 0.12)} mots)
+Commence par : "En résumé,", "En conclusion,", "Pour conclure,"
 - Synthétise les points principaux
 - Rappelle le message clé
 - Propose éventuellement une ouverture
 
 ═══════════════════════════════════════════════════════════════
-✅ EXEMPLE DE FORMAT AVEC SAUTS DE LIGNE
+✅ COMMENT ATTEINDRE EXACTEMENT ${targetSummaryWords} MOTS
 ═══════════════════════════════════════════════════════════════
 
-MAUVAIS (tout en un bloc) :
-"Dans cet enregistrement, Mathieu présente... Premièrement, il souligne... Ensuite, il présente... En résumé, il offre..."
-
-BON (avec sauts de ligne) :
-"Dans cet enregistrement, Mathieu présente les stratégies d'investissement pour 1000€. Il aborde la bourse, le crowdfunding, l'ESCPI, les crypto et l'or. L'objectif est de fournir des conseils pratiques.
-
-Premièrement, il souligne l'importance de la bourse, recommandant d'investir dans des ETF comme le S&P 500. Il insiste sur le potentiel des intérêts composés pour faire croître le capital.
-
-Ensuite, il présente le crowdfunding immobilier, accessible dès 1€, avec des rendements attractifs d'environ 10% par an. Louvet mentionne des plateformes comme Clubfunding.
-
-En troisième position, il évoque l'ESCPI, qui permet d'investir dans l'immobilier locatif sans gestion directe. Il recommande de choisir des ESCPI avec de bons rendements.
-
-Quatrièmement, il aborde les crypto-monnaies, en soulignant leur volatilité. Il propose d'investir une petite part dans Bitcoin ou Ethereum.
-
-Enfin, il conclut avec l'or, considéré comme une valeur refuge.
-
-En résumé, Louvet offre un cadre structuré pour investir 1000€, en mettant l'accent sur la diversification et la gestion des risques."
+ÉTAPE 1 : Écris ton résumé normalement
+ÉTAPE 2 : Compte tes mots pendant que tu écris
+ÉTAPE 3 : Si tu as moins de ${targetSummaryWords} mots → DÉVELOPPE davantage
+ÉTAPE 4 : Si tu as plus de ${targetSummaryWords} mots → SYNTHÉTISE
+ÉTAPE 5 : Vise EXACTEMENT ${targetSummaryWords} mots (±5 mots maximum)
 
 ═══════════════════════════════════════════════════════════════
-📊 POINTS CLÉS ET NOTIONS
+📊 POINTS CLÉS ET NOTIONS - RÈGLES STRICTES
 ═══════════════════════════════════════════════════════════════
 
-${durationMinutes < 3 ? `
-POINTS CLÉS : 5-8 points détaillés (phrases complètes de 15-20 mots)
-NOTIONS : 4-6 termes avec définitions (20-30 mots par définition)
-` : durationMinutes < 10 ? `
-POINTS CLÉS : 10-15 points détaillés (phrases complètes de 15-25 mots)
-NOTIONS : 8-12 termes avec définitions complètes (25-40 mots par définition)
-` : durationMinutes < 30 ? `
-POINTS CLÉS : 18-25 points détaillés (phrases complètes de 20-30 mots)
-NOTIONS : 12-18 termes avec définitions complètes (30-50 mots par définition)
-` : `
-POINTS CLÉS : 25-35 points très détaillés (phrases complètes de 20-35 mots)
-NOTIONS : 18-28 termes avec définitions très complètes (35-60 mots par définition)
-`}
+POINTS CLÉS : EXACTEMENT ${targetPointsCles} points
+- Format : Phrases complètes et détaillées (20-35 mots par point)
+- Couvrir les ${targetPointsCles} informations/arguments/conseils les PLUS IMPORTANTS
+- Exemple : "L'inflation érode le pouvoir d'achat : un capital de 50 000€ non investi perd environ 2-3% de sa valeur chaque année, soit 1000-1500€"
+
+NOTIONS : EXACTEMENT ${targetNotions} notions
+- Format : Terme + définition complète et détaillée (30-60 mots)
+- Identifier les ${targetNotions} termes techniques/concepts les PLUS IMPORTANTS
+- Exemple : {"terme": "ETF (Exchange Traded Fund)", "definition": "Panier d'actions diversifié qui permet d'investir dans des centaines d'entreprises en un seul achat. Les ETF répliquent la performance d'un indice boursier (comme le S&P 500) et offrent une diversification optimale à faible coût."}
 
 ═══════════════════════════════════════════════════════════════
-⚠️ VÉRIFICATION FINALE AVANT DE GÉNÉRER LE JSON
+⚠️ VÉRIFICATION FINALE OBLIGATOIRE
 ═══════════════════════════════════════════════════════════════
 
-VÉRIFIE ABSOLUMENT :
-☐ Mon résumé fait EXACTEMENT ${targetSummaryWords} mots (compte-les !)
-☐ Mon résumé a des SAUTS DE LIGNE (\\n\\n) entre intro/dév/conclu
-☐ Mon résumé a des SAUTS DE LIGNE (\\n\\n) entre chaque paragraphe du développement
-☐ Mon résumé N'A PAS de titres "INTRODUCTION", "DÉVELOPPEMENT", "CONCLUSION"
-☐ Mon résumé utilise des connecteurs logiques ("Premièrement,", "Ensuite,", "En conclusion,")
-☐ Mes points clés sont des phrases complètes détaillées
-☐ Mes notions ont des définitions complètes
+AVANT DE GÉNÉRER LE JSON, VÉRIFIE :
+☐ Mon résumé fait EXACTEMENT ${targetSummaryWords} mots (±5)
+☐ Mon résumé a des SAUTS DE LIGNE entre intro/dév/conclu et entre paragraphes
+☐ J'ai EXACTEMENT ${targetPointsCles} points clés
+☐ J'ai EXACTEMENT ${targetNotions} notions
+☐ Mes points clés sont des phrases complètes de 20-35 mots
+☐ Mes notions ont des définitions de 30-60 mots
 
-SI UNE SEULE CASE N'EST PAS COCHÉE → RECOMMENCE TON RÉSUMÉ ENTIÈREMENT
-`
-}
+SI UNE SEULE CASE N'EST PAS COCHÉE → RECOMMENCE ENTIÈREMENT
 
-Format JSON strict :
+═══════════════════════════════════════════════════════════════
+📋 FORMAT JSON À RETOURNER
+═══════════════════════════════════════════════════════════════
+
 {
   "titre": "Titre court (max 60 caractères)",
-  "resume": "INTRODUCTION AVEC CONNECTEURS\\n\\nPARAGRAPHE 1 DU DÉV\\n\\nPARAGRAPHE 2 DU DÉV\\n\\nPARAGRAPHE 3 DU DÉV\\n\\nCONCLUSION AVEC CONNECTEUR",
-  "pointsCles": ["Point 1 en phrase complète détaillée", "Point 2...", ...],
+  "resume": "INTRODUCTION\\n\\nPARAGRAPHE 1\\n\\nPARAGRAPHE 2\\n\\n...\\n\\nCONCLUSION",
+  "pointsCles": [
+    "Point 1 en phrase complète de 20-35 mots",
+    "Point 2 en phrase complète de 20-35 mots",
+    ...exactement ${targetPointsCles} points
+  ],
   "notions": [
-    {"terme": "Terme 1", "definition": "Définition complète et détaillée"},
-    ...
+    {"terme": "Terme 1", "definition": "Définition complète de 30-60 mots"},
+    {"terme": "Terme 2", "definition": "Définition complète de 30-60 mots"},
+    ...exactement ${targetNotions} notions
   ]
 }
 
-RAPPEL ULTIME : ${targetSummaryWords} MOTS EXACTEMENT AVEC SAUTS DE LIGNE ENTRE CHAQUE PARTIE ET PARAGRAPHE`;
+RAPPEL ULTIME :
+- RÉSUMÉ : ${targetSummaryWords} MOTS EXACTEMENT
+- POINTS CLÉS : ${targetPointsCles} EXACTEMENT
+- NOTIONS : ${targetNotions} EXACTEMENT`;
 
     const userPrompt = `Transcription complète (${transcriptionWordCount} mots) :
 
@@ -433,32 +410,31 @@ ${truncated}`;
       }
 
       const resumeWordCount = summary.resume?.trim().split(/\s+/).filter(Boolean).length ?? 0;
-      const ratioPct = transcriptionWordCount > 0 ? ((resumeWordCount / transcriptionWordCount) * 100).toFixed(1) : "0";
-      console.log("[generate-summary] Résumé généré:", {
+      const pointsClesCount = summary.pointsCles?.length ?? 0;
+      const notionsCount = summary.notions?.length ?? 0;
+      console.log("[generate-summary] Résultat:", {
         resumeWords: resumeWordCount,
-        targetRange: `${minSummaryWords}-${maxSummaryWords}`,
-        target: targetSummaryWords,
-        ratio: `${ratioPct}%`,
-        pointsCles: summary.pointsCles?.length ?? 0,
-        notions: summary.notions?.length ?? 0,
+        resumeTarget: targetSummaryWords,
+        resumeOK: Math.abs(resumeWordCount - targetSummaryWords) <= 10,
+        pointsCles: pointsClesCount,
+        pointsClesTarget: targetPointsCles,
+        pointsClesOK: pointsClesCount === targetPointsCles,
+        notions: notionsCount,
+        notionsTarget: targetNotions,
+        notionsOK: notionsCount === targetNotions,
       });
-      if (resumeWordCount < minSummaryWords) {
-        console.warn("⚠️ [generate-summary] RÉSUMÉ TROP COURT !", {
-          attendu: `${minSummaryWords}-${maxSummaryWords}`,
-          obtenu: resumeWordCount,
-        });
-      } else if (resumeWordCount > maxSummaryWords) {
-        console.warn("⚠️ [generate-summary] RÉSUMÉ TROP LONG !", {
-          attendu: `${minSummaryWords}-${maxSummaryWords}`,
-          obtenu: resumeWordCount,
-        });
+      if (Math.abs(resumeWordCount - targetSummaryWords) > 10) {
+        console.warn("⚠️ [generate-summary] RÉSUMÉ HORS CIBLE !", { obtenu: resumeWordCount, cible: targetSummaryWords });
+      }
+      if (pointsClesCount !== targetPointsCles) {
+        console.warn("⚠️ [generate-summary] POINTS CLÉS INCORRECTS !", { obtenu: pointsClesCount, cible: targetPointsCles });
+      }
+      if (notionsCount !== targetNotions) {
+        console.warn("⚠️ [generate-summary] NOTIONS INCORRECTES !", { obtenu: notionsCount, cible: targetNotions });
       }
       console.log("[generate-summary] Résumé parsé", {
         hasTitre: !!summary.titre,
         resumeLength: summary.resume?.length || 0,
-        pointsClesCount: summary.pointsCles?.length || 0,
-        notionsCount: summary.notions?.length || 0,
-        durationMinutes: durationMinutesRounded,
         gptMs: timings.gptSummary.toFixed(2),
       });
     } catch (parseError) {
