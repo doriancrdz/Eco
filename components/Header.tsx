@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import PlanBadge from "./PlanBadge";
+import GuideDropdown from "./GuideDropdown";
 
 interface HeaderProps {
   onGoHome: (from?: "back" | "logo" | "sidebar") => void;
@@ -31,7 +32,7 @@ export default function Header({
 
   return (
     <header className="h-[72px] px-4 flex items-center justify-between relative bg-white/10 backdrop-blur-sm border-b border-white/10 sticky top-0 z-20">
-      {/* Left: logo ECO seul (sans texte) + toggle */}
+      {/* Left: logo ECO seul (sans texte) + toggle + guide */}
       <div className="flex items-center gap-2 min-w-[44px] shrink-0">
         <motion.button
           type="button"
@@ -57,6 +58,7 @@ export default function Header({
             <PanelLeft className="w-5 h-5 text-gray-800" />
           </motion.button>
         )}
+        <GuideDropdown />
         {isDetailView && (
           <>
             <motion.button
