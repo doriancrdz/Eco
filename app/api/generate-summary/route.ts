@@ -217,6 +217,8 @@ RÉSUMÉ COURT (< 300 mots de transcription)
 ═══════════════════════════════════════════════════════════════
 - Format : UN SEUL PARAGRAPHE
 - Longueur : ${minSummaryWords}-${maxSummaryWords} mots EXACTEMENT
+- Points clés : 5-8 points détaillés (phrases complètes)
+- Notions : 4-6 termes avec définitions complètes
 `
     : `
 ═══════════════════════════════════════════════════════════════
@@ -234,88 +236,129 @@ SI TON RÉSUMÉ FAIT PLUS DE ${maxSummaryWords} MOTS :
 ❌ TU AS ÉCHOUÉ - RECOMMENCE ET SYNTHÉTISE
 
 ═══════════════════════════════════════════════════════════════
-📝 STRUCTURE OBLIGATOIRE DU RÉSUMÉ
+📝 STRUCTURE OBLIGATOIRE DU RÉSUMÉ (SANS TITRES DE SECTIONS)
 ═══════════════════════════════════════════════════════════════
 
-Ton résumé DOIT suivre cette structure EXACTE :
+⚠️ IMPORTANT : NE PAS ÉCRIRE "**INTRODUCTION**", "**DÉVELOPPEMENT**", "**CONCLUSION**"
+Les sections doivent être implicites et naturelles, avec des connecteurs logiques.
 
-**INTRODUCTION**
-Longueur : ${Math.floor(targetSummaryWords * 0.15)}-${Math.ceil(targetSummaryWords * 0.2)} mots (15-20% du résumé)
-Contenu :
-- Phrase 1 : Présente le sujet principal et le contexte
-- Phrase 2 : Annonce les thématiques ou arguments principaux
-- Phrase 3 : Explique l'objectif ou l'angle de l'enregistrement
+PARTIE 1 - INTRODUCTION (${Math.floor(targetSummaryWords * 0.15)}-${Math.ceil(targetSummaryWords * 0.2)} mots)
+Commence directement par le contenu, sans titre.
+- Première phrase : Présente le sujet principal et le contexte
+- Deuxième phrase : Annonce les thématiques ou arguments principaux
+- Troisième phrase : Explique l'objectif de l'enregistrement
+
+Connecteurs pour introduire : "Dans cet enregistrement, ...", "Cette présentation aborde...", "L'intervenant explique que...", etc.
+
+PARTIE 2 - DÉVELOPPEMENT (${Math.floor(targetSummaryWords * 0.65)}-${Math.ceil(targetSummaryWords * 0.75)} mots)
+Divise en 4-8 paragraphes thématiques (un paragraphe par grande partie).
+Utilise des connecteurs logiques entre les paragraphes :
+- Pour énumérer : "Premièrement,", "Ensuite,", "Par ailleurs,", "De plus,"
+- Pour illustrer : "Par exemple,", "Ainsi,", "En effet,"
+- Pour conclure une partie : "Enfin,", "Pour finir sur ce point,"
+
+Chaque paragraphe :
+- Développe une section ou thématique majeure
+- Inclut arguments, exemples, données, détails importants
+- Suit la chronologie ou la logique de l'audio
+- N'OMETS AUCUNE INFORMATION IMPORTANTE
+
+PARTIE 3 - CONCLUSION (${Math.floor(targetSummaryWords * 0.1)}-${Math.ceil(targetSummaryWords * 0.15)} mots)
+Commence par un connecteur de conclusion : "En résumé,", "En conclusion,", "Pour conclure,", "Ainsi,", "Au final,"
+- Synthétise les points principaux abordés
+- Rappelle le message clé ou l'enseignement principal
+- Propose éventuellement une ouverture ou perspective
+
+═══════════════════════════════════════════════════════════════
+✅ EXEMPLE DE STRUCTURE SANS TITRES
+═══════════════════════════════════════════════════════════════
+
+MAUVAIS (avec titres) :
+"**INTRODUCTION**
+Dans cet enregistrement, l'intervenant aborde...
 
 **DÉVELOPPEMENT**
-Longueur : ${Math.floor(targetSummaryWords * 0.65)}-${Math.ceil(targetSummaryWords * 0.75)} mots (65-75% du résumé)
-Contenu :
-- Divise en 4-8 paragraphes thématiques
-- Chaque paragraphe = une section ou thématique majeure de l'audio
-- Développe les arguments, exemples, données, détails importants
-- Suis la chronologie ou la logique de l'audio
-- N'OMETS AUCUNE INFORMATION IMPORTANTE
-- Si la transcription est dense → développe davantage (proche de ${maxSummaryWords} mots)
-- Si la transcription est moins dense → synthétise (proche de ${minSummaryWords} mots)
+Premièrement, il explique que..."
 
-**CONCLUSION**
-Longueur : ${Math.floor(targetSummaryWords * 0.1)}-${Math.ceil(targetSummaryWords * 0.15)} mots (10-15% du résumé)
-Contenu :
-- Phrase 1 : Synthétise les points principaux abordés
-- Phrase 2 : Rappelle le message clé ou l'enseignement principal
-- Phrase 3 (optionnelle) : Propose une ouverture ou perspective
+BON (sans titres, avec connecteurs) :
+"Dans cet enregistrement, l'intervenant aborde les stratégies d'investissement à 40 ans, en mettant l'accent sur...
+
+Premièrement, il souligne que le véritable risque à cet âge n'est pas de manquer d'argent...
+
+Ensuite, il aborde la question de la gestion patrimoniale...
+
+Enfin, il insiste sur l'importance de la diversification...
+
+En conclusion, l'enregistrement fournit un cadre structuré..."
 
 ═══════════════════════════════════════════════════════════════
-✅ COMMENT RESPECTER LA LONGUEUR CIBLE
+📊 POINTS CLÉS ET NOTIONS
 ═══════════════════════════════════════════════════════════════
 
-ÉTAPE 1 : Compte tes mots pendant que tu écris
-ÉTAPE 2 : Si tu atteins ${minSummaryWords} mots et qu'il reste des infos importantes → CONTINUE D'ÉCRIRE
-ÉTAPE 3 : Vise ${targetSummaryWords} mots comme longueur idéale
-ÉTAPE 4 : Arrête-toi quand tu atteins ${maxSummaryWords} mots maximum
+POINTS CLÉS :
+${durationMinutes < 3 ? `
+- Nombre : 5-8 points
+- Format : Phrases complètes et détaillées (15-20 mots par point)
+- Exemple : "L'inflation érode le pouvoir d'achat : un capital de 50 000€ non investi perd de sa valeur chaque année"
+` : durationMinutes < 10 ? `
+- Nombre : 10-15 points
+- Format : Phrases complètes et détaillées (15-25 mots par point)
+- Couvrir TOUS les arguments, conseils, étapes, ou concepts importants
+` : durationMinutes < 30 ? `
+- Nombre : 18-25 points
+- Format : Phrases complètes et très détaillées (20-30 mots par point)
+- Couvrir EXHAUSTIVEMENT tous les arguments, conseils, données, étapes
+` : `
+- Nombre : 25-35 points
+- Format : Phrases complètes et très détaillées (20-35 mots par point)
+- Couvrir EXHAUSTIVEMENT ET EN PROFONDEUR tous les concepts importants
+`}
 
-EXEMPLES DE LONGUEURS ATTENDUES :
-
-Transcription 2000 mots → Résumé 240-360 mots (cible 300 mots)
-Transcription 5000 mots → Résumé 600-900 mots (cible 750 mots)
-Transcription 10000 mots → Résumé 1200-1800 mots (cible 1500 mots)
-
-TON CAS ACTUEL :
-Transcription ${transcriptionWordCount} mots → Résumé ${minSummaryWords}-${maxSummaryWords} mots (cible ${targetSummaryWords} mots)
+NOTIONS :
+${durationMinutes < 3 ? `
+- Nombre : 4-6 notions
+- Format : Terme + définition complète (20-30 mots)
+` : durationMinutes < 10 ? `
+- Nombre : 8-12 notions
+- Format : Terme + définition complète et claire (25-40 mots)
+` : durationMinutes < 30 ? `
+- Nombre : 12-18 notions
+- Format : Terme + définition complète et détaillée (30-50 mots)
+` : `
+- Nombre : 18-28 notions
+- Format : Terme + définition complète et très détaillée (35-60 mots)
+`}
 
 ═══════════════════════════════════════════════════════════════
-⚠️ VÉRIFICATION FINALE AVANT DE SOUMETTRE TON RÉSUMÉ
+⚠️ VÉRIFICATION FINALE
 ═══════════════════════════════════════════════════════════════
 
-Avant de générer le JSON final, VÉRIFIE :
-☐ Mon résumé a une INTRODUCTION distincte
-☐ Mon résumé a un DÉVELOPPEMENT en plusieurs paragraphes
-☐ Mon résumé a une CONCLUSION distincte
-☐ Mon résumé fait AU MOINS ${minSummaryWords} mots
-☐ Mon résumé fait AU MAXIMUM ${maxSummaryWords} mots
-☐ Mon résumé vise ${targetSummaryWords} mots
+Avant de générer le JSON :
+☐ Mon résumé N'A PAS de titres "**INTRODUCTION**", "**DÉVELOPPEMENT**", "**CONCLUSION**"
+☐ Mon résumé utilise des connecteurs logiques naturels
+☐ Mon résumé fait entre ${minSummaryWords} et ${maxSummaryWords} mots
+☐ Mes points clés sont des phrases complètes de 15-30 mots chacune
+☐ Mes notions ont des définitions complètes de 25-50 mots chacune
 
-Si une seule case n'est pas cochée → RECOMMENCE TON RÉSUMÉ
+Si une case n'est pas cochée → RECOMMENCE
 `
 }
 
-POINTS CLÉS : ${durationMinutes < 3 ? "Minimum 5" : durationMinutes < 10 ? "8-10" : durationMinutes < 30 ? "15-20" : "20-30"} points détaillés
-NOTIONS : ${durationMinutes < 3 ? "Minimum 4" : durationMinutes < 10 ? "6-8" : durationMinutes < 30 ? "10-15" : "15-25"} termes avec définitions complètes
-
-═══════════════════════════════════════════════════════════════
-📋 FORMAT JSON À RETOURNER
-═══════════════════════════════════════════════════════════════
-
+Format JSON strict :
 {
-  "titre": "Titre court et descriptif (max 60 caractères)",
-  "resume": "RÉSUMÉ AVEC STRUCTURE COMPLÈTE\\n\\n**INTRODUCTION**\\n[texte intro]\\n\\n**DÉVELOPPEMENT**\\n[paragraphe 1]\\n\\n[paragraphe 2]\\n\\n[etc.]\\n\\n**CONCLUSION**\\n[texte conclusion]",
-  "pointsCles": ["Point 1", "Point 2", ...],
+  "titre": "Titre court (max 60 caractères)",
+  "resume": "RÉSUMÉ FLUIDE SANS TITRES DE SECTIONS, AVEC CONNECTEURS LOGIQUES NATURELS ET SAUTS DE LIGNE ENTRE PARAGRAPHES",
+  "pointsCles": [
+    "Point clé 1 en phrase complète et détaillée (15-30 mots)",
+    "Point clé 2 en phrase complète et détaillée (15-30 mots)",
+    ...
+  ],
   "notions": [
-    {"terme": "Terme 1", "definition": "Définition complète"},
-    {"terme": "Terme 2", "definition": "Définition complète"}
+    {"terme": "Terme 1", "definition": "Définition complète et détaillée (25-50 mots)"},
+    {"terme": "Terme 2", "definition": "Définition complète et détaillée (25-50 mots)"},
+    ...
   ]
-}
-
-RAPPEL FINAL : TON RÉSUMÉ DOIT FAIRE ${targetSummaryWords} MOTS (entre ${minSummaryWords} et ${maxSummaryWords}).`;
+}`;
 
     const userPrompt = `Transcription complète (${transcriptionWordCount} mots) :
 
