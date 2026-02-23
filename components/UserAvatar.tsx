@@ -7,13 +7,12 @@ interface UserAvatarProps {
 }
 
 const GRADIENT_CLASSES = [
-  "bg-gradient-to-br from-blue-500 to-purple-600",
-  "bg-gradient-to-br from-purple-500 to-pink-600",
-  "bg-gradient-to-br from-pink-500 to-rose-600",
-  "bg-gradient-to-br from-green-500 to-teal-600",
-  "bg-gradient-to-br from-teal-500 to-cyan-600",
-  "bg-gradient-to-br from-orange-500 to-red-600",
-  "bg-gradient-to-br from-indigo-500 to-blue-600",
+  "bg-gradient-to-br from-blue-400 to-blue-600",
+  "bg-gradient-to-br from-purple-400 to-purple-600",
+  "bg-gradient-to-br from-pink-400 to-pink-600",
+  "bg-gradient-to-br from-teal-400 to-teal-600",
+  "bg-gradient-to-br from-cyan-400 to-cyan-600",
+  "bg-gradient-to-br from-indigo-400 to-indigo-600",
 ] as const;
 
 const SIZE_CLASSES = {
