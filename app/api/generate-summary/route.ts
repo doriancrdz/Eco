@@ -172,10 +172,10 @@ export async function POST(req: NextRequest) {
     const targetSummaryWords = Math.round(transcriptionWordCount * 0.16);
     const minSummaryWords = targetSummaryWords - 10;
     const maxSummaryWords = targetSummaryWords + 10;
-    // RÈGLE 2 : POINTS CLÉS = 1 TOUS LES 800 MOTS
-    const targetPointsCles = Math.round(transcriptionWordCount / 800);
-    // RÈGLE 3 : NOTIONS = 1 TOUS LES 550 MOTS
-    const targetNotions = Math.round(transcriptionWordCount / 550);
+    // RÈGLE 2 : POINTS CLÉS = 1 TOUS LES 800 MOTS (MINIMUM 1)
+    const targetPointsCles = Math.max(1, Math.round(transcriptionWordCount / 800));
+    // RÈGLE 3 : NOTIONS = 1 TOUS LES 550 MOTS (MINIMUM 1)
+    const targetNotions = Math.max(1, Math.round(transcriptionWordCount / 550));
 
     const estimatedTokens = targetSummaryWords * 1.5 + targetPointsCles * 35 * 1.5 + targetNotions * 60 * 1.5;
     const maxTokens = Math.max(3000, Math.ceil(estimatedTokens + 1000));
