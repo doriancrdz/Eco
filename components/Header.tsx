@@ -7,6 +7,7 @@ import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import PlanBadge from "./PlanBadge";
 import GuideDropdown from "./GuideDropdown";
+import UserAvatar from "./UserAvatar";
 
 interface HeaderProps {
   onGoHome: (from?: "back" | "logo" | "sidebar") => void;
@@ -107,20 +108,10 @@ export default function Header({
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={onAvatarClick}
-            className="w-9 h-9 rounded-full overflow-hidden border-2 border-white/30 shadow-md shrink-0 flex items-center justify-center bg-gradient-to-br from-aura-emerald to-aura-blue"
+            className="shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 rounded-full"
             aria-label="Profil utilisateur"
           >
-            {userImageUrl ? (
-              <img
-                src={userImageUrl}
-                alt="Avatar"
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span className="text-sm font-bold text-gray-800">
-                {userName?.charAt(0) || "?"}
-              </span>
-            )}
+            <UserAvatar size="md" />
           </motion.button>
         ) : !isSignedIn ? (
           <motion.button
