@@ -5,6 +5,7 @@ import { useClerk } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Settings, LogOut, Sparkles } from "lucide-react";
+import UserAvatar from "./UserAvatar";
 
 interface ProfileViewProps {
   isOpen: boolean;
@@ -73,18 +74,8 @@ export default function ProfileView({
           </button>
 
           <div className="flex flex-col items-center gap-4 mb-8">
-            <div className="w-20 h-20 rounded-full bg-gray-200 overflow-hidden border-4 border-white/80 shadow-lg">
-              {userImageUrl ? (
-                <img
-                  src={userImageUrl}
-                  alt="Avatar"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-aura-emerald to-aura-blue flex items-center justify-center text-2xl font-bold text-gray-700">
-                  {userName?.charAt(0) || "?"}
-                </div>
-              )}
+            <div className="rounded-full border-4 border-white/80 shadow-lg">
+              <UserAvatar size="xl" />
             </div>
             <h2 className="text-xl font-bold text-gray-900">
               {userName || "Utilisateur"}
