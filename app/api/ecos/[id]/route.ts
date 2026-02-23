@@ -57,6 +57,13 @@ export async function GET(
       return NextResponse.json({ error: "ECO introuvable" }, { status: 404 });
     }
 
+    const recording = await prisma.recording.findUnique({
+      where: { id: eco.id },
+      select: { durationMs: true, durationSeconds: true },
+    });
+    const durationSeconds =
+      recording?.durationMs != null ? recording.durationMs / 1000 : recording?.durationSeconds ?? null;
+
     const transcriptionLen = eco.transcriptionText?.length ?? 0;
     const contentLen = eco.content?.length ?? 0;
     const totalMs = Date.now() - t0;
@@ -77,6 +84,7 @@ export async function GET(
       summary_text: eco.content || null,
       folder: eco.folderId || "",
       created_at: eco.createdAt.toISOString(),
+      duration_seconds: durationSeconds,
     };
 
     return NextResponse.json({ eco: formattedEco });
@@ -162,6 +170,13 @@ export async function PATCH(
       },
     });
 
+    const recording = await prisma.recording.findUnique({
+      where: { id: updatedEco.id },
+      select: { durationMs: true, durationSeconds: true },
+    });
+    const durationSeconds =
+      recording?.durationMs != null ? recording.durationMs / 1000 : recording?.durationSeconds ?? null;
+
     const formattedEco = {
       id: updatedEco.id,
       title: updatedEco.title,
@@ -170,6 +185,7 @@ export async function PATCH(
       summary_text: updatedEco.content || null,
       folder: updatedEco.folderId || "",
       created_at: updatedEco.createdAt.toISOString(),
+      duration_seconds: durationSeconds,
     };
     console.log(`[api/ecos/${params.id} PATCH] ms=${Date.now() - t0}`);
     return NextResponse.json({ eco: formattedEco });

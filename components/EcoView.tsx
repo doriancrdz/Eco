@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Eco } from "@/types";
 import { motion } from "framer-motion";
-import { RefreshCw, Copy, Check } from "lucide-react";
+import { RefreshCw, Copy, Check, ArrowLeft } from "lucide-react";
 import { generateSummary } from "@/lib/transcription";
 import type { Summary } from "@/lib/transcription";
 import Tabs from "@/components/ui/Tabs";
@@ -519,6 +519,16 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
           
           {/* Glass card header */}
           <div className="relative bg-white/8 backdrop-blur-xl rounded-2xl border border-white/15 shadow-2xl p-8 md:p-10">
+            {onBack && (
+              <button
+                type="button"
+                onClick={onBack}
+                className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-4 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                <span>Retour à l&apos;accueil</span>
+              </button>
+            )}
             <h1 className="text-4xl md:text-5xl font-semibold text-gray-900 mb-2 tracking-[-0.02em]">
               {eco.title}
             </h1>
@@ -531,6 +541,11 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
                 minute: "2-digit",
               })}
             </p>
+            {eco.duration_seconds != null && eco.duration_seconds > 0 && (
+              <p className="text-sm text-gray-500 mt-1">
+                Durée : {Math.floor(eco.duration_seconds / 60)} min {Math.round(eco.duration_seconds % 60)} s
+              </p>
+            )}
           </div>
         </motion.div>
 
