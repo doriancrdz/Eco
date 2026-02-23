@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { MoreHorizontal, FolderPlus } from "lucide-react";
+import { MoreHorizontal, FolderPlus, Archive } from "lucide-react";
 import { motion } from "framer-motion";
 import { Eco, Folder as FolderType } from "@/types";
 import DropdownMenu from "./ui/DropdownMenu";
@@ -37,7 +37,9 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
           setFolders(data.folders || []);
         }
       } catch (error) {
-        console.error("Erreur lors du chargement des dossiers:", error);
+        if (process.env.NODE_ENV === "development") {
+          console.error("Erreur lors du chargement des dossiers:", error);
+        }
       }
     };
     
@@ -83,7 +85,9 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
       onUpdate?.();
       setIsRenaming(false);
     } catch (error) {
-      console.error("Erreur lors du renommage:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Erreur lors du renommage:", error);
+      }
       setRenameValue(eco.title);
       setIsRenaming(false);
     }
@@ -116,7 +120,9 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
       window.dispatchEvent(new Event("eco-updated"));
       onUpdate?.();
     } catch (error) {
-      console.error("Erreur lors du déplacement:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Erreur lors du déplacement:", error);
+      }
       alert(error instanceof Error ? error.message : "Erreur lors du déplacement de l'ECO.");
     }
   };
@@ -162,7 +168,9 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
       
       // Le menu se fermera automatiquement via le click outside handler
     } catch (error) {
-      console.error("Erreur lors de la création du dossier:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Erreur lors de la création du dossier:", error);
+      }
       alert("Erreur lors de la création du dossier.");
     } finally {
       setIsCreating(false);
@@ -185,6 +193,25 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
     }
   }, [isCreatingFolder]);
 
+  const handleArchive = async () => {
+    try {
+      const response = await fetch(`/api/ecos/${eco.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ archived: true }),
+      });
+      if (!response.ok) throw new Error("Erreur lors de l'archivage");
+      window.dispatchEvent(new Event("eco-updated"));
+      onUpdate?.();
+      onDelete?.();
+    } catch (error) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("Erreur lors de l'archivage:", error);
+      }
+      alert("Erreur lors de l'archivage de l'ECO.");
+    }
+  };
+
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
@@ -200,7 +227,9 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
       onDelete?.();
       setShowDeleteDialog(false);
     } catch (error) {
-      console.error("Erreur lors de la suppression:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Erreur lors de la suppression:", error);
+      }
       alert("Erreur lors de la suppression de l'ECO.");
     } finally {
       setIsDeleting(false);
@@ -273,6 +302,11 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
     {
       label: "Déplacer vers…",
       submenu: moveToFolderSubmenu,
+    },
+    {
+      label: "Archiver",
+      onClick: handleArchive,
+      icon: <Archive className="w-4 h-4" />,
     },
     {
       label: "Supprimer",

@@ -103,15 +103,19 @@ export async function POST(req: NextRequest) {
     }
 
     recordingIdForError = recordingId;
-    console.log("[summary] start", { traceId, recordingId, userId: user.id, ts: Date.now() });
+    if (process.env.NODE_ENV === "development") {
+      console.log("[summary] start", { traceId, recordingId, userId: user.id, ts: Date.now() });
+    }
 
     // DONE (ou ancien format) → retour direct, pas de regen
     if (recording.aiStatus === "DONE" || (recording.status === "DONE" && recording.summaryJson)) {
       timings.total = performance.now() - perfStart;
-      console.log("[generate-summary] ⏱️ RETOUR CACHE (DONE)", {
-        recordingId,
-        totalMs: timings.total.toFixed(2),
-      });
+      if (process.env.NODE_ENV === "development") {
+        console.log("[generate-summary] ⏱️ RETOUR CACHE (DONE)", {
+          recordingId,
+          totalMs: timings.total.toFixed(2),
+        });
+      }
       let summary;
       try {
         summary = JSON.parse(recording.summaryJson!);
@@ -130,7 +134,9 @@ export async function POST(req: NextRequest) {
     // GENERATING → 202, ne pas relancer
     if (recording.aiStatus === "GENERATING") {
       timings.total = performance.now() - perfStart;
-      console.log("[generate-summary] 202 ALREADY GENERATING", { recordingId });
+      if (process.env.NODE_ENV === "development") {
+        console.log("[generate-summary] 202 ALREADY GENERATING", { recordingId });
+      }
       return NextResponse.json(
         {
           recordingId,
@@ -142,7 +148,9 @@ export async function POST(req: NextRequest) {
     }
 
     if (!recording.transcriptionText || recording.transcriptionText.trim() === "") {
-      console.log("[summary] TRANSCRIPTION_MISSING", { traceId, recordingId });
+      if (process.env.NODE_ENV === "development") {
+        console.log("[summary] TRANSCRIPTION_MISSING", { traceId, recordingId });
+      }
       return NextResponse.json(
         { error: "TRANSCRIPTION_MISSING", code: "TRANSCRIPTION_MISSING" },
         { status: 400 }
@@ -179,22 +187,23 @@ export async function POST(req: NextRequest) {
 
     const estimatedTokens = targetSummaryWords * 1.5 + targetPointsCles * 35 * 1.5 + targetNotions * 60 * 1.5;
     const maxTokens = Math.max(3000, Math.ceil(estimatedTokens + 1000));
-    console.log("[generate-summary] max_tokens:", maxTokens);
-
-    console.log("[generate-summary] Calcul STRICT DÉFINITIF:", {
+    if (process.env.NODE_ENV === "development") {
+      console.log("[generate-summary] max_tokens:", maxTokens);
+      console.log("[generate-summary] Calcul STRICT DÉFINITIF:", {
       transcriptionWords: transcriptionWordCount,
       summaryTarget: `${targetSummaryWords} mots (16%)`,
       summaryRange: `${minSummaryWords}-${maxSummaryWords}`,
       pointsClesTarget: targetPointsCles,
       notionsTarget: targetNotions,
     });
-    console.log("[generate-summary] Appel OpenAI", {
+      console.log("[generate-summary] Appel OpenAI", {
       recordingId,
       model: AI_SUMMARY_MODEL,
       transcriptionLength: textLength,
       sentLength: truncated.length,
       maxTokens,
     });
+    }
 
     const systemPrompt = `Tu es un assistant IA expert en structuration de connaissances.
 
@@ -412,33 +421,37 @@ ${truncated}`;
       const resumeWordCount = summary.resume?.trim().split(/\s+/).filter(Boolean).length ?? 0;
       const pointsClesCount = summary.pointsCles?.length ?? 0;
       const notionsCount = summary.notions?.length ?? 0;
-      console.log("[generate-summary] Résultat:", {
-        resumeWords: resumeWordCount,
-        resumeTarget: targetSummaryWords,
-        resumeOK: Math.abs(resumeWordCount - targetSummaryWords) <= 10,
-        pointsCles: pointsClesCount,
-        pointsClesTarget: targetPointsCles,
-        pointsClesOK: pointsClesCount === targetPointsCles,
-        notions: notionsCount,
-        notionsTarget: targetNotions,
-        notionsOK: notionsCount === targetNotions,
-      });
-      if (Math.abs(resumeWordCount - targetSummaryWords) > 10) {
-        console.warn("⚠️ [generate-summary] RÉSUMÉ HORS CIBLE !", { obtenu: resumeWordCount, cible: targetSummaryWords });
+      if (process.env.NODE_ENV === "development") {
+        console.log("[generate-summary] Résultat:", {
+          resumeWords: resumeWordCount,
+          resumeTarget: targetSummaryWords,
+          resumeOK: Math.abs(resumeWordCount - targetSummaryWords) <= 10,
+          pointsCles: pointsClesCount,
+          pointsClesTarget: targetPointsCles,
+          pointsClesOK: pointsClesCount === targetPointsCles,
+          notions: notionsCount,
+          notionsTarget: targetNotions,
+          notionsOK: notionsCount === targetNotions,
+        });
+        if (Math.abs(resumeWordCount - targetSummaryWords) > 10) {
+          console.warn("⚠️ [generate-summary] RÉSUMÉ HORS CIBLE !", { obtenu: resumeWordCount, cible: targetSummaryWords });
+        }
+        if (pointsClesCount !== targetPointsCles) {
+          console.warn("⚠️ [generate-summary] POINTS CLÉS INCORRECTS !", { obtenu: pointsClesCount, cible: targetPointsCles });
+        }
+        if (notionsCount !== targetNotions) {
+          console.warn("⚠️ [generate-summary] NOTIONS INCORRECTES !", { obtenu: notionsCount, cible: targetNotions });
+        }
+        console.log("[generate-summary] Résumé parsé", {
+          hasTitre: !!summary.titre,
+          resumeLength: summary.resume?.length || 0,
+          gptMs: timings.gptSummary.toFixed(2),
+        });
       }
-      if (pointsClesCount !== targetPointsCles) {
-        console.warn("⚠️ [generate-summary] POINTS CLÉS INCORRECTS !", { obtenu: pointsClesCount, cible: targetPointsCles });
-      }
-      if (notionsCount !== targetNotions) {
-        console.warn("⚠️ [generate-summary] NOTIONS INCORRECTES !", { obtenu: notionsCount, cible: targetNotions });
-      }
-      console.log("[generate-summary] Résumé parsé", {
-        hasTitre: !!summary.titre,
-        resumeLength: summary.resume?.length || 0,
-        gptMs: timings.gptSummary.toFixed(2),
-      });
     } catch (parseError) {
-      console.error("[generate-summary] Erreur parsing JSON:", parseError);
+      if (process.env.NODE_ENV === "development") {
+        console.error("[generate-summary] Erreur parsing JSON:", parseError);
+      }
       summary = {
         titre: "Résumé",
         resume: textToSend.substring(0, 200) + "...",
@@ -448,7 +461,9 @@ ${truncated}`;
     }
 
     const summaryJson = JSON.stringify(summary);
-    console.log("[summary] generated", { hasJson: !!summaryJson, size: summaryJson?.length ?? 0, ts: Date.now() });
+    if (process.env.NODE_ENV === "development") {
+      console.log("[summary] generated", { hasJson: !!summaryJson, size: summaryJson?.length ?? 0, ts: Date.now() });
+    }
 
     const dbUpdateStart = performance.now();
     await prisma.recording.update({
@@ -461,7 +476,9 @@ ${truncated}`;
         summaryJson,
       },
     });
-    console.log("[summary] recording updated", { recordingId, ts: Date.now() });
+    if (process.env.NODE_ENV === "development") {
+      console.log("[summary] recording updated", { recordingId, ts: Date.now() });
+    }
 
     // Sync Eco (id = recordingId) : upsert pour être robuste si l'Eco n'existe pas encore
     const contentStr = summaryJson;
@@ -481,24 +498,25 @@ ${truncated}`;
       select: { id: true, content: true, title: true },
     });
     const contentLen = updatedEco?.content?.length ?? 0;
-    console.log("[summary] end", {
-      traceId,
-      recordingId,
-      contentLen,
-      ts: Date.now(),
-    });
     timings.dbUpdate = performance.now() - dbUpdateStart;
-
     timings.total = performance.now() - perfStart;
-    console.log("[generate-summary] ⏱️ TIMINGS:", {
-      auth: `${timings.auth?.toFixed(2)}ms`,
-      dbRead: `${timings.dbRead?.toFixed(2)}ms`,
-      dbLock: `${timings.dbLock?.toFixed(2)}ms`,
-      gptSummary: `${timings.gptSummary?.toFixed(2)}ms`,
-      dbUpdate: `${timings.dbUpdate?.toFixed(2)}ms`,
-      total: `${timings.total.toFixed(2)}ms`,
-      model: AI_SUMMARY_MODEL,
-    });
+    if (process.env.NODE_ENV === "development") {
+      console.log("[summary] end", {
+        traceId,
+        recordingId,
+        contentLen,
+        ts: Date.now(),
+      });
+      console.log("[generate-summary] ⏱️ TIMINGS:", {
+        auth: `${timings.auth?.toFixed(2)}ms`,
+        dbRead: `${timings.dbRead?.toFixed(2)}ms`,
+        dbLock: `${timings.dbLock?.toFixed(2)}ms`,
+        gptSummary: `${timings.gptSummary?.toFixed(2)}ms`,
+        dbUpdate: `${timings.dbUpdate?.toFixed(2)}ms`,
+        total: `${timings.total?.toFixed(2)}ms`,
+        model: AI_SUMMARY_MODEL,
+      });
+    }
 
     return NextResponse.json({
       recordingId,
@@ -507,7 +525,9 @@ ${truncated}`;
       timings: process.env.NODE_ENV === "development" ? timings : undefined,
     });
   } catch (error) {
-    console.error("[generate-summary] Erreur:", error);
+    if (process.env.NODE_ENV === "development") {
+      console.error("[generate-summary] Erreur:", error);
+    }
 
     // En cas d'erreur, remettre aiStatus en FAILED si on a le recordingId
     try {
@@ -522,7 +542,9 @@ ${truncated}`;
         });
       }
     } catch (dbErr) {
-      console.error("[generate-summary] Erreur update FAILED:", dbErr);
+      if (process.env.NODE_ENV === "development") {
+        console.error("[generate-summary] Erreur update FAILED:", dbErr);
+      }
     }
 
     return NextResponse.json(

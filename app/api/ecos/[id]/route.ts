@@ -67,14 +67,16 @@ export async function GET(
     const transcriptionLen = eco.transcriptionText?.length ?? 0;
     const contentLen = eco.content?.length ?? 0;
     const totalMs = Date.now() - t0;
-    console.log(`[api/ecos/${params.id} GET] ms=${totalMs} auth=${authMs} user=${userMs} db=${dbMs}`, {
-      id: eco.id,
-      transcriptionLen,
-      contentLen,
-      hasTranscription: transcriptionLen > 0,
-      hasContent: contentLen > 0,
-      updatedAt: eco.updatedAt.toISOString(),
-    });
+    if (process.env.NODE_ENV === "development") {
+      console.log(`[api/ecos/${params.id} GET] ms=${totalMs} auth=${authMs} user=${userMs} db=${dbMs}`, {
+        id: eco.id,
+        transcriptionLen,
+        contentLen,
+        hasTranscription: transcriptionLen > 0,
+        hasContent: contentLen > 0,
+        updatedAt: eco.updatedAt.toISOString(),
+      });
+    }
 
     const formattedEco = {
       id: eco.id,
@@ -89,7 +91,9 @@ export async function GET(
 
     return NextResponse.json({ eco: formattedEco });
   } catch (error) {
-    console.error("[ecos GET] Erreur:", error);
+    if (process.env.NODE_ENV === "development") {
+      console.error("[ecos GET] Erreur:", error);
+    }
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : "Une erreur est survenue.",
@@ -123,7 +127,7 @@ export async function PATCH(
     }
 
     const body = await req.json();
-    const { title, folder, folderId, summary_text, transcription_text } = body;
+    const { title, folder, folderId, summary_text, transcription_text, archived } = body;
 
     const eco = await prisma.eco.findFirst({
       where: { id: params.id, userId: user.id },
@@ -137,8 +141,10 @@ export async function PATCH(
       folderId?: string | null;
       content?: string | null;
       transcriptionText?: string | null;
+      archived?: boolean;
     } = {};
     if (title !== undefined) updateData.title = title;
+    if (archived !== undefined) updateData.archived = Boolean(archived);
     if (summary_text !== undefined) updateData.content = summary_text || null;
     if (transcription_text !== undefined) updateData.transcriptionText = transcription_text || null;
     const targetFolderId = folderId !== undefined ? folderId : folder;
@@ -187,10 +193,14 @@ export async function PATCH(
       created_at: updatedEco.createdAt.toISOString(),
       duration_seconds: durationSeconds,
     };
-    console.log(`[api/ecos/${params.id} PATCH] ms=${Date.now() - t0}`);
+    if (process.env.NODE_ENV === "development") {
+      console.log(`[api/ecos/${params.id} PATCH] ms=${Date.now() - t0}`);
+    }
     return NextResponse.json({ eco: formattedEco });
   } catch (error) {
-    console.error("[ecos PATCH] Erreur:", error);
+    if (process.env.NODE_ENV === "development") {
+      console.error("[ecos PATCH] Erreur:", error);
+    }
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Une erreur est survenue." },
       { status: 500 }
@@ -223,10 +233,14 @@ export async function DELETE(
     if (!eco) {
       return NextResponse.json({ error: "ECO introuvable" }, { status: 404 });
     }
-    await prisma.eco.delete({ where: { id: params.id } });
+    const ecoId = params.id;
+    await prisma.eco.delete({ where: { id: ecoId } });
+    await prisma.recording.deleteMany({ where: { id: ecoId } });
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("[ecos DELETE] Erreur:", error);
+    if (process.env.NODE_ENV === "development") {
+      console.error("[ecos DELETE] Erreur:", error);
+    }
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Une erreur est survenue." },
       { status: 500 }

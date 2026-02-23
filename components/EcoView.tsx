@@ -202,7 +202,11 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
                   if (r.ok || r.status === 202) return;
                   throw new Error(`Status ${r.status}`);
                 })
-                .catch((err) => console.error("[EcoView.poll] generate-summary error", err));
+                .catch((err) => {
+                  if (process.env.NODE_ENV === "development") {
+                    console.error("[EcoView.poll] generate-summary error", err);
+                  }
+                });
             }
 
             // Stop quand les deux sont remplis
@@ -239,7 +243,9 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
           }
         }
       } catch (error) {
-        console.error("[EcoView.poll] Erreur", error);
+        if (process.env.NODE_ENV === "development") {
+          console.error("[EcoView.poll] Erreur", error);
+        }
         setLastEcoFetch({
           url: pollUrl,
           statusCode: 0,

@@ -189,7 +189,9 @@ export default function DropdownMenu({ items, children, align = "right" }: Dropd
       try {
         await item.onClick();
       } catch (error) {
-        console.error("Erreur dans onClick:", error);
+        if (process.env.NODE_ENV === "development") {
+          console.error("Erreur dans onClick:", error);
+        }
       }
     }
     handleClose();
@@ -206,7 +208,9 @@ export default function DropdownMenu({ items, children, align = "right" }: Dropd
           handleClose();
         }
       } catch (error) {
-        console.error("Erreur dans onClick:", error);
+        if (process.env.NODE_ENV === "development") {
+          console.error("Erreur dans onClick:", error);
+        }
       }
     } else {
       // Si pas d'onClick, fermer quand même

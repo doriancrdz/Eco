@@ -84,7 +84,9 @@ export default function Home() {
   // Charger les ECOs depuis l'API (source unique)
   const loadEcos = useCallback(async () => {
     const t0 = performance.now();
-    console.log("[loadEcos] Début");
+    if (process.env.NODE_ENV === "development") {
+      console.log("[loadEcos] Début");
+    }
     try {
       const res = await fetch("/api/ecos?limit=30", { cache: "no-store" });
       const t1 = performance.now();
@@ -92,15 +94,21 @@ export default function Home() {
       if (res.ok) {
         const data = await res.json();
         const payloadSize = JSON.stringify(data).length;
-        console.log(`[loadEcos] Succès - ${duration.toFixed(0)}ms - ${payloadSize} bytes - ${data.ecos?.length || 0} ECOs`);
+        if (process.env.NODE_ENV === "development") {
+          console.log(`[loadEcos] Succès - ${duration.toFixed(0)}ms - ${payloadSize} bytes - ${data.ecos?.length || 0} ECOs`);
+        }
         setEcos(data.ecos || []);
       } else {
-        console.log(`[loadEcos] Erreur ${res.status} - ${duration.toFixed(0)}ms`);
+        if (process.env.NODE_ENV === "development") {
+          console.log(`[loadEcos] Erreur ${res.status} - ${duration.toFixed(0)}ms`);
+        }
         setEcos([]);
       }
     } catch (error) {
       const duration = performance.now() - t0;
-      console.error(`[loadEcos] Exception - ${duration.toFixed(0)}ms`, error);
+      if (process.env.NODE_ENV === "development") {
+        console.error(`[loadEcos] Exception - ${duration.toFixed(0)}ms`, error);
+      }
       setEcos([]);
     }
   }, []);
@@ -118,7 +126,9 @@ export default function Home() {
           });
           await loadEcos();
         } catch (error) {
-          console.error("Erreur lors de la migration des ECOs:", error);
+          if (process.env.NODE_ENV === "development") {
+            console.error("Erreur lors de la migration des ECOs:", error);
+          }
         }
       } else {
         loadEcos();
@@ -142,7 +152,9 @@ export default function Home() {
       }
       
       ecoUpdatedTimeoutRef.current = setTimeout(() => {
-        console.log("[eco-updated] Déclenchement loadEcos (debounced)");
+        if (process.env.NODE_ENV === "development") {
+          console.log("[eco-updated] Déclenchement loadEcos (debounced)");
+        }
         lastEcoUpdatedRef.current = Date.now();
         loadEcos();
       }, Math.max(0, 300 - timeSinceLastUpdate));
@@ -193,7 +205,9 @@ export default function Home() {
   // Sécurité : garder selectedEco et currentEco cohérents (éviter fond vide / état cassé)
   useEffect(() => {
     if (!selectedEco && currentEco) {
-      console.warn("[Safety] État incohérent détecté (selectedEco vide mais currentEco présent), sync currentEco → null");
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[Safety] État incohérent détecté (selectedEco vide mais currentEco présent), sync currentEco → null");
+      }
       setCurrentEco(null);
     }
   }, [selectedEco, currentEco]);
@@ -210,14 +224,18 @@ export default function Home() {
     // Vérifier le cache
     const cached = currentEcoCacheRef.current;
     if (cached && cached.id === selectedEco && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-      console.log(`[loadCurrentEco] Utilisation cache pour ${selectedEco}`);
+      if (process.env.NODE_ENV === "development") {
+        console.log(`[loadCurrentEco] Utilisation cache pour ${selectedEco}`);
+      }
       setCurrentEco(cached.data);
       return;
     }
     
     const loadCurrentEco = async () => {
       const t0 = performance.now();
-      console.log(`[loadCurrentEco] Fetch ${selectedEco}`);
+      if (process.env.NODE_ENV === "development") {
+        console.log(`[loadCurrentEco] Fetch ${selectedEco}`);
+      }
       try {
         const res = await fetch(`/api/ecos/${selectedEco}`, { cache: "no-store" });
         const t1 = performance.now();
@@ -225,14 +243,18 @@ export default function Home() {
         if (res.ok) {
           const data = await res.json();
           const payloadSize = JSON.stringify(data).length;
-          console.log(`[loadCurrentEco] Succès - ${duration.toFixed(0)}ms - ${payloadSize} bytes`);
+          if (process.env.NODE_ENV === "development") {
+            console.log(`[loadCurrentEco] Succès - ${duration.toFixed(0)}ms - ${payloadSize} bytes`);
+          }
           if (data.eco) {
             setCurrentEco(data.eco);
             // Mettre en cache
             currentEcoCacheRef.current = { id: selectedEco, data: data.eco, timestamp: Date.now() };
           }
         } else {
-          console.log(`[loadCurrentEco] Erreur ${res.status} - ${duration.toFixed(0)}ms`);
+          if (process.env.NODE_ENV === "development") {
+            console.log(`[loadCurrentEco] Erreur ${res.status} - ${duration.toFixed(0)}ms`);
+          }
           setSelectedEco(null);
           setSelectedFolder(null);
           setCurrentEco(null);
@@ -240,7 +262,9 @@ export default function Home() {
         }
       } catch (error) {
         const duration = performance.now() - t0;
-        console.error(`[loadCurrentEco] Exception - ${duration.toFixed(0)}ms`, error);
+        if (process.env.NODE_ENV === "development") {
+          console.error(`[loadCurrentEco] Exception - ${duration.toFixed(0)}ms`, error);
+        }
         setSelectedEco(null);
         setSelectedFolder(null);
         setCurrentEco(null);
@@ -271,7 +295,9 @@ export default function Home() {
         currentEcoCacheRef.current = null;
         
         const t0 = performance.now();
-        console.log(`[refreshCurrentEco] Refresh ${ecoId}`);
+        if (process.env.NODE_ENV === "development") {
+          console.log(`[refreshCurrentEco] Refresh ${ecoId}`);
+        }
         try {
           const res = await fetch(`/api/ecos/${ecoId}`, { cache: "no-store" });
           if (isNavigatingHomeRef.current) return;
@@ -279,13 +305,17 @@ export default function Home() {
           const duration = t1 - t0;
           if (res.ok) {
             const data = await res.json();
-            console.log(`[refreshCurrentEco] Succès - ${duration.toFixed(0)}ms`);
+            if (process.env.NODE_ENV === "development") {
+              console.log(`[refreshCurrentEco] Succès - ${duration.toFixed(0)}ms`);
+            }
             if (data.eco && !isNavigatingHomeRef.current) {
               setCurrentEco(data.eco);
               currentEcoCacheRef.current = { id: ecoId, data: data.eco, timestamp: Date.now() };
             }
           } else {
-            console.log(`[refreshCurrentEco] Erreur ${res.status} - ${duration.toFixed(0)}ms`);
+            if (process.env.NODE_ENV === "development") {
+              console.log(`[refreshCurrentEco] Erreur ${res.status} - ${duration.toFixed(0)}ms`);
+            }
             if (!isNavigatingHomeRef.current) {
               setSelectedEco(null);
               setSelectedFolder(null);
@@ -295,7 +325,9 @@ export default function Home() {
           }
         } catch (error) {
           const duration = performance.now() - t0;
-          console.error(`[refreshCurrentEco] Exception - ${duration.toFixed(0)}ms`, error);
+          if (process.env.NODE_ENV === "development") {
+            console.error(`[refreshCurrentEco] Exception - ${duration.toFixed(0)}ms`, error);
+          }
         }
       }, 500);
     };
@@ -376,7 +408,9 @@ export default function Home() {
     setRecordingElapsedSeconds(0);
 
     try {
-      console.log("[startRecording] Demande accès micro...");
+      if (process.env.NODE_ENV === "development") {
+        console.log("[startRecording] Demande accès micro...");
+      }
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
@@ -385,7 +419,9 @@ export default function Home() {
         },
       });
 
-      console.log("[startRecording] Stream obtenu:", stream.id);
+      if (process.env.NODE_ENV === "development") {
+        console.log("[startRecording] Stream obtenu:", stream.id);
+      }
 
       if (stream.getAudioTracks().length === 0) {
         throw new Error("Aucune piste audio disponible");
@@ -393,7 +429,9 @@ export default function Home() {
 
       // Réinitialiser les chunks
       audioChunksRef.current = [];
-      console.log("[startRecording] Chunks réinitialisés");
+      if (process.env.NODE_ENV === "development") {
+        console.log("[startRecording] Chunks réinitialisés");
+      }
 
       // Détection format robuste : priorité WEBM/OPUS pour compatibilité Whisper
       const preferredMimeTypes = [
@@ -411,7 +449,9 @@ export default function Home() {
       // Si aucun format préféré supporté, laisser undefined (navigateur choisira)
 
       mimeTypeRef.current = chosenMimeType || "audio/webm";
-      console.log("[RECORDER] Format choisi:", chosenMimeType || "navigateur par défaut");
+      if (process.env.NODE_ENV === "development") {
+        console.log("[RECORDER] Format choisi:", chosenMimeType || "navigateur par défaut");
+      }
 
       // Créer MediaRecorder avec bitrate 96 kbps (bon compromis qualité/taille pour 60 min)
       const recorderOptions: MediaRecorderOptions = {};
@@ -421,31 +461,41 @@ export default function Home() {
       recorderOptions.audioBitsPerSecond = 96000; // 96 kbps (60 min ≈ 41 MB)
       const mediaRecorder = new MediaRecorder(stream, recorderOptions);
       
-      console.log("[RECORDER] MediaRecorder créé", {
+      if (process.env.NODE_ENV === "development") {
+        console.log("[RECORDER] MediaRecorder créé", {
         requestedMimeType: chosenMimeType || "navigateur par défaut",
         actualMimeType: mediaRecorder.mimeType,
         audioBitsPerSecond: recorderOptions.audioBitsPerSecond,
         state: mediaRecorder.state,
       });
+      }
 
       // IMPORTANT: Définir TOUS les handlers AVANT start()
       mediaRecorder.ondataavailable = (e) => {
-        console.log("[ondataavailable] size:", e.data?.size ?? 0, "type:", e.data?.type ?? "unknown");
+        if (process.env.NODE_ENV === "development") {
+          console.log("[ondataavailable] size:", e.data?.size ?? 0, "type:", e.data?.type ?? "unknown");
+        }
         if (e.data && e.data.size > 0) {
           audioChunksRef.current.push(e.data);
-          console.log("[Chunk collecté] Total chunks:", audioChunksRef.current.length);
+          if (process.env.NODE_ENV === "development") {
+            console.log("[Chunk collecté] Total chunks:", audioChunksRef.current.length);
+          }
         }
       };
 
       mediaRecorder.onstop = async () => {
-        console.log("[onstop] Chunks collectés:", audioChunksRef.current.length);
+        if (process.env.NODE_ENV === "development") {
+          console.log("[onstop] Chunks collectés:", audioChunksRef.current.length);
+        }
         stopAudioLevel();
         startTimeRef.current = null;
         totalPausedMsRef.current = 0;
         pausedAtRef.current = null;
 
         if (audioChunksRef.current.length === 0) {
-          console.error("[onstop] AUCUN CHUNK!");
+          if (process.env.NODE_ENV === "development") {
+            console.error("[onstop] AUCUN CHUNK!");
+          }
           setIsRecording(false);
           setIsProcessing(false);
           setIsFocusMode(false);
@@ -463,13 +513,15 @@ export default function Home() {
         const audioBlob = new Blob(audioChunksRef.current, { type: mimeTypeUsed });
         
         const sizeMB = (audioBlob.size / 1024 / 1024).toFixed(2);
-        console.log("[RECORDER] Blob final créé", {
+        if (process.env.NODE_ENV === "development") {
+          console.log("[RECORDER] Blob final créé", {
           type: audioBlob.type,
           sizeBytes: audioBlob.size,
           sizeMB: `${sizeMB} MB`,
           chunksCount: audioChunksRef.current.length,
           durationSeconds: elapsedAtStopRef.current,
         });
+        }
 
         const durationSeconds = elapsedAtStopRef.current;
         await processRecording(audioBlob, durationSeconds, mimeTypeUsed);
@@ -481,7 +533,9 @@ export default function Home() {
       };
 
       mediaRecorder.onerror = (e) => {
-        console.error("[MediaRecorder] Erreur:", e);
+        if (process.env.NODE_ENV === "development") {
+          console.error("[MediaRecorder] Erreur:", e);
+        }
       };
 
       // Stocker dans ref
@@ -492,11 +546,15 @@ export default function Home() {
 
       // Démarrer avec timeslice 1000ms pour collecter régulièrement (évite que Chrome coupe le stream)
       mediaRecorder.start(1000);
-      console.log("[MediaRecorder] start(1000) appelé, state:", mediaRecorder.state);
+      if (process.env.NODE_ENV === "development") {
+        console.log("[MediaRecorder] start(1000) appelé, state:", mediaRecorder.state);
+      }
 
       // Démarrer l'analyse audio (consomme aussi le stream)
       await startAudioLevel(stream);
-      console.log("[startRecording] Analyse audio démarrée");
+      if (process.env.NODE_ENV === "development") {
+        console.log("[startRecording] Analyse audio démarrée");
+      }
 
       // Initialiser le timer
       startTimeRef.current = Date.now();
@@ -506,9 +564,13 @@ export default function Home() {
       // Afficher FocusMode
       setIsFocusMode(true);
       setIsRecording(true);
-      console.log("[startRecording] Tout initialisé");
+      if (process.env.NODE_ENV === "development") {
+        console.log("[startRecording] Tout initialisé");
+      }
     } catch (error) {
-      console.error("[startRecording] Erreur:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("[startRecording] Erreur:", error);
+      }
       setIsFocusMode(false);
       setIsRecording(false);
       alert("Impossible d'accéder au microphone. Veuillez autoriser l'accès.");
@@ -520,13 +582,17 @@ export default function Home() {
   };
 
   const confirmStop = () => {
-    console.log("[confirmStop] T0 stop clicked", { ts: Date.now() });
+    if (process.env.NODE_ENV === "development") {
+      console.log("[confirmStop] T0 stop clicked", { ts: Date.now() });
+    }
     
     // Calculer la durée EXACTE en millisecondes
     const endTime = Date.now();
     const startTime = startTimeRef.current;
     if (startTime === null) {
-      console.error("[confirmStop] startTimeRef.current est null");
+      if (process.env.NODE_ENV === "development") {
+        console.error("[confirmStop] startTimeRef.current est null");
+      }
       setIsRecording(false);
       setIsProcessing(false);
       setIsFocusMode(false);
@@ -538,11 +604,13 @@ export default function Home() {
     const durationSeconds = durationMs / 1000; // PRÉCIS à 2 décimales
     const durationMinutes = durationSeconds / 60; // PRÉCIS
     
-    console.log("[confirmStop] Durée exacte calculée", {
+    if (process.env.NODE_ENV === "development") {
+      console.log("[confirmStop] Durée exacte calculée", {
       durationMs: durationMs.toFixed(0),
       durationSeconds: durationSeconds.toFixed(2),
       durationMinutes: durationMinutes.toFixed(2),
     });
+    }
     
     // Vérifier la limite AVANT de continuer
     if (durationMinutes > MAX_RECORDING_DURATION_MINUTES) {
@@ -558,20 +626,26 @@ export default function Home() {
       // Stocker la durée exacte pour processRecording
       elapsedAtStopRef.current = durationSeconds;
       mediaRecorderRef.current.stop();
-      console.log("[confirmStop] MediaRecorder.stop() appelé");
+      if (process.env.NODE_ENV === "development") {
+        console.log("[confirmStop] MediaRecorder.stop() appelé");
+      }
 
       // Arrêter le stream après l'arrêt du MediaRecorder
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
-        console.log("[confirmStop] Stream arrêté");
+        if (process.env.NODE_ENV === "development") {
+          console.log("[confirmStop] Stream arrêté");
+        }
       }
     } else {
-      console.warn("[confirmStop] MediaRecorder non disponible ou pas en recording", {
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[confirmStop] MediaRecorder non disponible ou pas en recording", {
         hasRef: !!mediaRecorderRef.current,
         state: mediaRecorderRef.current?.state,
         isRecording,
       });
+      }
     }
     setProcessingDurationMinutes(durationSeconds / 60);
     setIsRecording(false);
@@ -596,11 +670,13 @@ export default function Home() {
     try {
       const contentType = audioBlob.type || "audio/webm";
       const fileSize = audioBlob.size;
-      console.log("[processRecording] Demande presigned URL…", {
+      if (process.env.NODE_ENV === "development") {
+        console.log("[processRecording] Demande presigned URL…", {
         contentType,
         fileSizeBytes: fileSize,
         sizeMB: (fileSize / 1024 / 1024).toFixed(2),
       });
+      }
 
       const presignedRes = await fetch("/api/upload-audio/presigned-url", {
         method: "POST",
@@ -622,7 +698,9 @@ export default function Home() {
         throw new Error("Réponse presigned URL invalide");
       }
 
-      console.log("[processRecording] Upload direct vers R2…");
+      if (process.env.NODE_ENV === "development") {
+        console.log("[processRecording] Upload direct vers R2…");
+      }
       const uploadPutRes = await fetch(presignedUrl, {
         method: "PUT",
         body: audioBlob,
@@ -692,7 +770,9 @@ export default function Home() {
           logStep({ step: "generate-summary", status: sumRes.status, json: sumJson });
         }
       } catch (e) {
-        console.warn("[processRecording] generate-summary kick failed", e);
+        if (process.env.NODE_ENV === "development") {
+          console.warn("[processRecording] generate-summary kick failed", e);
+        }
         logStep({ step: "generate-summary", status: 0, json: { error: String(e) } });
       }
 
@@ -726,7 +806,9 @@ export default function Home() {
           }
         }
       } catch (e) {
-        console.error("[processRecording] Erreur chargement ECO", e);
+        if (process.env.NODE_ENV === "development") {
+          console.error("[processRecording] Erreur chargement ECO", e);
+        }
       }
 
       window.dispatchEvent(new Event("eco-updated"));
@@ -773,7 +855,9 @@ export default function Home() {
           }
         }
       }
-      console.error("[processRecording] Erreur:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("[processRecording] Erreur:", error);
+      }
       setIsProcessing(false);
       setIsFocusMode(false);
       const err = error as { message?: string; status?: number };
@@ -1130,7 +1214,9 @@ export default function Home() {
                     if (process.env.NODE_ENV !== "production") {
                       console.log("[DEBUG EcoView.onRefresh] Refresh", { url, recordingId: selectedEco, ecoId: selectedEco });
                     }
-                    console.log(`[EcoView.onRefresh] Refresh ${selectedEco}`);
+                    if (process.env.NODE_ENV === "development") {
+                      console.log(`[EcoView.onRefresh] Refresh ${selectedEco}`);
+                    }
                     fetch(url, { cache: "no-store" })
                       .then((res) => {
                         const duration = performance.now() - t0;
@@ -1140,7 +1226,9 @@ export default function Home() {
                         if (res.ok) {
                           return res.json();
                         }
-                        console.log(`[EcoView.onRefresh] Erreur ${res.status} - ${duration.toFixed(0)}ms`);
+                        if (process.env.NODE_ENV === "development") {
+                          console.log(`[EcoView.onRefresh] Erreur ${res.status} - ${duration.toFixed(0)}ms`);
+                        }
                         if (process.env.NODE_ENV !== "production") {
                           console.log("[DEBUG EcoView.onRefresh] ❌ Erreur", { url, status: res.status, recordingId: selectedEco, ecoId: selectedEco });
                         }
@@ -1156,7 +1244,9 @@ export default function Home() {
                         }
                       })
                       .catch((error) => {
-                        console.error("[EcoView.onRefresh] Exception", error);
+                        if (process.env.NODE_ENV === "development") {
+                          console.error("[EcoView.onRefresh] Exception", error);
+                        }
                         if (process.env.NODE_ENV !== "production") {
                           console.log("[DEBUG EcoView.onRefresh] ❌ Exception", { url, recordingId: selectedEco, ecoId: selectedEco, error });
                         }

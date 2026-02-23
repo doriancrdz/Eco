@@ -55,7 +55,9 @@ export async function POST(
     try {
       body = await req.json();
     } catch (err) {
-      console.warn("[recordings/complete] JSON parse error, proceeding without durationMs", err);
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[recordings/complete] JSON parse error, proceeding without durationMs", err);
+      }
     }
 
     let durationMs: number | undefined;
@@ -112,14 +114,18 @@ export async function POST(
           const probed = await probeDurationMs(recording.audioUrl);
           durationMs = probed;
           durationSource = "ffprobe";
-          console.log("[recordings/complete] server probed durationMs via ffprobe", {
-            recordingId: params.id,
-            durationMs,
-          });
+          if (process.env.NODE_ENV === "development") {
+            console.log("[recordings/complete] server probed durationMs via ffprobe", {
+              recordingId: params.id,
+              durationMs,
+            });
+          }
         } catch (err) {
-          console.error("[recordings/complete] ffprobe failed, will use fallback", err);
+          if (process.env.NODE_ENV === "development") {
+            console.error("[recordings/complete] ffprobe failed, will use fallback", err);
+          }
         }
-      } else if (ffprobeEnabled && !recording.audioUrl) {
+      } else if (ffprobeEnabled && !recording.audioUrl && process.env.NODE_ENV === "development") {
         console.warn("[recordings/complete] USE_FFPROBE=true but recording.audioUrl is missing", {
           recordingId: params.id,
         });
@@ -155,20 +161,21 @@ export async function POST(
       );
     }
 
-    console.log("[recordings/complete] Durée exacte calculée", {
-      durationMs,
-      durationSeconds: (durationMs / 1000).toFixed(2),
-      durationMinutes: durationMinutes.toFixed(2),
-      durationSource,
-    });
-
-    console.log("[recordings/complete] start", {
+    if (process.env.NODE_ENV === "development") {
+      console.log("[recordings/complete] Durée exacte calculée", {
+        durationMs,
+        durationSeconds: (durationMs / 1000).toFixed(2),
+        durationMinutes: durationMinutes.toFixed(2),
+        durationSource,
+      });
+      console.log("[recordings/complete] start", {
       traceId,
       recordingId: params.id,
       userId: user.id,
       durationMs,
       ts: Date.now(),
     });
+    }
 
     // 6. Débiter les secondes (transaction atomique)
     const result = await debitRecordingSeconds(user.id, params.id, durationMs);
@@ -176,7 +183,8 @@ export async function POST(
     const totalMs = performance.now() - reqStart;
 
     if (!result.success) {
-      console.log("[recordings/complete] Débit échoué (quota insuffisant)", {
+      if (process.env.NODE_ENV === "development") {
+        console.log("[recordings/complete] Débit échoué (quota insuffisant)", {
         traceId,
         recordingId: params.id,
         userId: user.id,
@@ -186,6 +194,7 @@ export async function POST(
         totalMs: totalMs.toFixed(0),
         ts: Date.now(),
       });
+      }
       return NextResponse.json(
         {
           error: "Quota insuffisant",
@@ -208,7 +217,8 @@ export async function POST(
     const quotaSecondsUsed = afterUser?.quotaSecondsUsed ?? 0;
     const quotaSecondsTotal = afterUser?.quotaSecondsTotal ?? 0;
 
-    console.log("[recordings/complete] result", {
+    if (process.env.NODE_ENV === "development") {
+      console.log("[recordings/complete] result", {
       traceId,
       recordingId: params.id,
       secondsDebited: result.secondsDebited,
@@ -218,6 +228,7 @@ export async function POST(
       totalMs: totalMs.toFixed(0),
       ts: Date.now(),
     });
+    }
 
     return NextResponse.json({
       ok: true,
@@ -232,7 +243,9 @@ export async function POST(
       durationSource,
     });
   } catch (error) {
-    console.error("[recordings/complete] Erreur:", error);
+    if (process.env.NODE_ENV === "development") {
+      console.error("[recordings/complete] Erreur:", error);
+    }
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : "Erreur serveur",

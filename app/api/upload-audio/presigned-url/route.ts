@@ -30,11 +30,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
 
-    const { success } = await uploadLimiter.limit(userId);
+    const { success, limit, remaining, reset } = await uploadLimiter.limit(userId);
     if (!success) {
       return NextResponse.json(
         { error: "Trop d'uploads. Réessayez dans 1 minute." },
-        { status: 429 }
+        {
+          status: 429,
+          headers: {
+            "X-RateLimit-Limit": limit.toString(),
+            "X-RateLimit-Remaining": "0",
+            "X-RateLimit-Reset": reset.toString(),
+          },
+        }
       );
     }
 
@@ -71,21 +78,30 @@ export async function POST(request: NextRequest) {
 
     const presignedUrl = await getSignedUrl(s3, command, { expiresIn: 600 });
 
-    console.log("[presigned-url] Generated", {
-      fileId,
-      r2Key,
-      contentType,
-      fileSizeBytes: fileSize,
-      fileSizeMB: fileSize ? (fileSize / 1024 / 1024).toFixed(2) : "—",
-    });
+    if (process.env.NODE_ENV === "development") {
+      console.log("[presigned-url] Generated", {
+        fileId,
+        r2Key,
+        contentType,
+        fileSizeBytes: fileSize,
+        fileSizeMB: fileSize ? (fileSize / 1024 / 1024).toFixed(2) : "—",
+      });
+    }
 
-    return NextResponse.json({
-      presignedUrl,
-      fileId,
-      r2Key,
-    });
+    return NextResponse.json(
+      { presignedUrl, fileId, r2Key },
+      {
+        headers: {
+          "X-RateLimit-Limit": limit.toString(),
+          "X-RateLimit-Remaining": remaining.toString(),
+          "X-RateLimit-Reset": reset.toString(),
+        },
+      }
+    );
   } catch (error) {
-    console.error("[presigned-url] Error:", error);
+    if (process.env.NODE_ENV === "development") {
+      console.error("[presigned-url] Error:", error);
+    }
     return NextResponse.json(
       { error: "Impossible de générer l’URL d’upload", code: "PRESIGN_FAILED" },
       { status: 500 }

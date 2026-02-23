@@ -31,7 +31,9 @@ export async function POST(req: NextRequest) {
     const { success, limit, remaining, reset } = await recordingLimiter.limit(userId);
     if (!success) {
       const retryMinutes = Math.ceil((reset - Date.now()) / 60000);
-      console.warn("[recordings/init] Rate limit exceeded:", { userId, limit, reset });
+      if (process.env.NODE_ENV === "development") {
+        console.warn("[recordings/init] Rate limit exceeded:", { userId, limit, reset });
+      }
       return NextResponse.json(
         {
           error: `Trop d'enregistrements. Limite : ${limit} par heure. Réessayez dans ${retryMinutes} minute${retryMinutes > 1 ? "s" : ""}.`,
@@ -46,7 +48,7 @@ export async function POST(req: NextRequest) {
         }
       );
     }
-    if (process.env.NODE_ENV !== "production") {
+    if (process.env.NODE_ENV === "development") {
       console.log("[recordings/init] Rate limit OK:", { userId, remaining, limit });
     }
 
@@ -123,13 +125,15 @@ export async function POST(req: NextRequest) {
     timings.dbCreate = performance.now() - dbStart;
     timings.total = performance.now() - reqStart;
 
-    console.log("[recordings/init] request end", {
-      traceId: traceId ?? undefined,
-      recordingId: recording.id,
-      authMs: timings.auth?.toFixed(0),
-      totalMs: timings.total.toFixed(0),
-      ts: Date.now(),
-    });
+    if (process.env.NODE_ENV === "development") {
+      console.log("[recordings/init] request end", {
+        traceId: traceId ?? undefined,
+        recordingId: recording.id,
+        authMs: timings.auth?.toFixed(0),
+        totalMs: timings.total.toFixed(0),
+        ts: Date.now(),
+      });
+    }
 
     return NextResponse.json({
       recordingId: recording.id,
@@ -137,7 +141,9 @@ export async function POST(req: NextRequest) {
       timings: process.env.NODE_ENV === "development" ? timings : undefined,
     });
   } catch (error) {
-    console.error("[recordings/init] Erreur:", error);
+    if (process.env.NODE_ENV === "development") {
+      console.error("[recordings/init] Erreur:", error);
+    }
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }
