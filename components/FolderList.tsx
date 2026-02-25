@@ -40,7 +40,9 @@ export default function FolderList({
       const data = await response.json();
       setFolders(data.folders || []);
     } catch (error) {
-      console.error("Erreur lors du chargement des dossiers:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Erreur lors du chargement des dossiers:", error);
+      }
       setFolders([]);
     } finally {
       setIsLoading(false);
@@ -55,7 +57,9 @@ export default function FolderList({
       const data = await response.json();
       setFolderEcos((prev) => ({ ...prev, [folderId]: data.ecos || [] }));
     } catch (error) {
-      console.error("Erreur chargement ECOs dossier:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Erreur chargement ECOs dossier:", error);
+      }
       setFolderEcos((prev) => ({ ...prev, [folderId]: [] }));
     } finally {
       setLoadingFolderId(null);
@@ -126,7 +130,9 @@ export default function FolderList({
       setExpandedFolderId(newFolder.id);
       window.dispatchEvent(new Event("folders-updated"));
     } catch (error) {
-      console.error("Erreur lors de la création du dossier:", error);
+      if (process.env.NODE_ENV === "development") {
+        console.error("Erreur lors de la création du dossier:", error);
+      }
       alert("Erreur lors de la création du dossier.");
     }
   };

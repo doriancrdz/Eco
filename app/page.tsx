@@ -711,7 +711,9 @@ export default function Home() {
       if (!uploadPutRes.ok) {
         throw new Error("Échec de l’upload vers le stockage (R2). Réessayez.");
       }
-      console.log("[processRecording] Upload R2 réussi", { fileId, r2Key });
+      if (process.env.NODE_ENV === "development") {
+        console.log("[processRecording] Upload R2 réussi", { fileId, r2Key });
+      }
 
       const initBody: Record<string, unknown> = {
         durationSeconds,

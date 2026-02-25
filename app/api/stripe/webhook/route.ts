@@ -26,7 +26,9 @@ export async function POST(req: NextRequest) {
   }
 
   if (!process.env.STRIPE_WEBHOOK_SECRET) {
-    console.error("STRIPE_WEBHOOK_SECRET manquant");
+    if (process.env.NODE_ENV === "development") {
+      console.error("STRIPE_WEBHOOK_SECRET manquant");
+    }
     return NextResponse.json(
       { error: "Configuration webhook manquante" },
       { status: 500 }
@@ -42,7 +44,9 @@ export async function POST(req: NextRequest) {
       process.env.STRIPE_WEBHOOK_SECRET
     );
   } catch (err) {
-    console.error("Erreur vérification signature webhook:", err);
+    if (process.env.NODE_ENV === "development") {
+      console.error("Erreur vérification signature webhook:", err);
+    }
     return NextResponse.json(
       { error: "Signature invalide" },
       { status: 400 }
@@ -56,7 +60,9 @@ export async function POST(req: NextRequest) {
 
       const clerkUserId = session.metadata?.clerkUserId;
       if (!clerkUserId) {
-        console.error("clerkUserId manquant dans metadata");
+        if (process.env.NODE_ENV === "development") {
+          console.error("clerkUserId manquant dans metadata");
+        }
         return NextResponse.json({ received: true });
       }
 
@@ -141,9 +147,11 @@ export async function POST(req: NextRequest) {
           });
         } else {
           // PackIndex invalide ou pack inconnu - log warning mais ne pas crash
-          console.warn(
+          if (process.env.NODE_ENV === "development") {
+            console.warn(
             `[webhook] Pack invalide ou inconnu: packIndex=${packIndex}, priceId=${session.metadata.priceId || "N/A"}, customerId=${customerId}`
-          );
+            );
+          }
         }
       }
     } else if (event.type === "invoice.payment_failed") {
@@ -182,7 +190,9 @@ export async function POST(req: NextRequest) {
             },
           });
         } catch (error) {
-          console.error("[webhook] Erreur récupération subscription dans invoice.payment_succeeded:", error);
+          if (process.env.NODE_ENV === "development") {
+            console.error("[webhook] Erreur récupération subscription dans invoice.payment_succeeded:", error);
+          }
           // Fallback: mettre à jour seulement le status
           await prisma.user.update({
             where: { id: user.id },
@@ -252,7 +262,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    console.error("Erreur traitement webhook:", error);
+    if (process.env.NODE_ENV === "development") {
+      console.error("Erreur traitement webhook:", error);
+    }
     return NextResponse.json(
       { error: "Erreur traitement webhook" },
       { status: 500 }

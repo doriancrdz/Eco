@@ -93,7 +93,9 @@ export async function GET(
       lastUsageEvent: lastUsagePayload,
     });
   } catch (error) {
-    console.error("[debug/pipeline] Erreur:", error);
+    if (process.env.NODE_ENV === "development") {
+      console.error("[debug/pipeline] Erreur:", error);
+    }
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Erreur serveur" },
       { status: 500 }

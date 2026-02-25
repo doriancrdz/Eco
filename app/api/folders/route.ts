@@ -72,7 +72,9 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ folders: allFolders });
   } catch (error) {
-    console.error("[folders GET] Erreur:", error);
+    if (process.env.NODE_ENV === "development") {
+      console.error("[folders GET] Erreur:", error);
+    }
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : "Une erreur est survenue.",
@@ -128,7 +130,9 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(folder);
   } catch (error) {
-    console.error("[folders POST] Erreur:", error);
+    if (process.env.NODE_ENV === "development") {
+      console.error("[folders POST] Erreur:", error);
+    }
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : "Une erreur est survenue.",

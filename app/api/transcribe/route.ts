@@ -48,15 +48,19 @@ export async function POST(req: NextRequest) {
     const durationSecondsStr = formData.get("durationSeconds");
     timings.formDataParse = performance.now() - formDataStart;
 
-    console.log("[transcribe] FormData reçu", {
-      hasAudioFile: !!audioFile,
-      audioFileType: audioFile && typeof audioFile === "object" && "type" in audioFile ? (audioFile as File).type : typeof audioFile,
-      audioFileSize: audioFile && typeof audioFile === "object" && "size" in audioFile ? (audioFile as File).size : null,
-      durationSecondsStr,
-    });
+    if (process.env.NODE_ENV === "development") {
+      console.log("[transcribe] FormData reçu", {
+        hasAudioFile: !!audioFile,
+        audioFileType: audioFile && typeof audioFile === "object" && "type" in audioFile ? (audioFile as File).type : typeof audioFile,
+        audioFileSize: audioFile && typeof audioFile === "object" && "size" in audioFile ? (audioFile as File).size : null,
+        durationSecondsStr,
+      });
+    }
 
     if (!audioFile || !(audioFile instanceof File)) {
-      console.error("[transcribe] Fichier audio invalide");
+      if (process.env.NODE_ENV === "development") {
+        console.error("[transcribe] Fichier audio invalide");
+      }
       return NextResponse.json(
         { error: "Aucun fichier audio valide fourni." },
         { status: 400 }
@@ -64,7 +68,9 @@ export async function POST(req: NextRequest) {
     }
 
     if (audioFile.size === 0) {
-      console.error("[transcribe] Fichier audio vide");
+      if (process.env.NODE_ENV === "development") {
+        console.error("[transcribe] Fichier audio vide");
+      }
       return NextResponse.json(
         { error: "Le fichier audio est vide." },
         { status: 400 }
@@ -72,7 +78,9 @@ export async function POST(req: NextRequest) {
     }
 
     const fileSizeInMB = audioFile.size / (1024 * 1024);
-    console.log("[transcribe] Taille fichier:", fileSizeInMB.toFixed(2), "MB");
+    if (process.env.NODE_ENV === "development") {
+      console.log("[transcribe] Taille fichier:", fileSizeInMB.toFixed(2), "MB");
+    }
     if (fileSizeInMB > 24) {
       return NextResponse.json(
         { error: "Fichier audio trop volumineux (max 24MB). Veuillez raccourcir votre enregistrement." },
@@ -114,10 +122,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log("[transcribe] Durée exacte calculée", {
-      durationSeconds: durationSeconds.toFixed(2),
-      durationMinutes: durationMinutes.toFixed(2),
-    });
+    if (process.env.NODE_ENV === "development") {
+      console.log("[transcribe] Durée exacte calculée", {
+        durationSeconds: durationSeconds.toFixed(2),
+        durationMinutes: durationMinutes.toFixed(2),
+      });
+    }
 
     // 4. Vérifier le quota utilisateur (système de secondes)
     const quotaStart = performance.now();
@@ -189,19 +199,23 @@ export async function POST(req: NextRequest) {
     timings.quotaCheck = performance.now() - quotaStart;
     timings.debitMinutes = performance.now() - debitStart;
 
-    console.log("[transcribe] Débit précis effectué", {
-      durationSeconds: durationSeconds.toFixed(2),
-      durationMinutes: durationMinutes.toFixed(2),
-      secondsDebited: debitResult.secondsDebited,
-      remainingSeconds: debitResult.remainingSeconds,
-    });
+    if (process.env.NODE_ENV === "development") {
+      console.log("[transcribe] Débit précis effectué", {
+        durationSeconds: durationSeconds.toFixed(2),
+        durationMinutes: durationMinutes.toFixed(2),
+        secondsDebited: debitResult.secondsDebited,
+        remainingSeconds: debitResult.remainingSeconds,
+      });
+    }
 
     async function transcribeWithRetry(file: File, maxRetries = 3): Promise<string> {
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-          console.log(`[transcribe] Tentative ${attempt}/${maxRetries}`);
+          if (process.env.NODE_ENV === "development") {
+            console.log(`[transcribe] Tentative ${attempt}/${maxRetries}`);
+          }
           const fileForAttempt = new File([buffer], file.name, { type: file.type });
           const response = await openai.audio.transcriptions.create({
             file: fileForAttempt,
@@ -210,14 +224,20 @@ export async function POST(req: NextRequest) {
             response_format: "text",
           });
           const text = typeof response === "string" ? response : (response as { text?: string }).text ?? "";
-          console.log("[transcribe] Succès, longueur:", text.length, "caractères");
+          if (process.env.NODE_ENV === "development") {
+            console.log("[transcribe] Succès, longueur:", text.length, "caractères");
+          }
           return text;
         } catch (err: unknown) {
           const errMsg = err instanceof Error ? err.message : String(err);
-          console.error(`[transcribe] Tentative ${attempt} échouée:`, errMsg);
+          if (process.env.NODE_ENV === "development") {
+            console.error(`[transcribe] Tentative ${attempt} échouée:`, errMsg);
+          }
           if (attempt === maxRetries) throw err;
           const delay = Math.min(1000 * Math.pow(2, attempt), 10000);
-          console.log(`[transcribe] Retry dans ${delay}ms...`);
+          if (process.env.NODE_ENV === "development") {
+            console.log(`[transcribe] Retry dans ${delay}ms...`);
+          }
           await new Promise((resolve) => setTimeout(resolve, delay));
         }
       }
@@ -241,12 +261,14 @@ export async function POST(req: NextRequest) {
       timings.dbUpdate = performance.now() - dbUpdateStart;
       timings.total = performance.now() - perfStart;
 
-      console.log("[transcribe] request end", {
-        authMs: timings.auth?.toFixed(0),
-        whisperMs: timings.whisperTranscription?.toFixed(0),
-        totalMs: timings.total?.toFixed(0),
-        ts: Date.now(),
-      });
+      if (process.env.NODE_ENV === "development") {
+        console.log("[transcribe] request end", {
+          authMs: timings.auth?.toFixed(0),
+          whisperMs: timings.whisperTranscription?.toFixed(0),
+          totalMs: timings.total?.toFixed(0),
+          ts: Date.now(),
+        });
+      }
 
       return NextResponse.json(
         {
@@ -260,7 +282,9 @@ export async function POST(req: NextRequest) {
     } catch (openaiError: unknown) {
       const err = openaiError as { message?: string; status?: number; code?: string };
       const errMsg = err?.message ?? String(openaiError);
-      console.error("[transcribe] Erreur OpenAI:", { message: errMsg, code: err?.code, status: err?.status });
+      if (process.env.NODE_ENV === "development") {
+        console.error("[transcribe] Erreur OpenAI:", { message: errMsg, code: err?.code, status: err?.status });
+      }
       await prisma.recording.update({
         where: { id: recording.id },
         data: {
@@ -287,7 +311,9 @@ export async function POST(req: NextRequest) {
       );
     }
   } catch (error) {
-    console.error("[transcribe] Erreur générale:", error);
+    if (process.env.NODE_ENV === "development") {
+      console.error("[transcribe] Erreur générale:", error);
+    }
     return NextResponse.json(
       {
         error: error instanceof Error ? error.message : "Une erreur est survenue lors du traitement de l'enregistrement.",
