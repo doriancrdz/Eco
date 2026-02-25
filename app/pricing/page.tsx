@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import PricingTopbar from "@/components/pricing/PricingTopbar";
 import PricingToggle from "@/components/pricing/PricingToggle";
@@ -15,14 +14,43 @@ import AnnualChoiceModal, { type AnnualBillingChoice } from "@/components/pricin
 import { PLANS, PACKS, PlanType } from "@/lib/billingConfig";
 import { Mic, FileText, List, Percent } from "lucide-react";
 
-// Lazy load des composants non critiques
-const PricingFAQ = dynamic(() => import("@/components/pricing/PricingFAQ"), {
-  ssr: true,
-});
+// Skeletons légers pour les sections non critiques
+function TestimonialsSkeleton() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-pulse">
+      {[1, 2].map((i) => (
+        <div key={i} className="h-48 bg-white/40 rounded-3xl" />
+      ))}
+    </div>
+  );
+}
 
-const TestimonialsMarquee = dynamic(() => import("@/components/pricing/TestimonialsMarquee"), {
-  ssr: false,
-});
+function FAQSkeleton() {
+  return (
+    <div className="space-y-4 animate-pulse">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="h-16 bg-white/40 rounded-xl" />
+      ))}
+    </div>
+  );
+}
+
+// Lazy load des composants non critiques
+const PricingFAQ = dynamic(
+  () => import("@/components/pricing/PricingFAQ"),
+  {
+    loading: () => <FAQSkeleton />,
+    ssr: false,
+  }
+);
+
+const TestimonialsMarquee = dynamic(
+  () => import("@/components/pricing/TestimonialsMarquee"),
+  {
+    loading: () => <TestimonialsSkeleton />,
+    ssr: false,
+  }
+);
 
 export default function PricingPage() {
   const { isSignedIn } = useAuth();
