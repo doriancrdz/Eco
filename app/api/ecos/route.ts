@@ -92,11 +92,13 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ ecos: formattedEcos });
   } catch (error) {
-    console.error("[ecos GET] Erreur:", error);
+    const err = error as { message?: string; stack?: string };
+    console.error("[ecos] GET Error:", {
+      message: err?.message,
+      stack: process.env.NODE_ENV === "development" ? err?.stack : undefined,
+    });
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Une erreur est survenue.",
-      },
+      { error: "Une erreur est survenue. Veuillez réessayer." },
       { status: 500 }
     );
   }
@@ -206,11 +208,13 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ eco: formattedEco });
   } catch (error) {
-    console.error("[ecos POST] Erreur:", error);
+    const err = error as { message?: string; stack?: string };
+    console.error("[ecos] POST Error:", {
+      message: err?.message,
+      stack: process.env.NODE_ENV === "development" ? err?.stack : undefined,
+    });
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Une erreur est survenue.",
-      },
+      { error: "Une erreur est survenue. Veuillez réessayer." },
       { status: 500 }
     );
   }

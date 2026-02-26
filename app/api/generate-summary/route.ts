@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import OpenAI from "openai";
 import { prisma } from "@/lib/prisma";
+import { summaryLimiter } from "@/lib/ratelimit";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -57,6 +58,15 @@ export async function POST(req: NextRequest) {
 
     if (!userId) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    }
+
+    // Rate limiting résumés IA : 5 par heure par utilisateur
+    const { success } = await summaryLimiter.limit(userId);
+    if (!success) {
+      return NextResponse.json(
+        { error: "Trop de résumés générés. Réessayez dans 1 heure." },
+        { status: 429 }
+      );
     }
 
     if (!process.env.OPENAI_API_KEY) {
@@ -525,9 +535,13 @@ ${truncated}`;
       timings: process.env.NODE_ENV === "development" ? timings : undefined,
     });
   } catch (error) {
-    if (process.env.NODE_ENV === "development") {
-      console.error("[generate-summary] Erreur:", error);
-    }
+    const err = error as { message?: string; stack?: string };
+    // Log détaillé côté serveur
+    console.error("[generate-summary] Error:", {
+      message: err?.message,
+      stack: process.env.NODE_ENV === "development" ? err?.stack : undefined,
+      recordingIdForError,
+    });
 
     // En cas d'erreur, remettre aiStatus en FAILED si on a le recordingId
     try {
@@ -537,20 +551,16 @@ ${truncated}`;
           data: {
             aiStatus: "FAILED",
             aiFinishedAt: new Date(),
-            aiError: error instanceof Error ? error.message : String(error),
+            aiError: err?.message ?? "Erreur lors de la génération du résumé",
           },
         });
       }
     } catch (dbErr) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("[generate-summary] Erreur update FAILED:", dbErr);
-      }
+      console.error("[generate-summary] Erreur update FAILED:", dbErr);
     }
 
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Une erreur est survenue lors de la génération du résumé.",
-      },
+      { error: "Une erreur est survenue. Veuillez réessayer." },
       { status: 500 }
     );
   }

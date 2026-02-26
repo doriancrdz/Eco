@@ -13,6 +13,7 @@ import {
   BillingMode,
 } from "@/lib/billingConfig";
 import { getOrCreateUserWithQuota } from "@/lib/billing";
+import { checkoutLimiter } from "@/lib/ratelimit";
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,6 +21,15 @@ export async function POST(req: NextRequest) {
 
     if (!userId) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    }
+
+    // Rate limiting checkouts Stripe : 3 par heure par utilisateur
+    const { success } = await checkoutLimiter.limit(userId);
+    if (!success) {
+      return NextResponse.json(
+        { error: "Trop de tentatives. Réessayez dans 1 heure." },
+        { status: 429 }
+      );
     }
 
     // Valider la configuration Stripe
@@ -157,14 +167,13 @@ export async function POST(req: NextRequest) {
       );
     }
   } catch (error) {
-    console.error("Erreur checkout Stripe:", error);
+    const err = error as { message?: string; stack?: string };
+    console.error("[billing/checkout] Error:", {
+      message: err?.message,
+      stack: process.env.NODE_ENV === "development" ? err?.stack : undefined,
+    });
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Erreur lors de la création de la session de paiement",
-      },
+      { error: "Une erreur est survenue. Veuillez réessayer." },
       { status: 500 }
     );
   }

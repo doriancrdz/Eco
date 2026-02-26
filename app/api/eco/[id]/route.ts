@@ -78,11 +78,13 @@ export async function GET(
 
     return NextResponse.json({ eco: formattedEco });
   } catch (error) {
-    console.error("[eco GET] Erreur:", error);
+    const err = error as { message?: string; stack?: string };
+    console.error("[eco/[id] GET] Error:", {
+      message: err?.message,
+      stack: process.env.NODE_ENV === "development" ? err?.stack : undefined,
+    });
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Une erreur est survenue.",
-      },
+      { error: "Une erreur est survenue. Veuillez réessayer." },
       { status: 500 }
     );
   }
@@ -196,11 +198,13 @@ export async function PATCH(
     
     return NextResponse.json({ eco: formattedEco });
   } catch (error) {
-    console.error("[eco PATCH] Erreur:", error);
+    const err = error as { message?: string; stack?: string };
+    console.error("[eco/[id] PATCH] Error:", {
+      message: err?.message,
+      stack: process.env.NODE_ENV === "development" ? err?.stack : undefined,
+    });
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Une erreur est survenue.",
-      },
+      { error: "Une erreur est survenue. Veuillez réessayer." },
       { status: 500 }
     );
   }
@@ -248,11 +252,13 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("[eco DELETE] Erreur:", error);
+    const err = error as { message?: string; stack?: string };
+    console.error("[eco/[id] DELETE] Error:", {
+      message: err?.message,
+      stack: process.env.NODE_ENV === "development" ? err?.stack : undefined,
+    });
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Une erreur est survenue.",
-      },
+      { error: "Une erreur est survenue. Veuillez réessayer." },
       { status: 500 }
     );
   }

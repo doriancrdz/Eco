@@ -91,13 +91,13 @@ export async function GET(
 
     return NextResponse.json({ eco: formattedEco });
   } catch (error) {
-    if (process.env.NODE_ENV === "development") {
-      console.error("[ecos GET] Erreur:", error);
-    }
+    const err = error as { message?: string; stack?: string };
+    console.error("[ecos/[id] GET] Error:", {
+      message: err?.message,
+      stack: process.env.NODE_ENV === "development" ? err?.stack : undefined,
+    });
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Une erreur est survenue.",
-      },
+      { error: "Une erreur est survenue. Veuillez réessayer." },
       { status: 500 }
     );
   }
@@ -198,11 +198,13 @@ export async function PATCH(
     }
     return NextResponse.json({ eco: formattedEco });
   } catch (error) {
-    if (process.env.NODE_ENV === "development") {
-      console.error("[ecos PATCH] Erreur:", error);
-    }
+    const err = error as { message?: string; stack?: string };
+    console.error("[ecos/[id] PATCH] Error:", {
+      message: err?.message,
+      stack: process.env.NODE_ENV === "development" ? err?.stack : undefined,
+    });
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Une erreur est survenue." },
+      { error: "Une erreur est survenue. Veuillez réessayer." },
       { status: 500 }
     );
   }
@@ -238,11 +240,13 @@ export async function DELETE(
     await prisma.recording.deleteMany({ where: { id: ecoId } });
     return NextResponse.json({ success: true });
   } catch (error) {
-    if (process.env.NODE_ENV === "development") {
-      console.error("[ecos DELETE] Erreur:", error);
-    }
+    const err = error as { message?: string; stack?: string };
+    console.error("[ecos/[id] DELETE] Error:", {
+      message: err?.message,
+      stack: process.env.NODE_ENV === "development" ? err?.stack : undefined,
+    });
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Une erreur est survenue." },
+      { error: "Une erreur est survenue. Veuillez réessayer." },
       { status: 500 }
     );
   }

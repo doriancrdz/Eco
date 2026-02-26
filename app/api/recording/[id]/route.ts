@@ -83,11 +83,13 @@ export async function GET(
       updatedAt: recording.updatedAt.toISOString(),
     });
   } catch (error) {
-    console.error("[recording] Erreur:", error);
+    const err = error as { message?: string; stack?: string };
+    console.error("[recording/[id] GET] Error:", {
+      message: err?.message,
+      stack: process.env.NODE_ENV === "development" ? err?.stack : undefined,
+    });
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Une erreur est survenue.",
-      },
+      { error: "Une erreur est survenue. Veuillez réessayer." },
       { status: 500 }
     );
   }

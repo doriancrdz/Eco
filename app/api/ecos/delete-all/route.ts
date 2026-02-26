@@ -34,14 +34,13 @@ export async function DELETE() {
       message: `${result.count} ECOs supprimés`,
     });
   } catch (error) {
-    console.error("Erreur lors de la suppression:", error);
+    const err = error as { message?: string; stack?: string };
+    console.error("[ecos/delete-all] Error:", {
+      message: err?.message,
+      stack: process.env.NODE_ENV === "development" ? err?.stack : undefined,
+    });
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Erreur lors de la suppression des ECOs",
-      },
+      { error: "Une erreur est survenue. Veuillez réessayer." },
       { status: 500 }
     );
   }

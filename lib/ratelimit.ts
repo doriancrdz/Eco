@@ -29,3 +29,19 @@ export const uploadLimiter = new Ratelimit({
   analytics: true,
   prefix: "ratelimit:upload",
 });
+
+/** Rate limiter pour les résumés IA (5 par heure) */
+export const summaryLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(5, "1 h"),
+  analytics: true,
+  prefix: "ratelimit:summary",
+});
+
+/** Rate limiter pour les checkouts Stripe (3 par heure) */
+export const checkoutLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(3, "1 h"),
+  analytics: true,
+  prefix: "ratelimit:checkout",
+});

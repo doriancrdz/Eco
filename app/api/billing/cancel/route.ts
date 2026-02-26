@@ -70,14 +70,13 @@ export async function POST() {
       cancelAt: subscription.cancel_at ? new Date(subscription.cancel_at * 1000).toISOString() : null,
     });
   } catch (error) {
-    console.error("Erreur annulation abonnement:", error);
+    const err = error as { message?: string; stack?: string };
+    console.error("[billing/cancel] Error:", {
+      message: err?.message,
+      stack: process.env.NODE_ENV === "development" ? err?.stack : undefined,
+    });
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Erreur lors de l'annulation de l'abonnement",
-      },
+      { error: "Une erreur est survenue. Veuillez réessayer." },
       { status: 500 }
     );
   }

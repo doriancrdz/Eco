@@ -109,14 +109,13 @@ export async function GET() {
       paymentBlocked: subscriptionBlocked ?? false,
     });
   } catch (error) {
-    console.error("Erreur récupération quotas:", error);
+    const err = error as { message?: string; stack?: string };
+    console.error("[billing/me] Error:", {
+      message: err?.message,
+      stack: process.env.NODE_ENV === "development" ? err?.stack : undefined,
+    });
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Erreur lors de la récupération des quotas",
-      },
+      { error: "Une erreur est survenue. Veuillez réessayer." },
       { status: 500 }
     );
   }

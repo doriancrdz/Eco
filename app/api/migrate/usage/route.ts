@@ -231,11 +231,13 @@ export async function POST(req: NextRequest) {
       results,
     });
   } catch (error) {
-    console.error("[migrate/usage] Erreur:", error);
+    const err = error as { message?: string; stack?: string };
+    console.error("[migrate/usage] Error:", {
+      message: err?.message,
+      stack: process.env.NODE_ENV === "development" ? err?.stack : undefined,
+    });
     return NextResponse.json(
-      {
-        error: error instanceof Error ? error.message : "Erreur serveur",
-      },
+      { error: "Une erreur est survenue. Veuillez réessayer." },
       { status: 500 }
     );
   }

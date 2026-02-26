@@ -93,11 +93,17 @@ export async function GET(
       lastUsageEvent: lastUsagePayload,
     });
   } catch (error) {
+    const err = error as { message?: string; stack?: string };
     if (process.env.NODE_ENV === "development") {
-      console.error("[debug/pipeline] Erreur:", error);
+      console.error("[debug/pipeline] Error:", {
+        message: err?.message,
+        stack: err?.stack,
+      });
+    } else {
+      console.error("[debug/pipeline] Error:", { message: err?.message });
     }
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Erreur serveur" },
+      { error: "Une erreur est survenue. Veuillez réessayer." },
       { status: 500 }
     );
   }
