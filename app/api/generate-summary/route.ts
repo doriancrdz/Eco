@@ -218,96 +218,141 @@ export async function POST(req: NextRequest) {
     const systemPrompt = `Tu es un assistant IA expert en structuration de connaissances.
 
 ═══════════════════════════════════════════════════════════════
-📊 RÈGLES ABSOLUES ET DÉFINITIVES
+📊 DONNÉES DE BASE - LIRE ATTENTIVEMENT
 ═══════════════════════════════════════════════════════════════
 TRANSCRIPTION : ${transcriptionWordCount} mots
-
-RÉSUMÉ CIBLE EXACTE : ${targetSummaryWords} mots (16% de la transcription)
-RÉSUMÉ MINIMUM : ${minSummaryWords} mots
-RÉSUMÉ MAXIMUM : ${maxSummaryWords} mots
-
+RÉSUMÉ CIBLE OBLIGATOIRE : ${targetSummaryWords} mots (16% de la transcription)
+RÉSUMÉ MINIMUM ABSOLU : ${minSummaryWords} mots
+RÉSUMÉ MAXIMUM ABSOLU : ${maxSummaryWords} mots
 POINTS CLÉS EXACTS : ${targetPointsCles} points (1 point tous les 800 mots)
 NOTIONS EXACTES : ${targetNotions} notions (1 notion tous les 550 mots)
 
-⚠️⚠️⚠️ CES RÈGLES SONT ABSOLUES - AUCUNE EXCEPTION ⚠️⚠️⚠️
+⚠️⚠️⚠️ RÈGLES ABSOLUES - NON NÉGOCIABLES ⚠️⚠️⚠️
 
-SI TON RÉSUMÉ NE FAIT PAS ${targetSummaryWords} MOTS (±10) → TU AS ÉCHOUÉ
-SI TU N'AS PAS EXACTEMENT ${targetPointsCles} POINTS CLÉS → TU AS ÉCHOUÉ
-SI TU N'AS PAS EXACTEMENT ${targetNotions} NOTIONS → TU AS ÉCHOUÉ
+RÈGLE 1 : TON RÉSUMÉ DOIT FAIRE EXACTEMENT ${targetSummaryWords} MOTS (±10 mots)
+
+RÈGLE 2 : **TON RÉSUMÉ NE DOIT OUBLIER AUCUN ÉLÉMENT IMPORTANT DE LA TRANSCRIPTION**
+→ CHAQUE argument, conseil, concept, donnée, exemple ou information importante DOIT figurer dans le résumé
+→ Même pour les enregistrements très courts (30s-2min), TOUS les points abordés doivent être présents
+→ Si la transcription mentionne 3 points → les 3 DOIVENT être dans le résumé
+→ Si la transcription donne des chiffres/statistiques → ils DOIVENT être dans le résumé
+→ Si la transcription cite des noms/produits/concepts → ils DOIVENT être dans le résumé
+→ RIEN NE DOIT ÊTRE OMIS, même si ça semble secondaire
+
+RÈGLE 3 : TON RÉSUMÉ DOIT AVOIR UNE STRUCTURE CLAIRE (intro/dév/conclu avec sauts de ligne)
 
 ═══════════════════════════════════════════════════════════════
-📝 STRUCTURE DU RÉSUMÉ (AVEC SAUTS DE LIGNE)
+🎯 MÉTHODE POUR NE RIEN OUBLIER (OBLIGATOIRE)
 ═══════════════════════════════════════════════════════════════
 
-⚠️ IMPÉRATIF : Ton résumé doit faire EXACTEMENT ${targetSummaryWords} mots.
+**AVANT D'ÉCRIRE TON RÉSUMÉ :**
+
+ÉTAPE 1 : Lis la transcription ENTIÈREMENT et ATTENTIVEMENT
+
+ÉTAPE 2 : Liste mentalement TOUS les points/arguments/conseils/données mentionnés
+→ Exemple : "Point 1 : X, Point 2 : Y, Point 3 : Z, Exemple A, Chiffre B..."
+
+ÉTAPE 3 : Compte combien d'éléments importants il y a
+→ Exemple : "Cette transcription contient 5 arguments principaux et 2 exemples"
+
+ÉTAPE 4 : Écris ton résumé en t'assurant que CHAQUE élément listé apparaît
+
+ÉTAPE 5 : Relis ton résumé et vérifie élément par élément
+→ "Point 1 présent ? Oui. Point 2 présent ? Oui. Exemple A présent ? Oui..."
+→ Si UN SEUL élément manque → RECOMMENCE
+
+═══════════════════════════════════════════════════════════════
+📝 STRUCTURE OBLIGATOIRE AVEC EXHAUSTIVITÉ MAXIMALE
+═══════════════════════════════════════════════════════════════
+${transcriptionWordCount < 300 ? `
+**RÉSUMÉ COURT (< 300 mots de transcription)**
+
+Format : 1-2 paragraphes si nécessaire
+Longueur : ${targetSummaryWords} mots EXACTEMENT
+
+**IMPÉRATIF POUR LES RÉSUMÉS COURTS :**
+Les enregistrements courts contiennent peu d'informations, donc TOUTES doivent être présentes.
+Si la transcription mentionne 2 points → les 2 doivent être détaillés
+Si la transcription donne un exemple → l'exemple doit être inclus
+Aucune excuse pour omettre des éléments sous prétexte que l'audio est court.
+
+` : `
+**RÉSUMÉ STANDARD/LONG**
 
 PARTIE 1 - INTRODUCTION (~${Math.floor(targetSummaryWords * 0.18)} mots)
-Commence par des connecteurs : "Dans cet enregistrement,", "Cette présentation aborde...", etc.
-- Phrase 1 : Présente le sujet et le contexte
-- Phrase 2 : Annonce les thématiques principales
+- Phrase 1 : Présente le sujet
+- Phrase 2 : **ÉNUMÈRE TOUS LES POINTS QUI SERONT ABORDÉS** (ne laisse rien de côté)
 - Phrase 3 : Explique l'objectif
 
-PUIS : **SAUT DE LIGNE (\\n\\n)**
+**\\n\\n**
 
 PARTIE 2 - DÉVELOPPEMENT (~${Math.floor(targetSummaryWords * 0.7)} mots)
-Divise en 4-8 paragraphes avec connecteurs :
-- "Premièrement," / "Tout d'abord,"
-- **\\n\\n**
-- "Ensuite," / "Par ailleurs,"
-- **\\n\\n**
-- "De plus," / "En outre,"
-- **\\n\\n**
-- "Quatrièmement," / "Également,"
-- **\\n\\n**
-- "Enfin," / "Pour finir,"
 
-Chaque paragraphe développe UNE thématique avec détails, arguments, exemples.
+**RÈGLE CRITIQUE : UN PARAGRAPHE PAR POINT/ARGUMENT/CONSEIL IMPORTANT**
 
-PUIS : **SAUT DE LIGNE (\\n\\n)**
+Si la transcription contient :
+- 3 arguments → 3 paragraphes minimum
+- 5 conseils → 5 paragraphes minimum
+- 2 exemples → les 2 doivent apparaître dans les paragraphes
+
+Connecteurs entre paragraphes :
+- "Premièrement," "Ensuite," "De plus," "Par ailleurs," "Enfin,"
+
+Pour chaque paragraphe :
+- Développe UN point mentionné dans la transcription
+- Inclus TOUS les détails : chiffres, noms, exemples, données
+- Si un chiffre est donné (ex: "10%") → il DOIT apparaître dans le résumé
+- Si un nom est cité (ex: "ETF S&P 500") → il DOIT apparaître dans le résumé
+
+**\\n\\n**
 
 PARTIE 3 - CONCLUSION (~${Math.floor(targetSummaryWords * 0.12)} mots)
-Commence par : "En résumé,", "En conclusion,", "Pour conclure,"
-- Synthétise les points principaux
-- Rappelle le message clé
-- Propose éventuellement une ouverture
+- Commence par : "En résumé," / "En conclusion,"
+- **RÉCAPITULE TOUS LES POINTS** (aucun ne doit être absent)
+- Rappelle le message principal
+
+`}
 
 ═══════════════════════════════════════════════════════════════
-✅ COMMENT ATTEINDRE EXACTEMENT ${targetSummaryWords} MOTS
+✅ VÉRIFICATION EXHAUSTIVITÉ (AVANT DE GÉNÉRER LE JSON)
 ═══════════════════════════════════════════════════════════════
 
-ÉTAPE 1 : Écris ton résumé normalement
-ÉTAPE 2 : Compte tes mots pendant que tu écris
-ÉTAPE 3 : Si tu as moins de ${targetSummaryWords} mots → DÉVELOPPE davantage
-ÉTAPE 4 : Si tu as plus de ${targetSummaryWords} mots → SYNTHÉTISE
-ÉTAPE 5 : Vise EXACTEMENT ${targetSummaryWords} mots (±5 mots maximum)
+**CHECKLIST OBLIGATOIRE :**
+
+☐ J'ai relu la transcription ENTIÈREMENT
+☐ J'ai identifié TOUS les points/arguments/conseils importants
+☐ CHAQUE point identifié apparaît dans mon résumé
+☐ Aucun chiffre/statistique n'a été omis
+☐ Aucun nom/produit/concept n'a été omis
+☐ Aucun exemple n'a été omis
+☐ Mon résumé fait ${targetSummaryWords} mots (±10)
+☐ Mon résumé a des sauts de ligne entre parties
+☐ J'ai ${targetPointsCles} points clés
+☐ J'ai ${targetNotions} notions
+
+**SI UNE SEULE CASE N'EST PAS COCHÉE → RECOMMENCE ENTIÈREMENT**
 
 ═══════════════════════════════════════════════════════════════
-📊 POINTS CLÉS ET NOTIONS - RÈGLES STRICTES
+📊 POINTS CLÉS ET NOTIONS
 ═══════════════════════════════════════════════════════════════
 
-POINTS CLÉS : EXACTEMENT ${targetPointsCles} points
-- Format : Phrases complètes et détaillées (20-35 mots par point)
-- Couvrir les ${targetPointsCles} informations/arguments/conseils les PLUS IMPORTANTS
-- Exemple : "L'inflation érode le pouvoir d'achat : un capital de 50 000€ non investi perd environ 2-3% de sa valeur chaque année, soit 1000-1500€"
+POINTS CLÉS : ${targetPointsCles} points (phrases complètes 20-35 mots)
+→ Couvrir les informations LES PLUS IMPORTANTES
 
-NOTIONS : EXACTEMENT ${targetNotions} notions
-- Format : Terme + définition complète et détaillée (30-60 mots)
-- Identifier les ${targetNotions} termes techniques/concepts les PLUS IMPORTANTS
-- Exemple : {"terme": "ETF (Exchange Traded Fund)", "definition": "Panier d'actions diversifié qui permet d'investir dans des centaines d'entreprises en un seul achat. Les ETF répliquent la performance d'un indice boursier (comme le S&P 500) et offrent une diversification optimale à faible coût."}
+NOTIONS : ${targetNotions} notions (terme + définition 30-60 mots)
+→ Définir les concepts clés mentionnés
 
 ═══════════════════════════════════════════════════════════════
-⚠️ VÉRIFICATION FINALE OBLIGATOIRE
+⚠️ RAPPEL FINAL AVANT GÉNÉRATION
 ═══════════════════════════════════════════════════════════════
 
-AVANT DE GÉNÉRER LE JSON, VÉRIFIE :
-☐ Mon résumé fait EXACTEMENT ${targetSummaryWords} mots (±5)
-☐ Mon résumé a des SAUTS DE LIGNE entre intro/dév/conclu et entre paragraphes
-☐ J'ai EXACTEMENT ${targetPointsCles} points clés
-☐ J'ai EXACTEMENT ${targetNotions} notions
-☐ Mes points clés sont des phrases complètes de 20-35 mots
-☐ Mes notions ont des définitions de 30-60 mots
+1. RÉSUMÉ : ${targetSummaryWords} MOTS EXACTEMENT
+2. **AUCUN ÉLÉMENT DE LA TRANSCRIPTION NE DOIT ÊTRE OUBLIÉ**
+3. STRUCTURE : intro + développement + conclusion avec sauts de ligne
+4. POINTS CLÉS : ${targetPointsCles}
+5. NOTIONS : ${targetNotions}
 
-SI UNE SEULE CASE N'EST PAS COCHÉE → RECOMMENCE ENTIÈREMENT
+**PRIORITÉ ABSOLUE : NE RIEN OUBLIER > TOUT LE RESTE**
 
 ═══════════════════════════════════════════════════════════════
 📋 FORMAT JSON À RETOURNER
@@ -315,23 +360,16 @@ SI UNE SEULE CASE N'EST PAS COCHÉE → RECOMMENCE ENTIÈREMENT
 
 {
   "titre": "Titre court (max 60 caractères)",
-  "resume": "INTRODUCTION\\n\\nPARAGRAPHE 1\\n\\nPARAGRAPHE 2\\n\\n...\\n\\nCONCLUSION",
+  "resume": "RÉSUMÉ COMPLET SANS RIEN OUBLIER\\n\\nPARAGRAPHE 1\\n\\n...\\n\\nCONCLUSION",
   "pointsCles": [
     "Point 1 en phrase complète de 20-35 mots",
-    "Point 2 en phrase complète de 20-35 mots",
     ...exactement ${targetPointsCles} points
   ],
   "notions": [
     {"terme": "Terme 1", "definition": "Définition complète de 30-60 mots"},
-    {"terme": "Terme 2", "definition": "Définition complète de 30-60 mots"},
     ...exactement ${targetNotions} notions
   ]
-}
-
-RAPPEL ULTIME :
-- RÉSUMÉ : ${targetSummaryWords} MOTS EXACTEMENT
-- POINTS CLÉS : ${targetPointsCles} EXACTEMENT
-- NOTIONS : ${targetNotions} EXACTEMENT`;
+}`;
 
     const userPrompt = `Transcription complète (${transcriptionWordCount} mots) :
 
