@@ -962,7 +962,7 @@ export default function Home() {
         onNavigateSettings={isSignedIn ? () => router.push("/settings/preferences") : undefined}
         onSignOut={isSignedIn ? () => signOut() : undefined}
         onOpenProfile={isSignedIn ? () => setShowProfile(true) : undefined}
-        userName={user?.firstName || user?.username || undefined}
+        userName={user?.firstName ? `${user.firstName}${user?.lastName ? " " + user.lastName : ""}` : user?.username || undefined}
         userImageUrl={user?.imageUrl}
       />
 
@@ -993,7 +993,7 @@ export default function Home() {
             } : undefined}
             onAvatarClick={isSignedIn ? () => setShowProfile(true) : undefined}
             userImageUrl={user?.imageUrl}
-            userName={user?.firstName || user?.username || undefined}
+            userName={user?.firstName ? `${user.firstName}${user?.lastName ? " " + user.lastName : ""}` : user?.username || undefined}
           />
         )}
 
@@ -1323,7 +1323,7 @@ export default function Home() {
         isOpen={showProfile}
         onClose={() => setShowProfile(false)}
         userImageUrl={user?.imageUrl}
-        userName={user?.firstName || user?.username || undefined}
+        userName={user?.firstName ? `${user.firstName}${user?.lastName ? " " + user.lastName : ""}` : user?.username || undefined}
       />
 
       {/* Debug overlay (dev only) */}

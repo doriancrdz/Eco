@@ -99,7 +99,7 @@ export default function Sidebar({
         transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       >
         <div
-          className="w-[280px] max-w-[85vw] h-full flex flex-col bg-white/10 backdrop-blur-xl border-r border-white/20 relative overflow-y-auto"
+          className="w-[280px] max-w-[85vw] h-full flex flex-col bg-white lg:bg-white/10 backdrop-blur-xl border-r border-gray-200 lg:border-white/20 relative"
           style={{ minWidth: 280 }}
         >
           <AnimatePresence mode="wait">
@@ -109,10 +109,40 @@ export default function Sidebar({
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
-                className="flex flex-col h-full min-w-[280px]"
+                className="flex flex-col h-full min-w-[280px] min-h-0"
               >
-                {/* Bouton fermer (mobile uniquement) */}
-                {onClose && (
+                {/* HEADER MOBILE : Profil + Déconnexion en haut (mobile uniquement) */}
+                {isSignedIn && (
+                  <div className="lg:hidden flex-shrink-0 relative p-6 pb-4 border-b border-gray-200 bg-gradient-to-br from-aura-emerald/20 via-aura-blue/20 to-aura-sand/20">
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="absolute top-4 right-4 p-2 rounded-lg text-gray-600 hover:bg-white/50 transition-colors z-10"
+                      aria-label="Fermer le menu"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                    <div className="flex items-center gap-3 mb-4">
+                      <UserAvatar size="lg" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-gray-900 truncate">
+                          {userName || "Utilisateur"}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowLogoutConfirm(true)}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white hover:bg-gray-50 text-gray-700 font-medium text-sm rounded-xl border border-gray-200 transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Se déconnecter
+                    </button>
+                  </div>
+                )}
+
+                {/* Bouton fermer desktop (si pas de header mobile) */}
+                {onClose && !isSignedIn && (
                   <button
                     type="button"
                     onClick={onClose}
@@ -122,7 +152,8 @@ export default function Sidebar({
                     <X className="w-5 h-5" />
                   </button>
                 )}
-                {/* Logo ECO -> Accueil (même action que flèche retour) */}
+
+                {/* Logo ECO -> Accueil */}
                 <button
                   type="button"
                   onClick={() => {
@@ -140,13 +171,13 @@ export default function Sidebar({
                 </button>
 
                 {/* Nav */}
-                <div className="px-2 py-2 space-y-0.5">
+                <div className="px-2 py-2 space-y-0.5 shrink-0">
                   {onNavigateHome && (
                     <motion.button
                       whileHover={{ x: 2 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => { onNavigateHome("sidebar"); onClose?.(); }}
-                      className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-white/20 transition-all cursor-pointer"
+                      className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 lg:hover:bg-white/20 transition-all cursor-pointer"
                     >
                       <Home className="w-4 h-4 shrink-0" />
                       Accueil
@@ -157,19 +188,18 @@ export default function Sidebar({
                       whileHover={{ x: 2 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => { onNavigatePricing(); onClose?.(); }}
-                      className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-white/20 transition-all cursor-pointer"
+                      className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 lg:hover:bg-white/20 transition-all cursor-pointer"
                     >
                       <CreditCard className="w-4 h-4 shrink-0" />
                       Abonnement
                     </motion.button>
                   )}
-                  {/* Paramètres seulement si connecté */}
                   {isSignedIn && onNavigateSettings && (
                     <motion.button
                       whileHover={{ x: 2 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => { onNavigateSettings(); onClose?.(); }}
-                      className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-white/20 transition-all cursor-pointer"
+                      className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 lg:hover:bg-white/20 transition-all cursor-pointer"
                     >
                       <Settings className="w-4 h-4 shrink-0" />
                       Paramètres
@@ -177,14 +207,14 @@ export default function Sidebar({
                   )}
                 </div>
 
-                <FolderList
-                  onSelectEco={handleEcoClick}
-                  onClose={onClose}
-                  selectedEcoId={selectedEco}
-                  expandFolderId={selectedFolder}
-                />
-
-                <div className="flex-1 min-h-0 flex flex-col">
+                {/* Zone scrollable : dossiers + ECOs */}
+                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+                  <FolderList
+                    onSelectEco={handleEcoClick}
+                    onClose={onClose}
+                    selectedEcoId={selectedEco}
+                    expandFolderId={selectedFolder}
+                  />
                   <EcoHistory
                     selectedEcoId={selectedEco}
                     onSelectEco={handleEcoClick}
@@ -193,9 +223,9 @@ export default function Sidebar({
                   />
                 </div>
 
-                {/* Bottom: avatar, name, Déconnexion (seulement si connecté) */}
+                {/* Bottom: avatar, name, Déconnexion (desktop uniquement) */}
                 {isSignedIn && (
-                  <div className="border-t border-white/20 mt-auto pt-4 pb-4 shrink-0">
+                  <div className="hidden lg:flex flex-col border-t border-white/20 pt-4 pb-4 shrink-0">
                     {onOpenProfile && (
                       <motion.button
                         whileHover={{ x: 2 }}

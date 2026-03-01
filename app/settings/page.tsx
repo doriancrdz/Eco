@@ -388,7 +388,7 @@ export default function SettingsPage() {
               whileHover={{ scale: 1.02, y: -2 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleLogout}
-              className="flex items-center justify-center gap-2 px-6 py-3 min-h-[44px] bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 min-h-[44px] bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors"
             >
               <LogOut className="w-5 h-5" />
               Se déconnecter
@@ -398,7 +398,7 @@ export default function SettingsPage() {
               whileHover={{ scale: 1.02, y: -2 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => setShowDeleteModal(true)}
-              className="flex items-center justify-center gap-2 px-6 py-3 min-h-[44px] bg-red-50 hover:bg-red-100 text-red-600 font-medium rounded-xl transition-colors"
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 min-h-[44px] bg-red-50 hover:bg-red-100 text-red-600 font-medium rounded-xl transition-colors"
             >
               <Trash2 className="w-5 h-5" />
               Supprimer mon compte

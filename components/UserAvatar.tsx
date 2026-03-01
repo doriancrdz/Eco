@@ -25,33 +25,60 @@ const SIZE_CLASSES = {
 export default function UserAvatar({ size = "md" }: UserAvatarProps) {
   const { user } = useUser();
 
-  const initial =
-    user?.firstName?.charAt(0).toUpperCase() ||
-    user?.username?.charAt(0).toUpperCase() ||
-    "U";
+  // Initiales : Prénom + Nom si disponibles, sinon prénom seul, sinon username
+  let initials = "U";
+  if (user?.firstName && user?.lastName) {
+    initials = user.firstName.charAt(0).toUpperCase() + user.lastName.charAt(0).toUpperCase();
+  } else if (user?.firstName) {
+    initials = user.firstName.charAt(0).toUpperCase();
+  } else if (user?.username) {
+    initials = user.username.charAt(0).toUpperCase();
+  }
 
   const colorIndex =
     (user?.firstName?.charCodeAt(0) ?? user?.username?.charCodeAt(0) ?? 0) % GRADIENT_CLASSES.length;
   const gradientClass = GRADIENT_CLASSES[colorIndex];
 
   const sizeClass = SIZE_CLASSES[size];
-  const title = user?.firstName || user?.username || "Profil";
+  const title =
+    user?.firstName
+      ? `${user.firstName}${user?.lastName ? " " + user.lastName : ""}`
+      : user?.username || "Profil";
+
+  // Taille du texte réduite si 2 initiales
+  const textSize =
+    initials.length === 2
+      ? size === "sm"
+        ? "text-[10px]"
+        : size === "md"
+        ? "text-xs"
+        : size === "lg"
+        ? "text-sm"
+        : "text-xl"
+      : size === "sm"
+      ? "text-sm"
+      : size === "md"
+      ? "text-base"
+      : size === "lg"
+      ? "text-lg"
+      : "text-2xl";
 
   return (
     <div
       className={`
-        ${sizeClass}
+        ${sizeClass.split(" ").slice(0, 2).join(" ")}
         rounded-full
         ${gradientClass}
         flex items-center justify-center
         text-white font-bold
+        ${textSize}
         shadow-lg shrink-0
         hover:scale-105 transition-transform
         select-none
       `}
       title={title}
     >
-      {initial}
+      {initials}
     </div>
   );
 }
