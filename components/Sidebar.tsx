@@ -64,6 +64,18 @@ export default function Sidebar({
     onClose?.();
   };
 
+  // Bloquer le scroll du body quand la sidebar est ouverte (mobile/tablet uniquement)
+  useEffect(() => {
+    if (isOpen && typeof window !== "undefined" && window.innerWidth < 1024) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isOpen]);
+
   return (
     <>
       {/* Mobile/Tablet overlay */}
@@ -87,7 +99,7 @@ export default function Sidebar({
         transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       >
         <div
-          className="w-[280px] max-w-[85vw] h-full flex flex-col bg-white/10 backdrop-blur-xl border-r border-white/20 relative"
+          className="w-[280px] max-w-[85vw] h-full flex flex-col bg-white/10 backdrop-blur-xl border-r border-white/20 relative overflow-y-auto"
           style={{ minWidth: 280 }}
         >
           <AnimatePresence mode="wait">
@@ -243,12 +255,12 @@ export default function Sidebar({
                 <p className="text-gray-600 mb-6">
                   Êtes-vous sûr de vouloir vous déconnecter ?
                 </p>
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-3">
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setShowLogoutConfirm(false)}
-                    className="flex-1 px-4 py-2 bg-gray-100 rounded-xl font-medium text-gray-900 hover:bg-gray-200 transition-colors"
+                    className="flex-1 px-4 py-3 min-h-[44px] bg-gray-100 rounded-xl font-medium text-gray-900 hover:bg-gray-200 transition-colors"
                   >
                     Annuler
                   </motion.button>
@@ -259,7 +271,7 @@ export default function Sidebar({
                       await signOut({ redirectUrl: '/sign-in' });
                       onClose?.();
                     }}
-                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors"
+                    className="flex-1 px-4 py-3 min-h-[44px] bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors"
                   >
                     Oui, déconnecter
                   </motion.button>

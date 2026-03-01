@@ -87,14 +87,14 @@ export default function Header({
         )}
       </div>
 
-      {/* Center: logo + ECO — complètement fixe, aucun effet au hover */}
+      {/* Center: logo + ECO — caché sur mobile (évite collision avec badge plan), visible sur desktop */}
       <button
         type="button"
         onClick={() => {
           if (process.env.NODE_ENV !== "production") console.log("[NAV] logo click -> goHome", { location: "header-center" });
           onGoHome("logo");
         }}
-        className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 bg-transparent p-0 border-0 z-[25] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/30 focus-visible:ring-offset-2 min-w-[100px] justify-center"
+        className="hidden md:flex absolute left-1/2 -translate-x-1/2 items-center gap-2 bg-transparent p-0 border-0 z-[25] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/30 focus-visible:ring-offset-2 min-w-[100px] justify-center"
         aria-label="Retour à l'accueil"
       >
         <Image src="/logo-eco.png" alt="" width={32} height={32} className="w-8 h-8 bg-transparent block object-contain select-none pointer-events-none" />

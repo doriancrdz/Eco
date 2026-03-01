@@ -411,6 +411,7 @@ export default function Home() {
       if (process.env.NODE_ENV === "development") {
         console.log("[startRecording] Demande accès micro...");
       }
+      // Le navigateur garde la permission après la première autorisation ; ne pas appeler permissions.query() à chaque fois
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
@@ -564,6 +565,10 @@ export default function Home() {
       // Afficher FocusMode
       setIsFocusMode(true);
       setIsRecording(true);
+      // Scroll vers le haut sur mobile pour afficher logo + timer immédiatement
+      if (typeof window !== "undefined" && window.innerWidth < 768) {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
       if (process.env.NODE_ENV === "development") {
         console.log("[startRecording] Tout initialisé");
       }

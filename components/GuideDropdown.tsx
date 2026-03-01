@@ -34,8 +34,16 @@ export default function GuideDropdown() {
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 md:left-0 md:right-auto mt-2 mx-4 md:mx-0 w-full md:w-80 max-w-[calc(100vw-2rem)] md:max-w-none bg-white rounded-2xl shadow-2xl border border-gray-200 z-50 max-h-[80vh] overflow-y-auto">
-          <div className="sticky top-0 bg-gradient-to-r from-blue-50 to-purple-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between rounded-t-2xl">
+        <>
+          {/* Overlay mobile : fermer au clic */}
+          <div
+            className="fixed inset-0 bg-black/50 z-40 md:hidden"
+            onClick={() => setIsOpen(false)}
+            aria-hidden
+          />
+          {/* Dropdown : modal full-width sur mobile, position absolute sur desktop */}
+          <div className="fixed inset-x-4 top-20 md:top-full md:left-0 md:right-auto md:inset-x-auto md:mt-2 w-auto md:w-80 max-h-[80vh] bg-white rounded-2xl shadow-2xl border border-gray-200 z-50 overflow-y-auto">
+            <div className="sticky top-0 bg-gradient-to-r from-blue-50 to-purple-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between rounded-t-2xl">
             <div className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-purple-600 shrink-0" />
               <h3 className="font-bold text-lg text-gray-900">🎯 Comment utiliser ECO</h3>
@@ -131,6 +139,7 @@ export default function GuideDropdown() {
             </div>
           </div>
         </div>
+        </>
       )}
     </div>
   );

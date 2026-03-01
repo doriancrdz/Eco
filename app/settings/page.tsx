@@ -4,8 +4,9 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Package, CreditCard, Calendar, Clock, AlertCircle } from "lucide-react";
+import { ArrowLeft, Package, CreditCard, Calendar, Clock, AlertCircle, LogOut, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { useClerk } from "@clerk/nextjs";
 
 interface BillingData {
   plan: string;
@@ -26,13 +27,15 @@ interface BillingData {
 }
 
 export default function SettingsPage() {
-  const { isLoaded, isSignedIn, userId } = useAuth();
+  const { isLoaded, isSignedIn } = useAuth();
+  const { signOut } = useClerk();
   const router = useRouter();
   const [billingData, setBillingData] = useState<BillingData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
@@ -136,6 +139,19 @@ export default function SettingsPage() {
   const showUpgradeButton = isFree;
   const showCancelButton = isMonthlyNoCommit;
   const showPackButton = true;
+
+  const handleLogout = async () => {
+    await signOut();
+    router.push("/");
+  };
+
+  const handleDeleteAccount = async () => {
+    // TODO: Implémenter la suppression du compte (Clerk + DB)
+    if (process.env.NODE_ENV === "development") {
+      console.log("Suppression du compte...");
+    }
+    setShowDeleteModal(false);
+  };
 
   return (
     <div className="min-h-screen aura-gradient relative">
@@ -355,6 +371,40 @@ export default function SettingsPage() {
             </div>
           )}
         </motion.div>
+
+        {/* Section Compte : déconnexion et suppression */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15, duration: 0.3 }}
+          className="floating-card rounded-3xl border border-white/40 p-8 bg-white/70 backdrop-blur-md mb-6"
+        >
+          <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
+            Compte
+          </h2>
+          <div className="flex flex-col sm:flex-row gap-4 pt-2">
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleLogout}
+              className="flex items-center justify-center gap-2 px-6 py-3 min-h-[44px] bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors"
+            >
+              <LogOut className="w-5 h-5" />
+              Se déconnecter
+            </motion.button>
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.02, y: -2 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setShowDeleteModal(true)}
+              className="flex items-center justify-center gap-2 px-6 py-3 min-h-[44px] bg-red-50 hover:bg-red-100 text-red-600 font-medium rounded-xl transition-colors"
+            >
+              <Trash2 className="w-5 h-5" />
+              Supprimer mon compte
+            </motion.button>
+          </div>
+        </motion.div>
       </div>
 
       {/* Modale de confirmation de résiliation */}
@@ -387,7 +437,7 @@ export default function SettingsPage() {
                   Votre abonnement sera annulé à la fin de la période en cours. 
                   Vous ne serez pas débité le mois prochain.
                 </p>
-                <div className="flex gap-3">
+                <div className="flex flex-col sm:flex-row gap-3">
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
@@ -409,6 +459,55 @@ export default function SettingsPage() {
               </div>
             </motion.div>
           </>
+        )}
+      </AnimatePresence>
+
+      {/* Modale confirmation suppression compte */}
+      <AnimatePresence>
+        {showDeleteModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowDeleteModal(false)}
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+            aria-hidden="true"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="delete-account-title"
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6"
+            >
+                <h3 id="delete-account-title" className="text-xl font-bold text-red-600 mb-2">
+                  Supprimer mon compte
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  Cette action est irréversible. Toutes vos données seront définitivement supprimées.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowDeleteModal(false)}
+                    className="flex-1 px-6 py-3 min-h-[44px] bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteAccount}
+                    className="flex-1 px-6 py-3 min-h-[44px] bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-colors"
+                  >
+                    Confirmer
+                  </button>
+                </div>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>
