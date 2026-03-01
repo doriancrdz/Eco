@@ -787,13 +787,14 @@ export default function Home() {
       setIsFocusMode(false);
       setIsProcessing(false);
       setSelectedEco(newEco.id);
+      setCurrentEco(newEco);
       setSelectedFolder(null);
       setRefreshKey((prev) => prev + 1);
 
       // Rafraîchir le quota UI (minutes en haut à droite)
       window.dispatchEvent(new Event("quota-updated"));
 
-      // 4) Charger l'Eco
+      // 4) Charger l'Eco (mise à jour avec données complètes)
       try {
         const getRes = await fetch(`/api/ecos/${newEco.id}`, {
           cache: "no-store",
@@ -1204,7 +1205,20 @@ export default function Home() {
               transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             >
               <EcoView
-                eco={currentEco}
+                eco={
+                  currentEco ??
+                  (selectedEco
+                    ? ({
+                        id: selectedEco,
+                        title: "Chargement…",
+                        audio_url: "",
+                        transcription_text: "",
+                        summary_text: null,
+                        folder: "",
+                        created_at: new Date().toISOString(),
+                      } satisfies Eco)
+                    : null)
+                }
                 onBack={resetToHome}
                 onRefresh={() => {
                   if (selectedEco) {
