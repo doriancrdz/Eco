@@ -36,6 +36,7 @@ export default function SettingsPage() {
   const [cancelling, setCancelling] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     if (isLoaded && !isSignedIn) {
@@ -146,11 +147,23 @@ export default function SettingsPage() {
   };
 
   const handleDeleteAccount = async () => {
-    // TODO: Implémenter la suppression du compte (Clerk + DB)
-    if (process.env.NODE_ENV === "development") {
-      console.log("Suppression du compte...");
+    setIsDeleting(true);
+    try {
+      const res = await fetch("/api/user/delete", { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Erreur lors de la suppression des données");
+      }
+      await signOut();
+      router.push("/");
+    } catch (err) {
+      console.error("Erreur suppression compte:", err);
+      alert(
+        err instanceof Error ? err.message : "Une erreur est survenue lors de la suppression du compte."
+      );
+      setIsDeleting(false);
+      setShowDeleteModal(false);
     }
-    setShowDeleteModal(false);
   };
 
   return (
@@ -469,8 +482,8 @@ export default function SettingsPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setShowDeleteModal(false)}
-            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+            onClick={() => !isDeleting && setShowDeleteModal(false)}
+            className="fixed inset-0 min-h-[100dvh] bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto overscroll-contain"
             aria-hidden="true"
           >
             <motion.div
@@ -482,30 +495,32 @@ export default function SettingsPage() {
               role="dialog"
               aria-modal="true"
               aria-labelledby="delete-account-title"
-              className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6"
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6"
             >
-                <h3 id="delete-account-title" className="text-xl font-bold text-red-600 mb-2">
-                  Supprimer mon compte
-                </h3>
-                <p className="text-gray-600 mb-6">
-                  Cette action est irréversible. Toutes vos données seront définitivement supprimées.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowDeleteModal(false)}
-                    className="flex-1 px-6 py-3 min-h-[44px] bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors"
-                  >
-                    Annuler
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleDeleteAccount}
-                    className="flex-1 px-6 py-3 min-h-[44px] bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-colors"
-                  >
-                    Confirmer
-                  </button>
-                </div>
+              <h3 id="delete-account-title" className="text-xl font-bold text-red-600 mb-2">
+                Supprimer mon compte
+              </h3>
+              <p className="text-gray-600 mb-6">
+                ⚠️ Cette action est <strong>irréversible</strong>. Toutes vos données (enregistrements, résumés, abonnement) seront définitivement supprimées.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteModal(false)}
+                  disabled={isDeleting}
+                  className="flex-1 px-6 py-3 min-h-[44px] bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors disabled:opacity-50"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDeleteAccount}
+                  disabled={isDeleting}
+                  className="flex-1 px-6 py-3 min-h-[44px] bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isDeleting ? "Suppression…" : "Supprimer définitivement"}
+                </button>
+              </div>
             </motion.div>
           </motion.div>
         )}

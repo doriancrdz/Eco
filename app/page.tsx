@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import Header from "@/components/Header";
 import Logo from "@/components/Logo";
-import { Sparkles, ArrowRight, Settings, ArrowLeft, Mic } from "lucide-react";
+import { Sparkles, ArrowRight, Settings, ArrowLeft, Mic, LogIn } from "lucide-react";
 import { useUser, useClerk } from "@clerk/nextjs";
 import EcoView from "@/components/EcoView";
 import RecordButton from "@/components/RecordButton";
@@ -36,7 +36,7 @@ export type CurrentView = "home" | "recording" | "generating" | "detail" | "pric
 
 export default function Home() {
   const router = useRouter();
-  const { user, isSignedIn } = useUser();
+  const { user, isSignedIn, isLoaded } = useUser();
   const { signOut } = useClerk();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
@@ -62,6 +62,7 @@ export default function Home() {
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [viewAllEcos, setViewAllEcos] = useState(false);
   const [recordingElapsedSeconds, setRecordingElapsedSeconds] = useState(0);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const [processingDurationMinutes, setProcessingDurationMinutes] = useState(0);
   const [ecos, setEcos] = useState<Eco[]>([]);
 
@@ -565,9 +566,9 @@ export default function Home() {
       // Afficher FocusMode
       setIsFocusMode(true);
       setIsRecording(true);
-      // Scroll vers le haut sur mobile pour afficher logo + timer immédiatement
-      if (typeof window !== "undefined" && window.innerWidth < 768) {
-        window.scrollTo({ top: 0, behavior: "smooth" });
+      // Scroll vers le haut (mobile) après rendu du FocusMode
+      if (typeof window !== "undefined") {
+        setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 100);
       }
       if (process.env.NODE_ENV === "development") {
         console.log("[startRecording] Tout initialisé");
@@ -884,6 +885,11 @@ export default function Home() {
 
   const handleStartRecording = () => {
     if (paymentBlocked) return;
+    if (!isLoaded) return;
+    if (!isSignedIn) {
+      setShowAuthModal(true);
+      return;
+    }
     if (!isRecording) {
       startRecording();
     }
@@ -1325,6 +1331,58 @@ export default function Home() {
         userImageUrl={user?.imageUrl}
         userName={user?.firstName ? `${user.firstName}${user?.lastName ? " " + user.lastName : ""}` : user?.username || undefined}
       />
+
+      {/* Modal connexion requise (utilisateur non authentifié) */}
+      <AnimatePresence>
+        {showAuthModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowAuthModal(false)}
+            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+            aria-hidden="true"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="auth-modal-title"
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6"
+            >
+              <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                <LogIn className="w-8 h-8 text-white" />
+              </div>
+              <h3 id="auth-modal-title" className="text-2xl font-bold text-center text-gray-900 mb-2">
+                Connexion requise
+              </h3>
+              <p className="text-center text-gray-600 mb-6">
+                Vous devez être connecté pour lancer un enregistrement.
+                Créez un compte gratuitement en quelques secondes !
+              </p>
+              <div className="flex flex-col gap-3">
+                <button
+                  type="button"
+                  onClick={() => router.push("/sign-in")}
+                  className="w-full px-6 py-3 min-h-[44px] bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-xl"
+                >
+                  Se connecter / S&apos;inscrire
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAuthModal(false)}
+                  className="w-full px-6 py-3 min-h-[44px] bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors"
+                >
+                  Annuler
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Debug overlay (dev only) */}
       {process.env.NODE_ENV !== "production" && (

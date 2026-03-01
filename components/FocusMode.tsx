@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Pause, Play } from "lucide-react";
 import ScrollingWaveformBars from "./ScrollingWaveformBars";
@@ -46,6 +46,12 @@ export default function FocusMode({
   recordingElapsedSeconds = 0,
   analyserRef,
 }: FocusModeProps) {
+  useEffect(() => {
+    if (isActive) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [isActive]);
+
   if (!isActive) return null;
 
   return (
@@ -55,16 +61,17 @@ export default function FocusMode({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.4, ease: "easeInOut" }}
-        className="fixed inset-0 aura-gradient z-50 w-full flex flex-col items-center justify-center"
+        className="fixed inset-0 aura-gradient z-50 flex items-center justify-center overflow-auto"
       >
+        <div className="flex flex-col items-center justify-center w-full px-4 py-8 min-h-screen">
         {isRecording ? (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1, duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-            className="w-full flex flex-col items-center justify-center text-center gap-10 px-4"
+            className="w-full flex flex-col items-center justify-center text-center gap-10"
           >
-            <div className="flex flex-col items-center gap-8">
+            <div className="flex flex-col items-center gap-8 mb-8 md:mb-12">
               {/* Même wrapper que page d'accueil : aucun fond / shape derrière le logo */}
               <div className="relative bg-transparent">
                 <Logo
@@ -95,7 +102,7 @@ export default function FocusMode({
                 </span>
               </motion.div>
             </div>
-            <div className="flex items-center justify-center gap-5">
+            <div className="flex items-center justify-center gap-5 mb-8 md:mb-12">
               {onTogglePause && (
                 <motion.button
                   whileHover={{ scale: 1.05 }}
@@ -143,6 +150,7 @@ export default function FocusMode({
             </motion.p>
           </motion.div>
         )}
+        </div>
       </motion.div>
 
       {/* Modale confirmation stop */}

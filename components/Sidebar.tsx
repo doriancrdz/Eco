@@ -256,59 +256,55 @@ export default function Sidebar({
         </div>
       </motion.div>
 
-      {/* Modale de confirmation de déconnexion */}
+      {/* Modale de confirmation de déconnexion — responsive mobile */}
       <AnimatePresence>
         {showLogoutConfirm && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowLogoutConfirm(false)}
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100]"
-              aria-hidden="true"
-            />
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowLogoutConfirm(false)}
+            className="fixed inset-0 min-h-[100dvh] bg-black/50 z-[100] flex items-center justify-center p-4 overflow-y-auto overscroll-contain"
+            aria-hidden="true"
+          >
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="fixed left-1/2 top-1/2 z-[101] w-full max-w-sm -translate-x-1/2 -translate-y-1/2 px-4"
+              onClick={(e) => e.stopPropagation()}
               role="dialog"
               aria-modal="true"
               aria-labelledby="logout-confirm-title-sidebar"
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6"
             >
-              <div className="bg-white rounded-3xl p-8 shadow-2xl border border-white/40">
-                <h3 id="logout-confirm-title-sidebar" className="text-xl font-bold text-gray-900 mb-4">
-                  Se déconnecter ?
-                </h3>
-                <p className="text-gray-600 mb-6">
-                  Êtes-vous sûr de vouloir vous déconnecter ?
-                </p>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => setShowLogoutConfirm(false)}
-                    className="flex-1 px-4 py-3 min-h-[44px] bg-gray-100 rounded-xl font-medium text-gray-900 hover:bg-gray-200 transition-colors"
-                  >
-                    Annuler
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={async () => {
-                      await signOut({ redirectUrl: '/sign-in' });
-                      onClose?.();
-                    }}
-                    className="flex-1 px-4 py-3 min-h-[44px] bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors"
-                  >
-                    Oui, déconnecter
-                  </motion.button>
-                </div>
+              <h3 id="logout-confirm-title-sidebar" className="text-xl font-bold text-gray-900 mb-2">
+                Déconnexion
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Êtes-vous sûr de vouloir vous déconnecter ?
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="flex-1 px-6 py-3 min-h-[44px] bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await signOut({ redirectUrl: "/sign-in" });
+                    onClose?.();
+                  }}
+                  className="flex-1 px-6 py-3 min-h-[44px] bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-colors"
+                >
+                  Se déconnecter
+                </button>
               </div>
             </motion.div>
-          </>
+          </motion.div>
         )}
       </AnimatePresence>
     </>

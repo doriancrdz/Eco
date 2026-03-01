@@ -139,54 +139,52 @@ export default function ProfileView({
         </div>
       </motion.div>
 
-      {/* Modale de confirmation de déconnexion */}
+      {/* Modale de confirmation de déconnexion — responsive mobile */}
       <AnimatePresence>
         {showLogoutConfirm && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowLogoutConfirm(false)}
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[60]"
-              aria-hidden="true"
-            />
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowLogoutConfirm(false)}
+            className="fixed inset-0 min-h-[100dvh] bg-black/50 z-[60] flex items-center justify-center p-4 overflow-y-auto overscroll-contain"
+            aria-hidden="true"
+          >
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="fixed left-1/2 top-1/2 z-[61] w-full max-w-sm -translate-x-1/2 -translate-y-1/2 px-4 flex items-center justify-center"
+              onClick={(e) => e.stopPropagation()}
               role="dialog"
               aria-modal="true"
               aria-labelledby="logout-confirm-title"
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6"
             >
-              <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 w-full max-w-sm p-6">
-                <h3 id="logout-confirm-title" className="text-xl font-bold text-gray-900 mb-2">
-                  Déconnexion
-                </h3>
-                <p className="text-gray-600 mb-6">
-                  Êtes-vous sûr de vouloir vous déconnecter ?
-                </p>
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowLogoutConfirm(false)}
-                    className="flex-1 px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors"
-                  >
-                    Annuler
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSignOut}
-                    className="flex-1 px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-colors"
-                  >
-                    Se déconnecter
-                  </button>
-                </div>
+              <h3 id="logout-confirm-title" className="text-xl font-bold text-gray-900 mb-2">
+                Déconnexion
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Êtes-vous sûr de vouloir vous déconnecter ?
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="flex-1 px-6 py-3 min-h-[44px] bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  className="flex-1 px-6 py-3 min-h-[44px] bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-colors"
+                >
+                  Se déconnecter
+                </button>
               </div>
             </motion.div>
-          </>
+          </motion.div>
         )}
       </AnimatePresence>
         </React.Fragment>
