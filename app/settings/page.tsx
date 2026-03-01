@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Package, CreditCard, Calendar, Clock, AlertCircle, LogOut, Trash2 } from "lucide-react";
@@ -28,6 +28,7 @@ interface BillingData {
 
 export default function SettingsPage() {
   const { isLoaded, isSignedIn } = useAuth();
+  const { user } = useUser();
   const { signOut } = useClerk();
   const router = useRouter();
   const [billingData, setBillingData] = useState<BillingData | null>(null);
@@ -385,17 +386,39 @@ export default function SettingsPage() {
           )}
         </motion.div>
 
-        {/* Section Compte : déconnexion et suppression */}
+        {/* Section Compte : infos + déconnexion et suppression */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15, duration: 0.3 }}
           className="floating-card rounded-3xl border border-white/40 p-8 bg-white/70 backdrop-blur-md mb-6"
         >
-          <h2 className="text-xl font-semibold text-gray-900 mb-6 flex items-center gap-2">
-            Compte
-          </h2>
-          <div className="flex flex-col sm:flex-row gap-4 pt-2">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Compte</h2>
+
+          {/* Infos compte */}
+          <div className="space-y-4 mb-6 pb-6 border-b border-gray-200">
+            <div>
+              <p className="text-sm text-gray-500 uppercase tracking-wide mb-1">Nom</p>
+              <p className="text-lg font-medium text-gray-900">
+                {user?.firstName ? `${user.firstName}${user?.lastName ? " " + user.lastName : ""}` : "Non renseigné"}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 uppercase tracking-wide mb-1">Email</p>
+              <p className="text-lg font-medium text-gray-900">
+                {user?.primaryEmailAddress?.emailAddress || "Non renseigné"}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 mb-2">Vous êtes sur le plan</p>
+              <span className="inline-block px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-bold">
+                {billingData?.planName || "Free"}
+              </span>
+            </div>
+          </div>
+
+          {/* Boutons Se déconnecter + Supprimer mon compte */}
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
             <motion.button
               type="button"
               whileHover={{ scale: 1.02, y: -2 }}
