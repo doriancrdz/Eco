@@ -566,9 +566,9 @@ export default function Home() {
       // Afficher FocusMode
       setIsFocusMode(true);
       setIsRecording(true);
-      // Scroll vers le haut (mobile) après rendu du FocusMode
+      // Scroll immédiat vers le haut (mobile)
       if (typeof window !== "undefined") {
-        setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 100);
+        setTimeout(() => window.scrollTo({ top: 0, behavior: "auto" }), 50);
       }
       if (process.env.NODE_ENV === "development") {
         console.log("[startRecording] Tout initialisé");

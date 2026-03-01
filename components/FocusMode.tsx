@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Pause, Play } from "lucide-react";
 import ScrollingWaveformBars from "./ScrollingWaveformBars";
@@ -46,13 +46,25 @@ export default function FocusMode({
   recordingElapsedSeconds = 0,
   analyserRef,
 }: FocusModeProps) {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    setIsMobile(mq.matches);
+    const fn = () => setIsMobile(mq.matches);
+    mq.addEventListener("change", fn);
+    return () => mq.removeEventListener("change", fn);
+  }, []);
+
   useEffect(() => {
     if (isActive) {
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      window.scrollTo({ top: 0, behavior: "auto" });
     }
   }, [isActive]);
 
   if (!isActive) return null;
+
+  const logoSize = isMobile ? 160 : 200;
+  const waveformHeight = isMobile ? 64 : 96;
 
   return (
     <AnimatePresence>
@@ -61,23 +73,22 @@ export default function FocusMode({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.4, ease: "easeInOut" }}
-        className="fixed inset-0 aura-gradient z-50 flex items-center justify-center overflow-auto"
+        className="fixed inset-0 aura-gradient z-50 overflow-auto"
       >
-        <div className="flex flex-col items-center justify-center w-full px-4 py-8 min-h-screen">
+        <div className="flex flex-col items-center w-full px-4 pt-4 md:pt-16 pb-8 min-h-screen">
         {isRecording ? (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1, duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-            className="w-full flex flex-col items-center justify-center text-center gap-10"
+            className="w-full flex flex-col items-center justify-center text-center gap-6 md:gap-10"
           >
-            <div className="flex flex-col items-center gap-8 mb-8 md:mb-12">
-              {/* Même wrapper que page d'accueil : aucun fond / shape derrière le logo */}
+            <div className="flex flex-col items-center gap-6 md:gap-8 mb-6 md:mb-12">
               <div className="relative bg-transparent">
                 <Logo
                   state={isPaused ? "paused" : "recording"}
                   soundLevel={soundLevel}
-                  size={175}
+                  size={logoSize}
                   showMicroWarning={showMicroWarning}
                 />
               </div>
@@ -85,39 +96,41 @@ export default function FocusMode({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.2 }}
-                className="flex items-center justify-center gap-4 w-full max-w-md"
+                className="flex items-center justify-center gap-4 w-full max-w-md h-16 md:h-24"
               >
                 {analyserRef ? (
                   <ScrollingWaveformBars
                     analyserRef={analyserRef}
                     isPaused={isPaused}
-                    width={320}
-                    height={56}
+                    width={isMobile ? 280 : 320}
+                    height={waveformHeight}
                   />
                 ) : (
-                  <div className="w-[320px] h-14" aria-hidden />
+                  <div className={isMobile ? "w-[280px] h-12" : "w-[320px] h-14"} aria-hidden />
                 )}
-                <span className="text-sm font-semibold tabular-nums text-gray-700 shrink-0 min-w-[3rem]">
+                <span className="text-4xl md:text-6xl font-bold tabular-nums text-gray-900 shrink-0 min-w-[4rem] md:min-w-[5rem]">
                   {formatTimer(recordingElapsedSeconds)}
                 </span>
               </motion.div>
             </div>
-            <div className="flex items-center justify-center gap-5 mb-8 md:mb-12">
+            <div className="flex items-center justify-center gap-3 md:gap-5 mb-6 md:mb-12">
               {onTogglePause && (
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.97 }}
                   onClick={onTogglePause}
-                  className="w-16 h-16 rounded-2xl flex items-center justify-center text-white font-medium bg-white/25 backdrop-blur-xl border border-white/40 shadow-[0_0_20px_rgba(34,211,238,0.2),inset_0_1px_0_rgba(255,255,255,0.3)] hover:bg-white/35 hover:border-white/50 transition-all bg-gradient-to-br from-cyan-500/80 via-violet-500/70 to-violet-600/80"
+                  className="w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center text-white font-medium bg-white/25 backdrop-blur-xl border border-white/40 shadow-[0_0_20px_rgba(34,211,238,0.2),inset_0_1px_0_rgba(255,255,255,0.3)] hover:bg-white/35 hover:border-white/50 transition-all bg-gradient-to-br from-cyan-500/80 via-violet-500/70 to-violet-600/80"
                 >
-                  {isPaused ? <Play className="w-7 h-7" /> : <Pause className="w-7 h-7" />}
+                  {isPaused ? <Play className="w-6 h-6 md:w-7 md:h-7" /> : <Pause className="w-6 h-6 md:w-7 md:h-7" />}
                 </motion.button>
               )}
-              <RecordButton
-                isRecording={true}
-                onStart={onStartRecording}
-                onStop={onStopRecording}
-              />
+              <div className="scale-[0.875] md:scale-100">
+                <RecordButton
+                  isRecording={true}
+                  onStart={onStartRecording}
+                  onStop={onStopRecording}
+                />
+              </div>
             </div>
             <motion.p
               initial={{ opacity: 0, y: 4 }}
@@ -133,13 +146,15 @@ export default function FocusMode({
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1, duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-            className="text-center space-y-6"
+            className="text-center space-y-6 pt-4 md:pt-8"
           >
-            <RecordButton
-              isRecording={false}
-              onStart={onStartRecording}
-              onStop={onStopRecording}
-            />
+            <div className="scale-[0.875] md:scale-100">
+              <RecordButton
+                isRecording={false}
+                onStart={onStartRecording}
+                onStop={onStopRecording}
+              />
+            </div>
             <motion.p
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
