@@ -300,7 +300,7 @@ export default function SettingsPage() {
                 whileHover={{ scale: 1.02, y: -2 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => router.push("/pricing")}
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-xl font-semibold hover:from-gray-800 hover:to-gray-700 shadow-lg hover:shadow-xl transition-all"
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 min-h-[44px] text-base bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-xl font-semibold hover:from-gray-800 hover:to-gray-700 shadow-lg hover:shadow-xl transition-all"
               >
                 <CreditCard className="w-4 h-4" />
                 Passer au forfait supérieur
@@ -313,7 +313,7 @@ export default function SettingsPage() {
                 whileTap={{ scale: 0.98 }}
                 onClick={handleCancelSubscription}
                 disabled={cancelling}
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-red-50 border-2 border-red-200 text-red-600 rounded-xl font-semibold hover:bg-red-100 hover:border-red-300 transition-all disabled:opacity-50"
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 min-h-[44px] text-base bg-red-50 border-2 border-red-200 text-red-600 rounded-xl font-semibold hover:bg-red-100 hover:border-red-300 transition-all disabled:opacity-50"
               >
                 {cancelling ? (
                   <>
@@ -339,7 +339,7 @@ export default function SettingsPage() {
                 whileHover={{ scale: 1.02, y: -2 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={() => router.push("/pricing#packs")}
-                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-white border-2 border-gray-300 text-gray-900 rounded-xl font-semibold hover:bg-gray-50 hover:border-gray-400 transition-all"
+                className="flex-1 flex items-center justify-center gap-2 px-6 py-3 min-h-[44px] text-base bg-white border-2 border-gray-300 text-gray-900 rounded-xl font-semibold hover:bg-gray-50 hover:border-gray-400 transition-all"
               >
                 <Package className="w-4 h-4" />
                 Acheter un pack
@@ -392,7 +392,7 @@ export default function SettingsPage() {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setShowCancelModal(false)}
-                    className="flex-1 px-4 py-2 bg-gray-100 rounded-xl font-medium text-gray-900 hover:bg-gray-200 transition-colors"
+                    className="flex-1 px-4 py-2 min-h-[44px] text-base bg-gray-100 rounded-xl font-medium text-gray-900 hover:bg-gray-200 transition-colors"
                   >
                     Annuler
                   </motion.button>
@@ -401,7 +401,7 @@ export default function SettingsPage() {
                     whileTap={{ scale: 0.98 }}
                     onClick={confirmCancel}
                     disabled={cancelling}
-                    className="flex-1 px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+                    className="flex-1 px-4 py-2 min-h-[44px] text-base bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
                   >
                     {cancelling ? "Résiliation..." : "Oui, résilier"}
                   </motion.button>

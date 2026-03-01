@@ -535,7 +535,7 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
                 <span>Retour à l&apos;accueil</span>
               </button>
             )}
-            <h1 className="text-4xl md:text-5xl font-semibold text-gray-900 mb-2 tracking-[-0.02em]">
+            <h1 className="text-2xl md:text-4xl lg:text-5xl font-semibold text-gray-900 mb-2 tracking-[-0.02em]">
               {eco.title}
             </h1>
             <p className="text-gray-400 text-sm opacity-70">

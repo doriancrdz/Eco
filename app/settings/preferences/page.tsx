@@ -507,7 +507,7 @@ export default function PreferencesPage() {
                   value={deleteConfirmText}
                   onChange={(e) => setDeleteConfirmText(e.target.value)}
                   placeholder="Tapez SUPPRIMER"
-                  className="w-full bg-white/40 border border-white/40 rounded-xl px-3 py-2 text-sm outline-none focus:border-red-300 mt-4"
+                  className="w-full bg-white/40 border border-white/40 rounded-xl px-3 py-2 min-h-[44px] text-base outline-none focus:border-red-300 mt-4"
                 />
                 <div className="flex gap-4 mt-6">
                   <button

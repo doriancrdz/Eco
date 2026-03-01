@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Home, CreditCard, Settings, LogOut } from "lucide-react";
+import { Home, CreditCard, Settings, LogOut, X } from "lucide-react";
 import Image from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth, useClerk } from "@clerk/nextjs";
@@ -87,7 +87,7 @@ export default function Sidebar({
         transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       >
         <div
-          className="w-[280px] h-full flex flex-col bg-white/10 backdrop-blur-xl border-r border-white/20"
+          className="w-[280px] max-w-[85vw] h-full flex flex-col bg-white/10 backdrop-blur-xl border-r border-white/20 relative"
           style={{ minWidth: 280 }}
         >
           <AnimatePresence mode="wait">
@@ -99,6 +99,17 @@ export default function Sidebar({
                 transition={{ duration: 0.2 }}
                 className="flex flex-col h-full min-w-[280px]"
               >
+                {/* Bouton fermer (mobile uniquement) */}
+                {onClose && (
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="lg:hidden absolute top-4 right-4 p-2 rounded-lg text-gray-600 hover:bg-white/20 transition-colors z-10"
+                    aria-label="Fermer le menu"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                )}
                 {/* Logo ECO -> Accueil (même action que flèche retour) */}
                 <button
                   type="button"

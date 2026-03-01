@@ -34,7 +34,7 @@ export default function GuideDropdown() {
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 z-50 max-h-[80vh] overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 md:left-0 md:right-auto mt-2 mx-4 md:mx-0 w-full md:w-80 max-w-[calc(100vw-2rem)] md:max-w-none bg-white rounded-2xl shadow-2xl border border-gray-200 z-50 max-h-[80vh] overflow-y-auto">
           <div className="sticky top-0 bg-gradient-to-r from-blue-50 to-purple-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between rounded-t-2xl">
             <div className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-purple-600 shrink-0" />

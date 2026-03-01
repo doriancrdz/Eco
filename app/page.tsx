@@ -1044,7 +1044,7 @@ export default function Home() {
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1, duration: 0.4, ease: "easeOut" }}
-                className="text-5xl font-extrabold tracking-tight text-gray-900 mt-8"
+                className="text-3xl md:text-5xl font-extrabold tracking-tight text-gray-900 mt-8"
               >
                 Nouveau ECO
               </motion.h1>

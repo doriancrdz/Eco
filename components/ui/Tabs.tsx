@@ -32,8 +32,8 @@ export default function Tabs({ tabs, defaultTab, className = "" }: TabsProps) {
 
   return (
     <div className={`${className}`}>
-      {/* Tabs Row - Pill tabs avec glass effect */}
-      <div className="flex gap-2 p-2 bg-white/5 backdrop-blur-sm border-b border-white/10">
+      {/* Tabs Row - Pill tabs avec glass effect, scroll horizontal sur mobile */}
+      <div className="flex gap-2 p-2 bg-white/5 backdrop-blur-sm border-b border-white/10 overflow-x-auto overflow-y-hidden scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           return (
@@ -41,7 +41,7 @@ export default function Tabs({ tabs, defaultTab, className = "" }: TabsProps) {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={`
-                relative px-6 py-2.5 text-sm font-medium rounded-xl transition-all duration-300 z-10
+                relative flex-shrink-0 min-w-[120px] px-6 py-2.5 text-sm font-medium rounded-xl transition-all duration-300 z-10
                 ${isActive
                   ? "text-gray-900"
                   : "text-gray-500 hover:text-gray-700 opacity-70 hover:opacity-100"
