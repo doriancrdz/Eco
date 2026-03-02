@@ -63,8 +63,8 @@ export default function FocusMode({
 
   if (!isActive) return null;
 
-  const logoSize = isMobile ? 140 : 200;
-  const waveformHeight = isMobile ? 48 : 80;
+  const logoSize = isMobile ? 140 : 180;
+  const waveformHeight = isMobile ? 48 : 64;
 
   return (
     <AnimatePresence>
@@ -73,9 +73,9 @@ export default function FocusMode({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.4, ease: "easeInOut" }}
-        className="fixed inset-0 aura-gradient z-50 overflow-auto"
+        className="fixed inset-0 aura-gradient z-50 overflow-auto lg:flex lg:items-center lg:justify-center"
       >
-        <div className="flex flex-col items-center lg:justify-center w-full min-h-full px-4 pt-8 lg:pt-0 pb-8">
+        <div className="flex flex-col items-center lg:justify-center w-full h-full lg:h-auto px-4 pt-8 lg:pt-0 pb-8">
         {isRecording ? (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
@@ -83,7 +83,7 @@ export default function FocusMode({
             transition={{ delay: 0.1, duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
             className="w-full flex flex-col items-center justify-center text-center gap-4 md:gap-8"
           >
-            <div className="flex flex-col items-center gap-4 lg:gap-8 mb-4 lg:mb-10">
+            <div className="flex flex-col items-center gap-4 lg:gap-6 mb-6 lg:mb-8">
               <div className="relative bg-transparent">
                 <Logo
                   state={isPaused ? "paused" : "recording"}
@@ -96,7 +96,7 @@ export default function FocusMode({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.2 }}
-                className="flex items-center justify-center gap-4 w-full max-w-2xl h-12 lg:h-20"
+                className="flex items-center justify-center gap-4 w-full max-w-2xl h-12 lg:h-16"
               >
                 {analyserRef ? (
                   <ScrollingWaveformBars
@@ -106,30 +106,30 @@ export default function FocusMode({
                     height={waveformHeight}
                   />
                 ) : (
-                  <div className={isMobile ? "w-[280px] h-12" : "w-[320px] h-20"} aria-hidden />
+                  <div className={isMobile ? "w-[280px] h-12" : "w-[320px] h-16"} aria-hidden />
                 )}
-                <span className="text-3xl md:text-5xl font-bold tabular-nums text-gray-900 shrink-0 min-w-[3.5rem] md:min-w-[5rem]">
+                <span className="text-3xl lg:text-4xl font-bold tabular-nums text-gray-900 shrink-0 min-w-[3.5rem] md:min-w-[5rem]">
                   {formatTimer(recordingElapsedSeconds)}
                 </span>
               </motion.div>
             </div>
-            <div className="text-center mb-4 lg:mb-10">
-              <p className="text-xs lg:text-base text-gray-500 mt-1 lg:mt-3">
+            <div className="text-center mb-6 lg:mb-8">
+              <p className="text-xs lg:text-sm text-gray-500 mt-1 lg:mt-2">
                 Enregistrement en cours...
               </p>
             </div>
-            <div className="flex items-center justify-center gap-3 lg:gap-5 mb-4 lg:mb-10">
+            <div className="flex items-center justify-center gap-3 lg:gap-4 mb-6 lg:mb-8">
               {onTogglePause && (
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.97 }}
                   onClick={onTogglePause}
-                  className="w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center text-white font-medium bg-white/25 backdrop-blur-xl border border-white/40 shadow-[0_0_20px_rgba(34,211,238,0.2),inset_0_1px_0_rgba(255,255,255,0.3)] hover:bg-white/35 hover:border-white/50 transition-all bg-gradient-to-br from-cyan-500/80 via-violet-500/70 to-violet-600/80"
+                  className="w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex items-center justify-center text-white font-medium bg-white/25 backdrop-blur-xl border border-white/40 shadow-[0_0_20px_rgba(34,211,238,0.2),inset_0_1px_0_rgba(255,255,255,0.3)] hover:bg-white/35 hover:border-white/50 transition-all bg-gradient-to-br from-cyan-500/80 via-violet-500/70 to-violet-600/80"
                 >
-                  {isPaused ? <Play className="w-5 h-5 md:w-8 md:h-8" /> : <Pause className="w-5 h-5 md:w-8 md:h-8" />}
+                  {isPaused ? <Play className="w-5 h-5 lg:w-6 lg:h-6" /> : <Pause className="w-5 h-5 lg:w-6 lg:h-6" />}
                 </motion.button>
               )}
-              <div className="scale-[0.75] md:scale-100">
+              <div className="scale-[0.75] md:scale-100 lg:scale-95">
                 <RecordButton
                   isRecording={true}
                   onStart={onStartRecording}
