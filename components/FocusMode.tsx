@@ -64,7 +64,7 @@ export default function FocusMode({
   if (!isActive) return null;
 
   const logoSize = isMobile ? 140 : 200;
-  const waveformHeight = isMobile ? 48 : 64;
+  const waveformHeight = isMobile ? 48 : 80;
 
   return (
     <AnimatePresence>
@@ -75,7 +75,7 @@ export default function FocusMode({
         transition={{ duration: 0.4, ease: "easeInOut" }}
         className="fixed inset-0 aura-gradient z-50 overflow-auto"
       >
-        <div className="flex flex-col items-center md:justify-center w-full min-h-full px-4 pt-8 md:pt-0 pb-8">
+        <div className="flex flex-col items-center lg:justify-center w-full min-h-full px-4 pt-8 lg:pt-0 pb-8">
         {isRecording ? (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
@@ -83,7 +83,7 @@ export default function FocusMode({
             transition={{ delay: 0.1, duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
             className="w-full flex flex-col items-center justify-center text-center gap-4 md:gap-8"
           >
-            <div className="flex flex-col items-center gap-4 md:gap-8 mb-4 md:mb-8">
+            <div className="flex flex-col items-center gap-4 lg:gap-8 mb-4 lg:mb-10">
               <div className="relative bg-transparent">
                 <Logo
                   state={isPaused ? "paused" : "recording"}
@@ -96,7 +96,7 @@ export default function FocusMode({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.2 }}
-                className="flex items-center justify-center gap-4 w-full max-w-md h-12 md:h-16"
+                className="flex items-center justify-center gap-4 w-full max-w-2xl h-12 lg:h-20"
               >
                 {analyserRef ? (
                   <ScrollingWaveformBars
@@ -106,19 +106,19 @@ export default function FocusMode({
                     height={waveformHeight}
                   />
                 ) : (
-                  <div className={isMobile ? "w-[280px] h-12" : "w-[320px] h-14"} aria-hidden />
+                  <div className={isMobile ? "w-[280px] h-12" : "w-[320px] h-20"} aria-hidden />
                 )}
-                <span className="text-3xl md:text-6xl font-bold tabular-nums text-gray-900 shrink-0 min-w-[3.5rem] md:min-w-[5rem]">
+                <span className="text-3xl md:text-5xl font-bold tabular-nums text-gray-900 shrink-0 min-w-[3.5rem] md:min-w-[5rem]">
                   {formatTimer(recordingElapsedSeconds)}
                 </span>
               </motion.div>
             </div>
-            <div className="text-center mb-4 md:mb-8">
-              <p className="text-xs md:text-sm text-gray-500 mt-1 md:mt-2">
+            <div className="text-center mb-4 lg:mb-10">
+              <p className="text-xs lg:text-base text-gray-500 mt-1 lg:mt-3">
                 Enregistrement en cours...
               </p>
             </div>
-            <div className="flex items-center justify-center gap-3 md:gap-4 mb-4 md:mb-8">
+            <div className="flex items-center justify-center gap-3 lg:gap-5 mb-4 lg:mb-10">
               {onTogglePause && (
                 <motion.button
                   whileHover={{ scale: 1.05 }}
