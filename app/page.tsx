@@ -10,6 +10,7 @@ import { useUser, useClerk } from "@clerk/nextjs";
 import EcoView from "@/components/EcoView";
 import RecordButton from "@/components/RecordButton";
 import { useAudioLevel } from "@/hooks/useAudioLevel";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { Eco } from "@/types";
 import { getEcos } from "@/lib/storage";
 import { createPipelineTraceId, uploadAndComplete, completeAndTranscribeFromR2 } from "@/lib/transcription";
@@ -40,7 +41,6 @@ export default function Home() {
   const { signOut } = useClerk();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
-  const [isDesktop, setIsDesktop] = useState(false);
   const [userPlan, setUserPlan] = useState<string>(() => {
     if (typeof window === "undefined") return "free";
     return sessionStorage.getItem("eco_billing_plan") || "free";
@@ -68,16 +68,7 @@ export default function Home() {
   const [ecos, setEcos] = useState<Eco[]>([]);
 
   const { soundLevel, frequencyData, isAvailable, startAudioLevel, stopAudioLevel, analyserRef } = useAudioLevel(isPaused);
-
-  useEffect(() => {
-    const mediaQuery = window.matchMedia("(min-width: 1024px)");
-    const update = () => setIsDesktop(mediaQuery.matches);
-
-    update();
-    mediaQuery.addEventListener("change", update);
-
-    return () => mediaQuery.removeEventListener("change", update);
-  }, []);
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
 
   // Empêcher la fermeture accidentelle pendant l'enregistrement
   useEffect(() => {
@@ -951,74 +942,96 @@ export default function Home() {
   };
 
   const currentView: CurrentView = isFocusMode
-    ? isRecording
-      ? "recording"
-      : "recording"
+    ? "recording"
     : isProcessing
     ? "generating"
     : selectedEco
     ? "detail"
     : "home";
 
+  // Desktop : FocusMode plein écran exclusif
+  if (isDesktop && isFocusMode) {
+    return (
+      <div className="min-h-screen text-gray-900 relative overflow-hidden">
+        <div className="fixed inset-0 aura-gradient -z-10" aria-hidden />
+        <FocusMode
+          isActive={isFocusMode}
+          isRecording={isRecording}
+          isPaused={isPaused}
+          onTogglePause={() => setIsPaused((p) => !p)}
+          soundLevel={soundLevel}
+          frequencyData={frequencyData}
+          showMicroWarning={false}
+          onStartRecording={handleStartRecording}
+          onStopRecording={stopRecording}
+          showStopConfirm={showStopConfirm}
+          onConfirmStop={confirmStop}
+          onCancelStop={() => setShowStopConfirm(false)}
+          recordingElapsedSeconds={recordingElapsedSeconds}
+          analyserRef={analyserRef}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen text-gray-900 flex relative overflow-hidden">
       {/* Background gradient */}
       <div className="fixed inset-0 aura-gradient -z-10" aria-hidden />
 
-      {!isDesktop || !isFocusMode ? (
-        <>
-          {/* Desktop: Sidebar fixe à gauche. Mobile/Tablet: drawer */}
-          <Sidebar
-            selectedFolder={selectedFolder}
-            onSelectFolder={setSelectedFolder}
-            selectedEco={selectedEco}
-            onSelectEco={setSelectedEco}
-            onClose={() => setSidebarOpen(false)}
-            isOpen={sidebarOpen}
-            refreshKey={refreshKey}
-            onNavigateHome={goHome}
-            onNavigatePricing={() => router.push("/pricing")}
-            onNavigateSettings={isSignedIn ? () => router.push("/settings/preferences") : undefined}
-            onSignOut={isSignedIn ? () => signOut() : undefined}
-            onOpenProfile={isSignedIn ? () => setShowProfile(true) : undefined}
-            userName={user?.firstName ? `${user.firstName}${user?.lastName ? " " + user.lastName : ""}` : user?.username || undefined}
-            userImageUrl={user?.imageUrl}
-          />
+      <>
+        {/* Desktop: Sidebar fixe à gauche. Mobile/Tablet: drawer */}
+        <Sidebar
+          selectedFolder={selectedFolder}
+          onSelectFolder={setSelectedFolder}
+          selectedEco={selectedEco}
+          onSelectEco={setSelectedEco}
+          onClose={() => setSidebarOpen(false)}
+          isOpen={sidebarOpen}
+          refreshKey={refreshKey}
+          onNavigateHome={goHome}
+          onNavigatePricing={() => router.push("/pricing")}
+          onNavigateSettings={isSignedIn ? () => router.push("/settings/preferences") : undefined}
+          onSignOut={isSignedIn ? () => signOut() : undefined}
+          onOpenProfile={isSignedIn ? () => setShowProfile(true) : undefined}
+          userName={user?.firstName ? `${user.firstName}${user?.lastName ? " " + user.lastName : ""}` : user?.username || undefined}
+          userImageUrl={user?.imageUrl}
+        />
 
-          {/* Contenu principal */}
-          <div className="flex-1 flex flex-col overflow-hidden min-w-0 lg:min-w-0">
-            {!isFocusMode && (
-              <Header
-                onGoHome={goHome}
-                onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
-                isDetailView={!!selectedEco}
-                onShare={selectedEco ? async () => {
-                  const url = window.location.href;
-                  if (navigator.share) {
-                    try {
-                      await navigator.share({
-                        title: "ECO",
-                        url,
-                        text: "Découvrez mon Eco",
-                      });
-                    } catch {
-                      await navigator.clipboard.writeText(url);
-                      alert("Lien copié !");
-                    }
-                  } else {
+        {/* Contenu principal */}
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0 lg:min-w-0">
+          {!isFocusMode && (
+            <Header
+              onGoHome={goHome}
+              onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+              isDetailView={!!selectedEco}
+              onShare={selectedEco ? async () => {
+                const url = window.location.href;
+                if (navigator.share) {
+                  try {
+                    await navigator.share({
+                      title: "ECO",
+                      url,
+                      text: "Découvrez mon Eco",
+                    });
+                  } catch {
                     await navigator.clipboard.writeText(url);
                     alert("Lien copié !");
                   }
-                } : undefined}
-                onAvatarClick={isSignedIn ? () => setShowProfile(true) : undefined}
-                userImageUrl={user?.imageUrl}
-                userName={user?.firstName ? `${user.firstName}${user?.lastName ? " " + user.lastName : ""}` : user?.username || undefined}
-              />
-            )}
+                } else {
+                  await navigator.clipboard.writeText(url);
+                  alert("Lien copié !");
+                }
+              } : undefined}
+              onAvatarClick={isSignedIn ? () => setShowProfile(true) : undefined}
+              userImageUrl={user?.imageUrl}
+              userName={user?.firstName ? `${user.firstName}${user?.lastName ? " " + user.lastName : ""}` : user?.username || undefined}
+            />
+          )}
 
-            <main className="flex-1 overflow-y-auto overflow-x-hidden pt-6">
-              <div className={`${sidebarOpen ? "" : "max-w-3xl mx-auto"} px-4 md:px-6 lg:px-8`}>
-                <AnimatePresence mode="wait">
+          <main className="flex-1 overflow-y-auto overflow-x-hidden pt-6">
+            <div className={`${sidebarOpen ? "" : "max-w-3xl mx-auto"} px-4 md:px-6 lg:px-8`}>
+              <AnimatePresence mode="wait">
                   {(() => {
                     const conditionHome = !selectedEco && !isFocusMode && !viewAllEcos && !isProcessing;
                     const conditionList = viewAllEcos && !selectedEco && !isFocusMode && !isProcessing;
@@ -1316,29 +1329,31 @@ export default function Home() {
                       </div>
                     </motion.div>
                   )}
-                </AnimatePresence>
-              </div>
-            </main>
-          </div>
-        </>
-      ) : null}
+              </AnimatePresence>
+            </div>
+          </main>
+        </div>
+      </>
 
-      <FocusMode
-        isActive={isFocusMode}
-        isRecording={isRecording}
-        isPaused={isPaused}
-        onTogglePause={() => setIsPaused((p) => !p)}
-        soundLevel={soundLevel}
-        frequencyData={frequencyData}
-        showMicroWarning={false}
-        onStartRecording={handleStartRecording}
-        onStopRecording={stopRecording}
-        showStopConfirm={showStopConfirm}
-        onConfirmStop={confirmStop}
-        onCancelStop={() => setShowStopConfirm(false)}
-        recordingElapsedSeconds={recordingElapsedSeconds}
-        analyserRef={analyserRef}
-      />
+      {/* FocusMode overlay mobile uniquement */}
+      {!isDesktop && (
+        <FocusMode
+          isActive={isFocusMode}
+          isRecording={isRecording}
+          isPaused={isPaused}
+          onTogglePause={() => setIsPaused((p) => !p)}
+          soundLevel={soundLevel}
+          frequencyData={frequencyData}
+          showMicroWarning={false}
+          onStartRecording={handleStartRecording}
+          onStopRecording={stopRecording}
+          showStopConfirm={showStopConfirm}
+          onConfirmStop={confirmStop}
+          onCancelStop={() => setShowStopConfirm(false)}
+          recordingElapsedSeconds={recordingElapsedSeconds}
+          analyserRef={analyserRef}
+        />
+      )}
 
       <ProfileView
         isOpen={showProfile}
