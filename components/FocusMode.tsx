@@ -73,9 +73,9 @@ export default function FocusMode({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.4, ease: "easeInOut" }}
-        className="fixed inset-0 aura-gradient z-50 overflow-auto lg:flex lg:items-center lg:justify-center"
+        className="fixed inset-0 aura-gradient z-50 overflow-auto"
       >
-        <div className="flex flex-col items-center lg:justify-center w-full h-full lg:h-auto px-4 pt-8 lg:pt-0 pb-8">
+        <div className="flex flex-col items-center w-full min-h-full px-4 pt-8 lg:pt-24 pb-8">
         {isRecording ? (
           <motion.div
             initial={{ opacity: 0, y: 8 }}
@@ -108,7 +108,7 @@ export default function FocusMode({
                 ) : (
                   <div className={isMobile ? "w-[280px] h-12" : "w-[320px] h-16"} aria-hidden />
                 )}
-                <span className="text-3xl lg:text-4xl font-bold tabular-nums text-gray-900 shrink-0 min-w-[3.5rem] md:min-w-[5rem]">
+                <span className="text-3xl lg:text-2xl font-normal tabular-nums text-gray-900 shrink-0 min-w-[3.5rem] md:min-w-[5rem]">
                   {formatTimer(recordingElapsedSeconds)}
                 </span>
               </motion.div>
