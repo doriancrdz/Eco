@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 
+export const runtime = "nodejs";
+
 export async function DELETE() {
   try {
     const { userId: clerkUserId } = await auth();
