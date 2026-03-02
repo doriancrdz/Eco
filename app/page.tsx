@@ -40,6 +40,7 @@ export default function Home() {
   const { signOut } = useClerk();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
   const [userPlan, setUserPlan] = useState<string>(() => {
     if (typeof window === "undefined") return "free";
     return sessionStorage.getItem("eco_billing_plan") || "free";
@@ -67,6 +68,17 @@ export default function Home() {
   const [ecos, setEcos] = useState<Eco[]>([]);
 
   const { soundLevel, frequencyData, isAvailable, startAudioLevel, stopAudioLevel, analyserRef } = useAudioLevel(isPaused);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const handleChange = (event: MediaQueryListEvent) => {
+      setIsDesktop(event.matches);
+    };
+    setIsDesktop(mq.matches);
+    mq.addEventListener("change", handleChange);
+    return () => mq.removeEventListener("change", handleChange);
+  }, []);
 
   // Empêcher la fermeture accidentelle pendant l'enregistrement
   useEffect(() => {
@@ -954,359 +966,363 @@ export default function Home() {
       {/* Background gradient */}
       <div className="fixed inset-0 aura-gradient -z-10" aria-hidden />
 
-      {/* Desktop: Sidebar fixe à gauche. Mobile/Tablet: drawer */}
-      <Sidebar
-        selectedFolder={selectedFolder}
-        onSelectFolder={setSelectedFolder}
-        selectedEco={selectedEco}
-        onSelectEco={setSelectedEco}
-        onClose={() => setSidebarOpen(false)}
-        isOpen={sidebarOpen}
-        refreshKey={refreshKey}
-        onNavigateHome={goHome}
-        onNavigatePricing={() => router.push("/pricing")}
-        onNavigateSettings={isSignedIn ? () => router.push("/settings/preferences") : undefined}
-        onSignOut={isSignedIn ? () => signOut() : undefined}
-        onOpenProfile={isSignedIn ? () => setShowProfile(true) : undefined}
-        userName={user?.firstName ? `${user.firstName}${user?.lastName ? " " + user.lastName : ""}` : user?.username || undefined}
-        userImageUrl={user?.imageUrl}
-      />
-
-      {/* Contenu principal */}
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0 lg:min-w-0">
-        {!isFocusMode && (
-          <Header
-            onGoHome={goHome}
-            onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
-            isDetailView={!!selectedEco}
-            onShare={selectedEco ? async () => {
-              const url = window.location.href;
-              if (navigator.share) {
-                try {
-                  await navigator.share({
-                    title: "ECO",
-                    url,
-                    text: "Découvrez mon Eco",
-                  });
-                } catch {
-                  await navigator.clipboard.writeText(url);
-                  alert("Lien copié !");
-                }
-              } else {
-                await navigator.clipboard.writeText(url);
-                alert("Lien copié !");
-              }
-            } : undefined}
-            onAvatarClick={isSignedIn ? () => setShowProfile(true) : undefined}
-            userImageUrl={user?.imageUrl}
+      {!isDesktop || !isFocusMode ? (
+        <>
+          {/* Desktop: Sidebar fixe à gauche. Mobile/Tablet: drawer */}
+          <Sidebar
+            selectedFolder={selectedFolder}
+            onSelectFolder={setSelectedFolder}
+            selectedEco={selectedEco}
+            onSelectEco={setSelectedEco}
+            onClose={() => setSidebarOpen(false)}
+            isOpen={sidebarOpen}
+            refreshKey={refreshKey}
+            onNavigateHome={goHome}
+            onNavigatePricing={() => router.push("/pricing")}
+            onNavigateSettings={isSignedIn ? () => router.push("/settings/preferences") : undefined}
+            onSignOut={isSignedIn ? () => signOut() : undefined}
+            onOpenProfile={isSignedIn ? () => setShowProfile(true) : undefined}
             userName={user?.firstName ? `${user.firstName}${user?.lastName ? " " + user.lastName : ""}` : user?.username || undefined}
+            userImageUrl={user?.imageUrl}
           />
-        )}
 
-        <main className="flex-1 overflow-y-auto overflow-x-hidden pt-6">
-          <div className={`${sidebarOpen ? "" : "max-w-3xl mx-auto"} px-4 md:px-6 lg:px-8`}>
-            <AnimatePresence mode="wait">
-            {(() => {
-              const conditionHome = !selectedEco && !isFocusMode && !viewAllEcos && !isProcessing;
-              const conditionList = viewAllEcos && !selectedEco && !isFocusMode && !isProcessing;
-              const conditionDetail = selectedEco && !isFocusMode && !viewAllEcos;
-              const conditionGenerating = isProcessing;
-              const noViewMatched = !conditionHome && !conditionList && !conditionDetail && !conditionGenerating;
-              const showHome = conditionHome || noViewMatched;
-              return showHome;
-            })() && (
-            <motion.div
-              key="home"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -16 }}
-              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-              className="flex-1 flex flex-col items-center justify-center min-h-[60vh] p-4 md:p-8"
-            >
-              {/* Halo derrière le logo */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none -z-10">
-                <div className="bg-gradient-radial from-white/20 to-transparent blur-3xl w-96 h-96" />
-              </div>
-
-              {paymentBlocked && (
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mb-4 px-4 py-3 rounded-xl bg-red-50 border border-red-200 text-red-800 text-center text-sm font-medium max-w-md"
-                >
-                  Paiement échoué — accès suspendu
-                </motion.div>
-              )}
-              <motion.div
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2, duration: 0.4, ease: "easeOut" }}
-                className="relative bg-transparent"
-              >
-                <Logo
-                  state="idle"
-                  size={280}
-                  onClick={handleStartRecording}
-                  isClickable={!paymentBlocked}
-                  showMicroWarning={false}
-                />
-              </motion.div>
-
-              <motion.h1
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1, duration: 0.4, ease: "easeOut" }}
-                className="text-3xl md:text-5xl font-extrabold tracking-tight text-gray-900 mt-8"
-              >
-                Nouveau ECO
-              </motion.h1>
-              <motion.p
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15, duration: 0.4, ease: "easeOut" }}
-                className="text-lg text-gray-500 font-medium mt-2 opacity-80"
-              >
-                Appuyez pour commencer
-              </motion.p>
-
-              {isBillingLoading ? (
-                <div
-                  className="mt-6 px-7 py-3 rounded-full flex items-center gap-2 bg-gray-100 animate-pulse"
-                  style={{ minHeight: 44 }}
-                >
-                  <div className="w-4 h-4 rounded bg-gray-300 shrink-0" />
-                  <div className="h-4 w-40 rounded bg-gray-300" />
-                </div>
-              ) : userPlan === "free" ? (
-                <motion.button
-                  whileHover={{ scale: 1.05, y: -2 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => router.push("/pricing")}
-                  onHoverStart={() => setUpgradeHovered(true)}
-                  onHoverEnd={() => setUpgradeHovered(false)}
-                  className="relative mt-6 px-7 py-3 rounded-full font-bold text-sm bg-gradient-to-r from-[#99f6e4] via-[#7dd3fc] to-[#a5b4fc] text-gray-900 shadow-lg hover:shadow-xl border border-white/40 backdrop-blur-sm flex items-center gap-2 transition-all duration-300 overflow-hidden"
-                >
-                  <Sparkles className="w-4 h-4 shrink-0 relative z-10" />
-                  <span className="relative z-10">Passer à Student — dès 19€/mois</span>
-                  <ArrowRight className="w-4 h-4 shrink-0 relative z-10" />
-                  <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none"
-                    animate={{ x: upgradeHovered ? "100%" : "-100%" }}
-                    transition={{ duration: 0.6 }}
-                  />
-                </motion.button>
-              ) : (
-                <motion.button
-                  whileHover={{ scale: 1.05, y: -2 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => router.push("/settings")}
-                  className="mt-6 px-7 py-3 rounded-full font-bold text-sm bg-white/60 border border-white/50 backdrop-blur-md text-gray-900 hover:bg-white/90 transition-all flex items-center gap-2"
-                >
-                  <Settings className="w-4 h-4" />
-                  Gérer mon plan
-                </motion.button>
-              )}
-
-              {/* Section Vos derniers ECOs */}
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3, duration: 0.4 }}
-                className="mt-16 w-full max-w-4xl space-y-4"
-              >
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold text-gray-800">Vos derniers ECOs</h2>
-                  {ecos.length > 0 && (
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => setViewAllEcos(true)}
-                      className="text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors"
-                    >
-                      VOIR TOUT
-                    </motion.button>
-                  )}
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {ecos
-                    .slice(0, 6)
-                    .map((eco, index) => (
-                      <motion.button
-                        key={eco.id}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 + index * 0.08 }}
-                        whileHover={{ y: -4, scale: 1.01 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => handleEcoClick(eco)}
-                        className="text-left bg-white/75 backdrop-blur-2xl rounded-[2rem] border border-white/80 shadow-sm hover:shadow-xl transition-all duration-300 p-6"
-                      >
-                        <div className="flex items-center gap-3 mb-2">
-                          <Mic className="w-5 h-5 text-gray-600 shrink-0" />
-                          <span className="font-bold text-gray-900 truncate">{eco.title}</span>
-                        </div>
-                        <p className="text-xs text-gray-500">
-                          {new Date(eco.created_at).toLocaleDateString("fr-FR", {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          })}
-                        </p>
-                      </motion.button>
-                    ))}
-                </div>
-                {ecos.length === 0 && (
-                  <p className="text-gray-500 text-sm py-8 text-center">Aucun Eco pour l&apos;instant</p>
-                )}
-              </motion.div>
-            </motion.div>
-          )}
-          {viewAllEcos && !selectedEco && !isFocusMode && !isProcessing && (
-            <motion.div
-              key="list"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -16 }}
-              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-              className="p-4 md:p-8"
-            >
-              <motion.button
-                whileHover={{ x: -4 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => goHome("sidebar")}
-                className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
-              >
-                <ArrowLeft className="w-5 h-5" />
-                <span className="font-bold">Retour</span>
-              </motion.button>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {ecos.map((eco, index) => (
-                  <motion.button
-                    key={eco.id}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.08 }}
-                    whileHover={{ y: -4, scale: 1.01 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => handleEcoClick(eco)}
-                    className="text-left bg-white/75 backdrop-blur-2xl rounded-[2rem] border border-white/80 shadow-sm hover:shadow-xl transition-all duration-300 p-6"
-                  >
-                    <div className="flex items-center gap-3 mb-2">
-                      <Mic className="w-5 h-5 text-gray-600 shrink-0" />
-                      <span className="font-bold text-gray-900 truncate">{eco.title}</span>
-                    </div>
-                    <p className="text-xs text-gray-500">
-                      {new Date(eco.created_at).toLocaleDateString("fr-FR", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </p>
-                  </motion.button>
-                ))}
-              </div>
-            </motion.div>
-          )}
-          {selectedEco && !isFocusMode && !viewAllEcos && (
-            <motion.div
-              key="detail"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -16 }}
-              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <EcoView
-                eco={
-                  currentEco ??
-                  (selectedEco
-                    ? ({
-                        id: selectedEco,
-                        title: "Chargement…",
-                        audio_url: "",
-                        transcription_text: "",
-                        summary_text: null,
-                        folder: "",
-                        created_at: new Date().toISOString(),
-                      } satisfies Eco)
-                    : null)
-                }
-                onBack={resetToHome}
-                onRefresh={() => {
-                  if (selectedEco) {
-                    // Invalider le cache
-                    currentEcoCacheRef.current = null;
-                    
-                    const url = `/api/ecos/${selectedEco}`;
-                    const t0 = performance.now();
-                    if (process.env.NODE_ENV !== "production") {
-                      console.log("[DEBUG EcoView.onRefresh] Refresh", { url, recordingId: selectedEco, ecoId: selectedEco });
-                    }
-                    if (process.env.NODE_ENV === "development") {
-                      console.log(`[EcoView.onRefresh] Refresh ${selectedEco}`);
-                    }
-                    fetch(url, { cache: "no-store" })
-                      .then((res) => {
-                        const duration = performance.now() - t0;
-                        if (process.env.NODE_ENV !== "production") {
-                          console.log("[DEBUG EcoView.onRefresh] ✅ Réponse", { url, status: res.status, recordingId: selectedEco, ecoId: selectedEco });
-                        }
-                        if (res.ok) {
-                          return res.json();
-                        }
-                        if (process.env.NODE_ENV === "development") {
-                          console.log(`[EcoView.onRefresh] Erreur ${res.status} - ${duration.toFixed(0)}ms`);
-                        }
-                        if (process.env.NODE_ENV !== "production") {
-                          console.log("[DEBUG EcoView.onRefresh] ❌ Erreur", { url, status: res.status, recordingId: selectedEco, ecoId: selectedEco });
-                        }
-                        return null;
-                      })
-                      .then((data) => {
-                        if (data?.eco) {
-                          setCurrentEco(data.eco);
-                          // Mettre en cache
-                          currentEcoCacheRef.current = { id: selectedEco, data: data.eco, timestamp: Date.now() };
-                          // Déclencher eco-updated une seule fois (debounced)
-                          window.dispatchEvent(new Event("eco-updated"));
-                        }
-                      })
-                      .catch((error) => {
-                        if (process.env.NODE_ENV === "development") {
-                          console.error("[EcoView.onRefresh] Exception", error);
-                        }
-                        if (process.env.NODE_ENV !== "production") {
-                          console.log("[DEBUG EcoView.onRefresh] ❌ Exception", { url, recordingId: selectedEco, ecoId: selectedEco, error });
-                        }
+          {/* Contenu principal */}
+          <div className="flex-1 flex flex-col overflow-hidden min-w-0 lg:min-w-0">
+            {!isFocusMode && (
+              <Header
+                onGoHome={goHome}
+                onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+                isDetailView={!!selectedEco}
+                onShare={selectedEco ? async () => {
+                  const url = window.location.href;
+                  if (navigator.share) {
+                    try {
+                      await navigator.share({
+                        title: "ECO",
+                        url,
+                        text: "Découvrez mon Eco",
                       });
-                    setRefreshKey((prev) => prev + 1);
+                    } catch {
+                      await navigator.clipboard.writeText(url);
+                      alert("Lien copié !");
+                    }
+                  } else {
+                    await navigator.clipboard.writeText(url);
+                    alert("Lien copié !");
                   }
-                }}
+                } : undefined}
+                onAvatarClick={isSignedIn ? () => setShowProfile(true) : undefined}
+                userImageUrl={user?.imageUrl}
+                userName={user?.firstName ? `${user.firstName}${user?.lastName ? " " + user.lastName : ""}` : user?.username || undefined}
               />
-            </motion.div>
-          )}
-          {isProcessing && (
-            <motion.div
-              key="generating"
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -16 }}
-              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-              className="flex-1 flex items-center justify-center"
-            >
-              <div className="text-center flex flex-col items-center gap-6">
-                <Logo state="generating" size={120} showMicroWarning={false} />
-                <p className="text-xl font-bold text-gray-800">Traitement en cours...</p>
-                <p className="text-sm text-gray-600 max-w-sm">
-                  Transcription et analyse de votre enregistrement.
-                  {processingDurationMinutes > 10 && " Cela peut prendre 1-2 minutes pour les longs audios."}
-                </p>
+            )}
+
+            <main className="flex-1 overflow-y-auto overflow-x-hidden pt-6">
+              <div className={`${sidebarOpen ? "" : "max-w-3xl mx-auto"} px-4 md:px-6 lg:px-8`}>
+                <AnimatePresence mode="wait">
+                  {(() => {
+                    const conditionHome = !selectedEco && !isFocusMode && !viewAllEcos && !isProcessing;
+                    const conditionList = viewAllEcos && !selectedEco && !isFocusMode && !isProcessing;
+                    const conditionDetail = selectedEco && !isFocusMode && !viewAllEcos;
+                    const conditionGenerating = isProcessing;
+                    const noViewMatched = !conditionHome && !conditionList && !conditionDetail && !conditionGenerating;
+                    const showHome = conditionHome || noViewMatched;
+                    return showHome;
+                  })() && (
+                    <motion.div
+                      key="home"
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -16 }}
+                      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                      className="flex-1 flex flex-col items-center justify-center min-h-[60vh] p-4 md:p-8"
+                    >
+                      {/* Halo derrière le logo */}
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none -z-10">
+                        <div className="bg-gradient-radial from-white/20 to-transparent blur-3xl w-96 h-96" />
+                      </div>
+
+                      {paymentBlocked && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="mb-4 px-4 py:3 rounded-xl bg-red-50 border border-red-200 text-red-800 text-center text-sm font-medium max-w-md"
+                        >
+                          Paiement échoué — accès suspendu
+                        </motion.div>
+                      )}
+                      <motion.div
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.2, duration: 0.4, ease: "easeOut" }}
+                        className="relative bg-transparent"
+                      >
+                        <Logo
+                          state="idle"
+                          size={280}
+                          onClick={handleStartRecording}
+                          isClickable={!paymentBlocked}
+                          showMicroWarning={false}
+                        />
+                      </motion.div>
+
+                      <motion.h1
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1, duration: 0.4, ease: "easeOut" }}
+                        className="text-3xl md:text-5xl font-extrabold tracking-tight text-gray-900 mt-8"
+                      >
+                        Nouveau ECO
+                      </motion.h1>
+                      <motion.p
+                        initial={{ opacity: 0, y: 4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.15, duration: 0.4, ease: "easeOut" }}
+                        className="text-lg text-gray-500 font-medium mt-2 opacity-80"
+                      >
+                        Appuyez pour commencer
+                      </motion.p>
+
+                      {isBillingLoading ? (
+                        <div
+                          className="mt-6 px-7 py-3 rounded-full flex items-center gap-2 bg-gray-100 animate-pulse"
+                          style={{ minHeight: 44 }}
+                        >
+                          <div className="w-4 h-4 rounded bg-gray-300 shrink-0" />
+                          <div className="h-4 w-40 rounded bg-gray-300" />
+                        </div>
+                      ) : userPlan === "free" ? (
+                        <motion.button
+                          whileHover={{ scale: 1.05, y: -2 }}
+                          whileTap={{ scale: 0.97 }}
+                          onClick={() => router.push("/pricing")}
+                          onHoverStart={() => setUpgradeHovered(true)}
+                          onHoverEnd={() => setUpgradeHovered(false)}
+                          className="relative mt-6 px-7 py-3 rounded-full font-bold text-sm bg-gradient-to-r from-[#99f6e4] via-[#7dd3fc] to-[#a5b4fc] text-gray-900 shadow-lg hover:shadow-xl border border-white/40 backdrop-blur-sm flex items-center gap-2 transition-all duration-300 overflow-hidden"
+                        >
+                          <Sparkles className="w-4 h-4 shrink-0 relative z-10" />
+                          <span className="relative z-10">Passer à Student — dès 19€/mois</span>
+                          <ArrowRight className="w-4 h-4 shrink-0 relative z-10" />
+                          <motion.div
+                            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none"
+                            animate={{ x: upgradeHovered ? "100%" : "-100%" }}
+                            transition={{ duration: 0.6 }}
+                          />
+                        </motion.button>
+                      ) : (
+                        <motion.button
+                          whileHover={{ scale: 1.05, y: -2 }}
+                          whileTap={{ scale: 0.97 }}
+                          onClick={() => router.push("/settings")}
+                          className="mt-6 px-7 py-3 rounded-full font-bold text-sm bg-white/60 border border-white/50 backdrop-blur-md text-gray-900 hover:bg-white/90 transition-all flex items-center gap-2"
+                        >
+                          <Settings className="w-4 h-4" />
+                          Gérer mon plan
+                        </motion.button>
+                      )}
+
+                      {/* Section Vos derniers ECOs */}
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3, duration: 0.4 }}
+                        className="mt-16 w-full max-w-4xl space-y-4"
+                      >
+                        <div className="flex items-center justify-between">
+                          <h2 className="text-xl font-bold text-gray-800">Vos derniers ECOs</h2>
+                          {ecos.length > 0 && (
+                            <motion.button
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => setViewAllEcos(true)}
+                              className="text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors"
+                            >
+                              VOIR TOUT
+                            </motion.button>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {ecos
+                            .slice(0, 6)
+                            .map((eco, index) => (
+                              <motion.button
+                                key={eco.id}
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.1 + index * 0.08 }}
+                                whileHover={{ y: -4, scale: 1.01 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => handleEcoClick(eco)}
+                                className="text-left bg-white/75 backdrop-blur-2xl rounded-[2rem] border border-white/80 shadow-sm hover:shadow-xl transition-all duration-300 p-6"
+                              >
+                                <div className="flex items-center gap-3 mb-2">
+                                  <Mic className="w-5 h-5 text-gray-600 shrink-0" />
+                                  <span className="font-bold text-gray-900 truncate">{eco.title}</span>
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                  {new Date(eco.created_at).toLocaleDateString("fr-FR", {
+                                    day: "numeric",
+                                    month: "short",
+                                    year: "numeric",
+                                  })}
+                                </p>
+                              </motion.button>
+                            ))}
+                        </div>
+                        {ecos.length === 0 && (
+                          <p className="text-gray-500 text-sm py-8 text-center">Aucun Eco pour l&apos;instant</p>
+                        )}
+                      </motion.div>
+                    </motion.div>
+                  )}
+                  {viewAllEcos && !selectedEco && !isFocusMode && !isProcessing && (
+                    <motion.div
+                      key="list"
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -16 }}
+                      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                      className="p-4 md:p-8"
+                    >
+                      <motion.button
+                        whileHover={{ x: -4 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => goHome("sidebar")}
+                        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
+                      >
+                        <ArrowLeft className="w-5 h-5" />
+                        <span className="font-bold">Retour</span>
+                      </motion.button>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {ecos.map((eco, index) => (
+                          <motion.button
+                            key={eco.id}
+                            initial={{ opacity: 0, y: 8 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.08 }}
+                            whileHover={{ y: -4, scale: 1.01 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => handleEcoClick(eco)}
+                            className="text-left bg-white/75 backdrop-blur-2xl rounded-[2rem] border border-white/80 shadow-sm hover:shadow-xl transition-all duration-300 p-6"
+                          >
+                            <div className="flex items-center gap-3 mb-2">
+                              <Mic className="w-5 h-5 text-gray-600 shrink-0" />
+                              <span className="font-bold text-gray-900 truncate">{eco.title}</span>
+                            </div>
+                            <p className="text-xs text-gray-500">
+                              {new Date(eco.created_at).toLocaleDateString("fr-FR", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              })}
+                            </p>
+                          </motion.button>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                  {selectedEco && !isFocusMode && !viewAllEcos && (
+                    <motion.div
+                      key="detail"
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -16 }}
+                      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                    >
+                      <EcoView
+                        eco={
+                          currentEco ??
+                          (selectedEco
+                            ? ({
+                                id: selectedEco,
+                                title: "Chargement…",
+                                audio_url: "",
+                                transcription_text: "",
+                                summary_text: null,
+                                folder: "",
+                                created_at: new Date().toISOString(),
+                              } satisfies Eco)
+                            : null)
+                        }
+                        onBack={resetToHome}
+                        onRefresh={() => {
+                          if (selectedEco) {
+                            // Invalider le cache
+                            currentEcoCacheRef.current = null;
+                            
+                            const url = `/api/ecos/${selectedEco}`;
+                            const t0 = performance.now();
+                            if (process.env.NODE_ENV !== "production") {
+                              console.log("[DEBUG EcoView.onRefresh] Refresh", { url, recordingId: selectedEco, ecoId: selectedEco });
+                            }
+                            if (process.env.NODE_ENV === "development") {
+                              console.log(`[EcoView.onRefresh] Refresh ${selectedEco}`);
+                            }
+                            fetch(url, { cache: "no-store" })
+                              .then((res) => {
+                                const duration = performance.now() - t0;
+                                if (process.env.NODE_ENV !== "production") {
+                                  console.log("[DEBUG EcoView.onRefresh] ✅ Réponse", { url, status: res.status, recordingId: selectedEco, ecoId: selectedEco });
+                                }
+                                if (res.ok) {
+                                  return res.json();
+                                }
+                                if (process.env.NODE_ENV === "development") {
+                                  console.log(`[EcoView.onRefresh] Erreur ${res.status} - ${duration.toFixed(0)}ms`);
+                                }
+                                if (process.env.NODE_ENV !== "production") {
+                                  console.log("[DEBUG EcoView.onRefresh] ❌ Erreur", { url, status: res.status, recordingId: selectedEco, ecoId: selectedEco });
+                                }
+                                return null;
+                              })
+                              .then((data) => {
+                                if (data?.eco) {
+                                  setCurrentEco(data.eco);
+                                  // Mettre en cache
+                                  currentEcoCacheRef.current = { id: selectedEco, data: data.eco, timestamp: Date.now() };
+                                  // Déclencher eco-updated une seule fois (debounced)
+                                  window.dispatchEvent(new Event("eco-updated"));
+                                }
+                              })
+                              .catch((error) => {
+                                if (process.env.NODE_ENV === "development") {
+                                  console.error("[EcoView.onRefresh] Exception", error);
+                                }
+                                if (process.env.NODE_ENV !== "production") {
+                                  console.log("[DEBUG EcoView.onRefresh] ❌ Exception", { url, recordingId: selectedEco, ecoId: selectedEco, error });
+                                }
+                              });
+                            setRefreshKey((prev) => prev + 1);
+                          }
+                        }}
+                      />
+                    </motion.div>
+                  )}
+                  {isProcessing && (
+                    <motion.div
+                      key="generating"
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -16 }}
+                      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                      className="flex-1 flex items-center justify-center"
+                    >
+                      <div className="text-center flex flex-col items-center gap-6">
+                        <Logo state="generating" size={120} showMicroWarning={false} />
+                        <p className="text-xl font-bold text-gray-800">Traitement en cours...</p>
+                        <p className="text-sm text-gray-600 max-w-sm">
+                          Transcription et analyse de votre enregistrement.
+                          {processingDurationMinutes > 10 && " Cela peut prendre 1-2 minutes pour les longs audios."}
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
-            </motion.div>
-          )}
-            </AnimatePresence>
+            </main>
           </div>
-        </main>
-      </div>
+        </>
+      ) : null}
 
       <FocusMode
         isActive={isFocusMode}
