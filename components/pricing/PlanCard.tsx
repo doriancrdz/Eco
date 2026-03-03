@@ -12,6 +12,7 @@ interface PlanCardProps {
   onSelect: () => void;
   isLoading?: boolean;
   index?: number;
+  isCurrentPlan?: boolean;
 }
 
 function PlanCard({
@@ -22,6 +23,7 @@ function PlanCard({
   onSelect,
   isLoading = false,
   index = 0,
+  isCurrentPlan = false,
 }: PlanCardProps) {
   const [isMobile, setIsMobile] = useState(false);
   
@@ -47,6 +49,7 @@ function PlanCard({
     business: (149 * 12) - 1500 // 288€
   };
   const savingsAmount = planKey !== "free" ? savings[planKey as keyof typeof savings] : 0;
+  const isDisabled = isLoading || (!isFree && isCurrentPlan);
 
   return (
     <div
@@ -176,12 +179,14 @@ function PlanCard({
           <div className="min-h-[56px] flex items-end">
             {!isFree ? (
               <button
-                onClick={onSelect}
-                disabled={isLoading}
-                className={`w-full py-3.5 px-4 rounded-xl font-semibold text-sm transition-all duration-200 relative overflow-hidden hover:scale-[1.02] active:scale-[0.98] ${
-                  isMostPopular
-                    ? "bg-gradient-to-r from-gray-900 to-gray-800 text-white hover:from-gray-800 hover:to-gray-700 shadow-xl hover:shadow-[0_10px_30px_rgba(0,0,0,0.3)] hover:shadow-emerald-500/20"
-                    : "bg-gradient-to-r from-gray-800 to-gray-700 text-white hover:from-gray-700 hover:to-gray-600 shadow-lg"
+                onClick={!isFree && isCurrentPlan ? undefined : onSelect}
+                disabled={isDisabled}
+                className={`w-full px-6 py-3 rounded-xl font-medium text-sm transition-all duration-200 relative overflow-hidden hover:scale-[1.02] active:scale-[0.98] ${
+                  !isFree && isCurrentPlan
+                    ? "bg-gray-200 text-gray-500 cursor-not-allowed opacity-60"
+                    : isMostPopular
+                        ? "bg-gradient-to-r from-gray-900 to-gray-800 text-white hover:from-gray-800 hover:to-gray-700 shadow-xl hover:shadow-[0_10px_30px_rgba(0,0,0,0.3)] hover:shadow-emerald-500/20"
+                        : "bg-gradient-to-r from-gray-800 to-gray-700 text-white hover:from-gray-700 hover:to-gray-600 shadow-lg"
                 } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 {isLoading ? (
@@ -191,7 +196,7 @@ function PlanCard({
                   </span>
                 ) : (
                   <span className="relative z-10">
-                    Choisir ce plan
+                    {!isFree && isCurrentPlan ? "Plan actuel" : "Choisir ce plan"}
                   </span>
                 )}
               </button>

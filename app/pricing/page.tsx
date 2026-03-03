@@ -52,6 +52,10 @@ const TestimonialsMarquee = dynamic(
   }
 );
 
+type BillingData = {
+  plan: PlanType;
+};
+
 export default function PricingPage() {
   const { isSignedIn } = useAuth();
   const router = useRouter();
@@ -61,6 +65,7 @@ export default function PricingPage() {
   const [error, setError] = useState<string | null>(null);
   const [annualModalOpen, setAnnualModalOpen] = useState(false);
   const [selectedPlanForModal, setSelectedPlanForModal] = useState<PlanType | null>(null);
+  const [billingData, setBillingData] = useState<BillingData | null>(null);
 
   // Mémoriser les plans et packs pour éviter les recalculs
   const plansEntries = useMemo(() => Object.entries(PLANS), []);
@@ -73,6 +78,44 @@ export default function PricingPage() {
       return () => clearTimeout(timer);
     }
   }, [error]);
+
+  // Charger le plan actuel de l'utilisateur
+  useEffect(() => {
+    if (!isSignedIn) {
+      setBillingData(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchBilling = async () => {
+      try {
+        const res = await fetch("/api/billing/me", { cache: "no-store" });
+        if (!res.ok) {
+          if (process.env.NODE_ENV === "development") {
+            console.error("[pricing] /api/billing/me non OK:", res.status);
+          }
+          return;
+        }
+        const data = await res.json();
+        if (!cancelled && data?.plan) {
+          setBillingData({ plan: data.plan as PlanType });
+        }
+      } catch (err) {
+        if (process.env.NODE_ENV === "development") {
+          console.error("[pricing] Erreur chargement billing:", err);
+        }
+      }
+    };
+
+    fetchBilling();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isSignedIn]);
+
+  const currentPlan: PlanType = billingData?.plan ?? "free";
 
   const doCheckout = async (planKey: PlanType, billingMode?: AnnualBillingChoice) => {
     if (!isSignedIn) {
@@ -129,6 +172,11 @@ export default function PricingPage() {
   const handlePlanSelect = (planKey: PlanType) => {
     if (!isSignedIn) {
       router.push(`/sign-in?redirect_url=/pricing`);
+      return;
+    }
+
+    // Empêcher de souscrire au plan déjà possédé (hors free)
+    if (currentPlan !== "free" && planKey === currentPlan) {
       return;
     }
     if (isYearly && planKey !== "free") {
@@ -263,18 +311,24 @@ export default function PricingPage() {
         {/* Plans */}
         <div className="max-w-7xl mx-auto px-4 mb-16">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 items-stretch">
-            {plansEntries.map(([planKey, plan], index) => (
-              <PlanCard
-                key={planKey}
-                plan={plan}
-                planKey={planKey}
-                isYearly={isYearly}
-                isMostPopular={planKey === "student"}
-                onSelect={() => handlePlanSelect(planKey as PlanType)}
-                isLoading={loadingPlan === planKey}
-                index={index}
-              />
-            ))}
+            {plansEntries.map(([planKey, plan], index) => {
+              const typedKey = planKey as PlanType;
+              const isCurrentPlan = currentPlan !== "free" && typedKey === currentPlan;
+
+              return (
+                <PlanCard
+                  key={planKey}
+                  plan={plan}
+                  planKey={planKey}
+                  isYearly={isYearly}
+                  isMostPopular={planKey === "student"}
+                  onSelect={() => handlePlanSelect(typedKey)}
+                  isLoading={loadingPlan === planKey}
+                  index={index}
+                  isCurrentPlan={isCurrentPlan}
+                />
+              );
+            })}
           </div>
         </div>
 
