@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,76 +8,74 @@ datasource db {
 }
 
 model User {
-  id                  String    @id @default(cuid())
-  clerkUserId         String    @unique
-  plan                String    @default("free") // "free" | "student" | "pro" | "business"
-  monthKey            String    @default("") // Format: "YYYY-MM" (ex: "2026-02")
-  minutesUsedMonth    Int       @default(0) // Minutes consommées ce mois (legacy, deprecated)
-  extraMinutesMonth   Int       @default(0) // Minutes de packs achetés ce mois (legacy, deprecated)
-  quotaSecondsTotal   Int       @default(600) // Quota total en secondes (10 min par défaut pour free)
-  quotaSecondsUsed    Int       @default(0) // Secondes consommées ce mois
-  quotaExtraSeconds   Int       @default(0) // Secondes supplémentaires de packs achetés ce mois (legacy, deprecated)
-  bonusSeconds        Int       @default(0) // Secondes bonus permanentes de packs achetés (jamais reset)
-  quotaResetAt        DateTime? // Date de reset du quota (basé sur currentPeriodEnd ou monthKey)
-  stripeCustomerId    String?   @unique // ID Stripe Customer
-  stripeSubscriptionId String?  @unique // ID Stripe Subscription (si abonné)
-  stripePriceId       String?   // Price ID Stripe actif (pour détecter annual_commit_monthly)
-  billingMode         String?   // "monthly" | "yearly_upfront" | "annual_commit_monthly"
-  commitmentEndAt     DateTime? // Fin d'engagement 12 mois (si annual_commit_monthly)
-  subscriptionStatus  String?   // "active" | "past_due" | "unpaid" | "canceled" (Stripe subscription status)
-  currentPeriodEnd    DateTime? // Fin de la période de facturation en cours
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-
-  transactions Transaction[]
-  ecos         Eco[]
-  recordings   Recording[]
-  folders      Folder[]
-  usageEvents  UsageEvent[]
+  id                   String        @id @default(cuid())
+  clerkUserId          String        @unique
+  plan                 String        @default("free")
+  monthKey             String        @default("")
+  minutesUsedMonth     Int           @default(0)
+  extraMinutesMonth    Int           @default(0)
+  stripeCustomerId     String?       @unique
+  stripeSubscriptionId String?       @unique
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  billingMode          String?
+  commitmentEndAt      DateTime?
+  stripePriceId        String?
+  currentPeriodEnd     DateTime?
+  subscriptionStatus   String?
+  quotaExtraSeconds    Int           @default(0)
+  quotaResetAt         DateTime?
+  quotaSecondsTotal    Int           @default(600)
+  quotaSecondsUsed     Int           @default(0)
+  bonusSeconds         Int           @default(0)
+  ecos                 Eco[]
+  folders              Folder[]
+  recordings           Recording[]
+  transactions         Transaction[]
+  usageEvents          UsageEvent[]
 
   @@index([clerkUserId])
   @@index([monthKey])
 }
 
 model Transaction {
-  id                  String   @id @default(cuid())
+  id                   String   @id @default(cuid())
   userId               String
-  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   stripeCustomerId     String?
   stripeSubscriptionId String?
-  stripePriceId        String   // ID du prix Stripe (plan ou pack)
-  type                 String   // "subscription" | "pack"
-  minutesDelta         Int      @default(0) // Minutes ajoutées (pour packs) ou 0 (pour abonnements)
+  stripePriceId        String
+  type                 String
+  minutesDelta         Int      @default(0)
   createdAt            DateTime @default(now())
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([stripeCustomerId])
 }
 
 model Recording {
-  id                String    @id @default(cuid())
+  id                String      @id @default(cuid())
   userId            String
-  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  status            String    @default("PROCESSING") // "PROCESSING" | "TRANSCRIBED" | "DONE" | "ERROR"
-  audioUrl          String?   // URL de l'audio (R2 ou local)
-  fileId            String?   // ID fichier R2
-  r2Key             String?   // Clé R2 complète (ex: userId/fileId.webm)
-  audioBlobSize     Int?      // Taille du blob audio en bytes
-  durationSeconds   Float?    // Durée de l'enregistrement (legacy)
-  durationMs        Int?      // Durée précise en millisecondes
-  usageRecorded     Boolean   @default(false) // Flag pour éviter double débit
-  mimeType          String?   // Format audio (audio/webm, audio/mp4, etc.)
-  transcriptionText String?   // Texte de transcription (disponible après TRANSCRIBED)
-  summaryJson       String?   // JSON du résumé (disponible après DONE)
-  errorMessage      String?   // Message d'erreur si status = ERROR
-  aiStatus          String    @default("IDLE") // "IDLE" | "GENERATING" | "DONE" | "FAILED"
-  aiStartedAt       DateTime? // Début génération résumé
-  aiFinishedAt      DateTime? // Fin génération résumé
-  aiError           String?   // Erreur si aiStatus = FAILED
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
-
-  usageEvents       UsageEvent[]
+  status            String      @default("PROCESSING")
+  audioUrl          String?
+  audioBlobSize     Int?
+  durationSeconds   Float?
+  mimeType          String?
+  transcriptionText String?
+  summaryJson       String?
+  errorMessage      String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  aiError           String?
+  aiFinishedAt      DateTime?
+  aiStartedAt       DateTime?
+  aiStatus          String      @default("IDLE")
+  durationMs        Int?
+  usageRecorded     Boolean     @default(false)
+  fileId            String?
+  r2Key             String?
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usageEvents       UsageEvent?
 
   @@index([userId])
   @@index([status])
@@ -92,13 +87,12 @@ model Recording {
 model Folder {
   id        String   @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String
-  isDefault Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  ecos Eco[]
+  isDefault Boolean  @default(false)
+  ecos      Eco[]
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
@@ -106,16 +100,16 @@ model Folder {
 model Eco {
   id                String   @id @default(cuid())
   userId            String
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   title             String
-  content           String?  // Contenu optionnel (transcription, résumé, etc.)
-  audioUrl          String?  // URL de l'audio
-  transcriptionText String?  // Texte de transcription
-  folderId          String?  // ID du dossier (relation vers Folder)
-  folder            Folder?  @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  content           String?
+  audioUrl          String?
+  transcriptionText String?
   archived          Boolean  @default(false)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
+  folderId          String?
+  folder            Folder?  @relation(fields: [folderId], references: [id])
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([archived])
@@ -125,11 +119,11 @@ model Eco {
 model UsageEvent {
   id          String    @id @default(cuid())
   userId      String
-  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  recordingId String    @unique // Un seul événement par recording (idempotence)
-  recording   Recording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
-  secondsUsed Int       // Secondes consommées pour cet enregistrement
+  recordingId String    @unique
+  secondsUsed Int
   createdAt   DateTime  @default(now())
+  recording   Recording @relation(fields: [recordingId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([recordingId])

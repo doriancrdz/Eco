@@ -18,6 +18,11 @@
  * STRIPE_PRICE_PACK_800=price_xxx
  * STRIPE_PRICE_PACK_2000=price_xxx
  * STRIPE_PRICE_PACK_6000=price_xxx
+ *
+ * Legacy packs encore supportés (fallback automatique) :
+ * STRIPE_PRICE_PACK_120=price_xxx   → utilisé pour le pack +800 min si STRIPE_PRICE_PACK_800 est absent
+ * STRIPE_PRICE_PACK_600=price_xxx   → utilisé pour le pack +2000 min si STRIPE_PRICE_PACK_2000 est absent
+ * STRIPE_PRICE_PACK_3000=price_xxx  → utilisé pour le pack +6000 min si STRIPE_PRICE_PACK_6000 est absent
  */
 
 export type PlanType = "free" | "student" | "pro" | "business";
@@ -113,13 +118,31 @@ export function getStripePriceIdForPack(packIndex: number): string {
     throw new Error(`Pack invalide à l'index ${packIndex}`);
   }
 
-  // Utiliser les minutes du pack pour construire la clé env (800, 2000, 6000)
-  const envKey = `STRIPE_PRICE_PACK_${pack.minutes}`;
-  const priceId = process.env[envKey];
+  // Clé principale basée sur les minutes actuelles (800, 2000, 6000)
+  const envKeyPrimary = `STRIPE_PRICE_PACK_${pack.minutes}`;
+  let priceId = process.env[envKeyPrimary];
 
+  // Fallback automatique vers les anciens noms de variables si la clé principale est absente
   if (!priceId || priceId.trim() === "") {
+    const legacyMinutesMap: Record<number, number> = {
+      800: 120,
+      2000: 600,
+      6000: 3000,
+    };
+    const legacyMinutes = legacyMinutesMap[pack.minutes];
+    const legacyKey = legacyMinutes ? `STRIPE_PRICE_PACK_${legacyMinutes}` : null;
+
+    if (legacyKey) {
+      const legacyPriceId = process.env[legacyKey];
+      if (legacyPriceId && legacyPriceId.trim() !== "") {
+        return legacyPriceId;
+      }
+    }
+
+    // Ni la nouvelle clé ni l'ancienne ne sont définies → erreur explicite
+    const legacyHint = legacyKey ? ` (ou l'ancien nom ${legacyKey})` : "";
     throw new Error(
-      `PRICE_ID manquant pour le pack ${pack.name}. Ajoutez ${envKey} dans .env.local`
+      `PRICE_ID manquant pour le pack ${pack.name}. Ajoutez ${envKeyPrimary}${legacyHint} dans .env.local`
     );
   }
 

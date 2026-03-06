@@ -50,6 +50,13 @@ export default function Home() {
     return !sessionStorage.getItem("eco_billing_plan");
   });
   const [paymentBlocked, setPaymentBlocked] = useState(false);
+  const [billingInfo, setBillingInfo] = useState<{
+    plan: string;
+    minutesPerMonth: number;
+    availableMinutes: number;
+    bonusMinutes: number;
+    paymentBlocked: boolean;
+  } | null>(null);
   const [upgradeHovered, setUpgradeHovered] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -380,6 +387,7 @@ export default function Home() {
     if (!isSignedIn) {
       setUserPlan("free");
       setIsBillingLoading(false);
+      setBillingInfo(null);
       if (typeof window !== "undefined") sessionStorage.removeItem("eco_billing_plan");
       return;
     }
@@ -392,6 +400,14 @@ export default function Home() {
           const plan = data.plan || "free";
           setUserPlan(plan);
           setPaymentBlocked(data.paymentBlocked === true);
+          const bonusMinutes = data.bonusSeconds ? Math.floor(data.bonusSeconds / 60) : 0;
+          setBillingInfo({
+            plan,
+            minutesPerMonth: data.minutesPerMonth ?? 0,
+            availableMinutes: data.availableMinutes ?? 0,
+            bonusMinutes,
+            paymentBlocked: data.paymentBlocked === true,
+          });
           if (typeof window !== "undefined") {
             sessionStorage.setItem("eco_billing_plan", plan);
           }
@@ -399,6 +415,7 @@ export default function Home() {
       } catch {
         setUserPlan("free");
         setPaymentBlocked(false);
+        setBillingInfo(null);
       } finally {
         setIsBillingLoading(false);
       }
@@ -1413,6 +1430,59 @@ export default function Home() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Debug overlay (dev only) */}
+      {/* Barre des minutes en bas à droite (si connecté et billing chargé) */}
+      {isSignedIn && billingInfo && !isBillingLoading && (
+        <div className="fixed bottom-6 right-6 z-40">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 min-w-[240px] border border-gray-100">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-sm font-semibold text-gray-700">Minutes restantes</p>
+              <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full font-medium">
+                {billingInfo.plan === "free"
+                  ? "Gratuit"
+                  : billingInfo.plan === "student"
+                  ? "Student"
+                  : billingInfo.plan === "pro"
+                  ? "Pro"
+                  : "Business"}
+              </span>
+            </div>
+            {(() => {
+              const totalMinutes = Math.max(
+                0,
+                (billingInfo.minutesPerMonth ?? 0) + (billingInfo.bonusMinutes ?? 0)
+              );
+              const remainingMinutes = Math.max(
+                0,
+                Math.min(totalMinutes, billingInfo.availableMinutes ?? 0)
+              );
+              const widthPercent =
+                totalMinutes > 0 ? Math.max(0, Math.min(100, (remainingMinutes / totalMinutes) * 100)) : 0;
+              return (
+                <>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-blue-600 to-purple-600 transition-all duration-300"
+                        style={{ width: `${widthPercent}%` }}
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-600">
+                    <span className="font-bold text-gray-900">{remainingMinutes}</span>
+                    {" / "}
+                    {totalMinutes} min
+                    {billingInfo.bonusMinutes > 0 && (
+                      <span className="text-green-600 ml-2">+ {billingInfo.bonusMinutes} bonus</span>
+                    )}
+                  </p>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
 
       {/* Debug overlay (dev only) */}
       {process.env.NODE_ENV !== "production" && (

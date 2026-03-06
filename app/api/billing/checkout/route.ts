@@ -17,28 +17,48 @@ import { getOrCreateUserWithQuota } from "@/lib/billing";
 import { checkoutLimiter } from "@/lib/ratelimit";
 
 export async function POST(req: NextRequest) {
+  console.log("[Checkout] ROUTE HIT");
   try {
-    console.log("[Checkout] Début de la requête /api/billing/checkout");
+    console.log("\n🚀 ===== DÉBUT CHECKOUT STRIPE (/api/billing/checkout) =====");
+    console.log("[Checkout] 1️⃣ Démarrage handler POST");
 
+    console.log("[Checkout] 2️⃣ Vérification auth Clerk...");
     const { userId } = await auth();
+    console.log("[Checkout]    userId:", userId);
 
     if (!userId) {
-      console.error("[Checkout] Utilisateur non authentifié");
+      console.error("[Checkout]    ❌ Utilisateur non authentifié");
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
+    console.log("[Checkout]    ✅ Auth OK");
 
-    // Rate limiting checkouts Stripe : 3 par heure par utilisateur
-    const { success } = await checkoutLimiter.limit(userId);
-    if (!success) {
-      console.warn("[Checkout] Rate limit dépassé pour l'utilisateur", { userId });
-      return NextResponse.json(
-        { error: "Trop de tentatives. Réessayez dans 1 heure." },
-        { status: 429 }
-      );
+    // Rate limiting checkouts Stripe : 3 par heure par utilisateur (PROD uniquement)
+    const hasUpstashConfig =
+      !!process.env.UPSTASH_REDIS_REST_URL && !!process.env.UPSTASH_REDIS_REST_TOKEN;
+
+    if (process.env.NODE_ENV === "production" && hasUpstashConfig) {
+      try {
+        const { success } = await checkoutLimiter.limit(userId);
+        if (!success) {
+          console.warn("[Checkout] Rate limit dépassé pour l'utilisateur", { userId });
+          return NextResponse.json(
+            { error: "Trop de tentatives. Réessayez dans 1 heure." },
+            { status: 429 }
+          );
+        }
+      } catch (e) {
+        console.error(
+          "[Checkout] Erreur lors de l'application du rate limit Upstash, checkout NON bloqué:",
+          e
+        );
+      }
+    } else {
+      console.log("[Checkout] Rate limit complètement désactivé (dev ou Upstash non configuré)");
     }
 
     // Valider la configuration Stripe
     try {
+      console.log("[Checkout] 3️⃣ Validation configuration Stripe (validateStripeConfig)...");
       validateStripeConfig();
     } catch (error) {
       console.error("[Checkout] Erreur configuration Stripe:", error);
@@ -61,18 +81,34 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    console.log("[Checkout] 4️⃣ Initialisation client Stripe...");
     const stripe = getStripeOrNull();
     if (!stripe) {
       console.error("[Checkout] Stripe non configuré (getStripeOrNull a retourné null)");
       return NextResponse.json({ error: "Stripe non configuré" }, { status: 503 });
     }
 
+    console.log("[Checkout] 5️⃣ Lecture du corps de la requête...");
     const body = await req.json();
     const { type, plan, period, packIndex, billingMode } = body;
 
     console.log(
-      "[Checkout] Body reçu:",
+      "[Checkout]    Body reçu:",
       JSON.stringify({ type, plan, period, packIndex, billingMode }, null, 2)
+    );
+
+    console.log("[Checkout] 6️⃣ Infos clés Stripe (env)...");
+    const secretKey = process.env.STRIPE_SECRET_KEY;
+    const pubKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+    console.log(
+      "[Checkout]    STRIPE_SECRET_KEY:",
+      secretKey
+        ? `${secretKey.substring(0, 8)}... (${secretKey.startsWith("sk_live_") ? "LIVE" : "TEST"})`
+        : "NON DÉFINIE"
+    );
+    console.log(
+      "[Checkout]    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:",
+      pubKey ? `${pubKey.substring(0, 12)}...` : "NON DÉFINIE"
     );
 
     if (type === "subscription") {
@@ -88,7 +124,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      console.log("[Checkout] Type subscription détecté", {
+      console.log("[Checkout] 7️⃣ Type subscription détecté", {
         plan,
         period,
         billingMode,
@@ -101,14 +137,14 @@ export async function POST(req: NextRequest) {
           ? "yearly_upfront"
           : "monthly";
 
-      console.log("[Checkout] Mode de facturation déterminé", { mode });
+      console.log("[Checkout] 8️⃣ Mode de facturation déterminé", { mode });
 
       const priceId =
         mode === "annual_commit_monthly"
           ? getStripePriceIdAnnualCommitMonthly(plan as PlanType)
           : getStripePriceId(plan as PlanType, period as BillingPeriod);
 
-      console.log("[Checkout] Price ID Stripe résolu pour subscription", {
+      console.log("[Checkout] 9️⃣ Price ID Stripe résolu pour subscription", {
         plan,
         period,
         mode,
@@ -116,7 +152,7 @@ export async function POST(req: NextRequest) {
       });
 
       if (!priceId) {
-        console.error("[Checkout] AUCUN priceId trouvé pour ce plan/période", {
+        console.error("[Checkout]    ❌ AUCUN priceId trouvé pour ce plan/période", {
           plan,
           period,
           mode,
@@ -131,12 +167,13 @@ export async function POST(req: NextRequest) {
       }
 
       // Récupérer ou créer l'utilisateur pour obtenir/create le Stripe Customer
+      console.log("[Checkout] 🔟 Récupération/creation utilisateur (getOrCreateUserWithQuota)...");
       const user = await getOrCreateUserWithQuota(userId);
 
       let customerId = user.stripeCustomerId;
 
       if (!customerId) {
-        console.log("[Checkout] Aucun Stripe customerId, création en cours…", {
+        console.log("[Checkout] 1️⃣1️⃣ Aucun Stripe customerId, création en cours…", {
           userId,
         });
         // Créer un Stripe Customer
@@ -147,13 +184,13 @@ export async function POST(req: NextRequest) {
         });
         customerId = customer.id;
 
-        console.log("[Checkout] Stripe Customer créé", { customerId });
+        console.log("[Checkout]    ✅ Stripe Customer créé", { customerId });
 
         // Mettre à jour l'utilisateur avec le customer ID
         // (sera fait aussi dans le webhook, mais on le fait ici pour éviter les doublons)
       }
 
-      console.log("[Checkout] Création de la session Stripe Checkout (subscription)…");
+      console.log("[Checkout] 1️⃣2️⃣ Création de la session Stripe Checkout (subscription)…");
 
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
@@ -177,7 +214,7 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      console.log("[Checkout] Session Stripe créée (subscription)", {
+      console.log("[Checkout]    ✅ Session Stripe créée (subscription)", {
         sessionId: session.id,
         url: session.url,
       });
@@ -195,17 +232,17 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      console.log("[Checkout] Type pack détecté", { packIndex });
+      console.log("[Checkout] 7️⃣ Type pack détecté", { packIndex });
 
       const priceId = getStripePriceIdForPack(packIndex);
 
-      console.log("[Checkout] Price ID Stripe résolu pour pack", {
+      console.log("[Checkout] 8️⃣ Price ID Stripe résolu pour pack", {
         packIndex,
         priceId,
       });
 
       if (!priceId) {
-        console.error("[Checkout] AUCUN priceId trouvé pour ce packIndex", {
+        console.error("[Checkout]    ❌ AUCUN priceId trouvé pour ce packIndex", {
           packIndex,
         });
         return NextResponse.json(
@@ -217,12 +254,13 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      console.log("[Checkout] 🔟 Récupération/creation utilisateur (getOrCreateUserWithQuota)...");
       const user = await getOrCreateUserWithQuota(userId);
 
       let customerId = user.stripeCustomerId;
 
       if (!customerId) {
-        console.log("[Checkout] Aucun Stripe customerId, création en cours…", {
+        console.log("[Checkout] 1️⃣1️⃣ Aucun Stripe customerId, création en cours…", {
           userId,
         });
         const customer = await stripe.customers.create({
@@ -232,10 +270,10 @@ export async function POST(req: NextRequest) {
         });
         customerId = customer.id;
 
-        console.log("[Checkout] Stripe Customer créé", { customerId });
+        console.log("[Checkout]    ✅ Stripe Customer créé", { customerId });
       }
 
-      console.log("[Checkout] Création de la session Stripe Checkout (pack)…");
+      console.log("[Checkout] 1️⃣2️⃣ Création de la session Stripe Checkout (pack)…");
 
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
@@ -256,29 +294,33 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      console.log("[Checkout] Session Stripe créée (pack)", {
+      console.log("[Checkout]    ✅ Session Stripe créée (pack)", {
         sessionId: session.id,
         url: session.url,
       });
 
       return NextResponse.json({ url: session.url });
     } else {
-      console.error("[Checkout] Type invalide reçu", { type });
+      console.error("[Checkout] ❌ Type invalide reçu", { type });
       return NextResponse.json(
         { error: "Type invalide (subscription ou pack)" },
         { status: 400 }
       );
     }
   } catch (error) {
-    const err = error as { message?: string; stack?: string };
+    const err = error as { message?: string; stack?: string; type?: string };
+    console.log("\n❌ ===== ERREUR CHECKOUT STRIPE =====");
     console.error("[Checkout] ERREUR CRITIQUE dans /api/billing/checkout:", {
       message: err?.message,
+      type: err?.type,
       stack: process.env.NODE_ENV === "development" ? err?.stack : undefined,
     });
+    console.log("===== FIN ERREUR CHECKOUT =====\n");
     return NextResponse.json(
       {
         error: "Erreur lors de la création du checkout Stripe",
         message: err?.message ?? "Erreur inconnue",
+        type: err?.type ?? null,
       },
       { status: 500 }
     );
