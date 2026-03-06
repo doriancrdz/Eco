@@ -14,7 +14,6 @@ import {
   BillingMode,
 } from "@/lib/billingConfig";
 import { getOrCreateUserWithQuota } from "@/lib/billing";
-import { checkoutLimiter } from "@/lib/ratelimit";
 
 export async function POST(req: NextRequest) {
   console.log("[Checkout] ROUTE HIT");
@@ -31,30 +30,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
     }
     console.log("[Checkout]    ✅ Auth OK");
-
-    // Rate limiting checkouts Stripe : 3 par heure par utilisateur (PROD uniquement)
-    const hasUpstashConfig =
-      !!process.env.UPSTASH_REDIS_REST_URL && !!process.env.UPSTASH_REDIS_REST_TOKEN;
-
-    if (process.env.NODE_ENV === "production" && hasUpstashConfig) {
-      try {
-        const { success } = await checkoutLimiter.limit(userId);
-        if (!success) {
-          console.warn("[Checkout] Rate limit dépassé pour l'utilisateur", { userId });
-          return NextResponse.json(
-            { error: "Trop de tentatives. Réessayez dans 1 heure." },
-            { status: 429 }
-          );
-        }
-      } catch (e) {
-        console.error(
-          "[Checkout] Erreur lors de l'application du rate limit Upstash, checkout NON bloqué:",
-          e
-        );
-      }
-    } else {
-      console.log("[Checkout] Rate limit complètement désactivé (dev ou Upstash non configuré)");
-    }
 
     // Valider la configuration Stripe
     try {
