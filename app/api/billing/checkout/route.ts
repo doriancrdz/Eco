@@ -166,6 +166,7 @@ export async function POST(req: NextRequest) {
         ],
         success_url: `${req.nextUrl.origin}/settings?success=true`,
         cancel_url: `${req.nextUrl.origin}/pricing?canceled=true`,
+        allow_promotion_codes: true,
         metadata: {
           clerkUserId: userId,
           type: "subscription",
@@ -247,6 +248,7 @@ export async function POST(req: NextRequest) {
         ],
         success_url: `${req.nextUrl.origin}/settings?success=true&type=pack`,
         cancel_url: `${req.nextUrl.origin}/settings?canceled=true`,
+        allow_promotion_codes: true,
         metadata: {
           clerkUserId: userId,
           type: "pack",
