@@ -82,6 +82,10 @@ export async function POST(req: NextRequest) {
     }
 
     console.log("[Checkout] 4️⃣ Initialisation client Stripe...");
+    console.log(
+      "[Stripe Debug] Loaded STRIPE_SECRET_KEY prefix:",
+      process.env.STRIPE_SECRET_KEY?.substring(0, 10)
+    );
     const stripe = getStripeOrNull();
     if (!stripe) {
       console.error("[Checkout] Stripe non configuré (getStripeOrNull a retourné null)");
