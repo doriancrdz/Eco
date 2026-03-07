@@ -382,7 +382,7 @@ ${truncated}`;
       const sections = data.contenu?.sections ?? [];
       const typeContenu = (data.contenu?.type ?? "narratif").toLowerCase();
 
-      let resumeMarkdown = `**Introduction:**\n${intro}\n\n\n\n**Contenu:**\n\n`;
+      let resumeMarkdown = `Introduction:\n-------------\n${intro}\n\n\n\nContenu:\n--------\n\n`;
 
       if (typeContenu === "liste") {
         const numerals = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
@@ -400,7 +400,7 @@ ${truncated}`;
         }
       }
 
-      resumeMarkdown += `\n\n**Conclusion:**\n${concl}`;
+      resumeMarkdown += `\n\nConclusion:\n-----------\n${concl}`;
       return resumeMarkdown;
     }
 
