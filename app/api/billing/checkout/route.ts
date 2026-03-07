@@ -9,6 +9,7 @@ import {
   getStripePriceIdAnnualCommitMonthly,
   getStripePriceIdForPack,
   validateStripeConfig,
+  PACKS,
   PlanType,
   BillingPeriod,
   BillingMode,
@@ -171,6 +172,8 @@ export async function POST(req: NextRequest) {
 
       console.log("[Checkout] 1️⃣2️⃣ Création de la session Stripe Checkout (subscription)…");
 
+      // Les descriptions (800, 2000, 6000 min) viennent des Produits Stripe.
+      // Exécuter une fois : npx tsx scripts/update-stripe-descriptions.ts
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
         mode: "subscription",
@@ -254,12 +257,29 @@ export async function POST(req: NextRequest) {
 
       console.log("[Checkout] 1️⃣2️⃣ Création de la session Stripe Checkout (pack)…");
 
+      const pack = PACKS[packIndex];
+      const packLabels: Record<number, string> = {
+        0: "étudiant",
+        1: "pro",
+        2: "business",
+      };
+      const packDescription = pack
+        ? `${pack.minutes} minutes (pack ${packLabels[packIndex] ?? ""})`
+        : undefined;
+
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
         mode: "payment",
         line_items: [
           {
-            price: priceId,
+            price_data: {
+              currency: "eur",
+              product_data: {
+                name: pack?.name ?? `Pack ${packIndex + 1}`,
+                description: packDescription ?? undefined,
+              },
+              unit_amount: pack ? Math.round(pack.price * 100) : 0,
+            },
             quantity: 1,
           },
         ],
@@ -270,6 +290,7 @@ export async function POST(req: NextRequest) {
           clerkUserId: userId,
           type: "pack",
           packIndex: String(packIndex),
+          priceId,
         },
       });
 
