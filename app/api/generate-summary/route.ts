@@ -216,179 +216,136 @@ export async function POST(req: NextRequest) {
     });
     }
 
-    const systemPrompt = `Tu es un expert en synthèse de contenu audio. Tu génères des résumés structurés de haute qualité.
+        const systemPrompt = `Tu es un expert en synthèse de contenu audio.
 
-⚠️ RÈGLE ABSOLUE N°1 - STRUCTURE OBLIGATOIRE ⚠️
+Tu DOIS générer un résumé structuré au format JSON EXACT suivant.
 
-CHAQUE résumé DOIT OBLIGATOIREMENT suivre cette structure EXACTE. AUCUNE EXCEPTION N'EST TOLÉRÉE.
+STRUCTURE JSON OBLIGATOIRE :
 
-Le résumé DOIT TOUJOURS commencer par ces 3 sections DANS CET ORDRE :
-
-**Introduction:**
-[Texte de l'introduction - 1 à 3 phrases de mise en contexte]
-
-[EXACTEMENT 2 lignes vides]
-
-**Contenu:**
-[Développement - voir instructions ci-dessous]
-
-[EXACTEMENT 2 lignes vides]
-
-**Conclusion:**
-[Texte de la conclusion - 1 à 3 phrases de synthèse]
-
-⚠️ IMPORTANT : Si tu ne commences PAS ton résumé par "**Introduction:**", le résumé sera REJETÉ.
-⚠️ IMPORTANT : Si tu oublies UNE SEULE de ces 3 sections, le résumé sera REJETÉ.
-⚠️ IMPORTANT : Les titres doivent être EXACTEMENT "**Introduction:**", "**Contenu:**", "**Conclusion:**" (avec les deux-points).
-
-═══════════════════════════════════════════════════════════════
-
-STRUCTURE DU CONTENU (SECTION 2)
-
-Après "**Contenu:**", tu dois développer le sujet selon son TYPE :
-
-TYPE A - CONTENU AVEC LISTE/ÉNUMÉRATION (ex: "Top 5", "Les 3 meilleures", "4 stratégies", "Conseils pour")
-→ Utiliser une numérotation romaine I, II, III, IV, V...
-
-Exemple :
-**Contenu:**
-
-**I. [Titre du premier point]**
-[Développement complet du premier point en 2-4 phrases]
-
-**II. [Titre du deuxième point]**
-[Développement complet du deuxième point en 2-4 phrases]
-
-**III. [Titre du troisième point]**
-[Développement complet du troisième point en 2-4 phrases]
-
-TYPE B - CONTENU NARRATIF/EXPLICATIF (ex: explication d'un concept, récit, témoignage)
-→ Utiliser des paragraphes fluides SANS numérotation
-
-Exemple :
-**Contenu:**
-
-[Premier paragraphe développant le premier aspect en 2-4 phrases]
-
-[Deuxième paragraphe développant le deuxième aspect en 2-4 phrases]
-
-[Troisième paragraphe développant le troisième aspect en 2-4 phrases]
-
-═══════════════════════════════════════════════════════════════
-
-RÈGLES STRICTES (À RESPECTER ABSOLUMENT)
-
-1. ⚠️ COMMENCE TOUJOURS par "**Introduction:**" - PAS de texte avant
-2. ⚠️ Les 3 sections (Introduction/Contenu/Conclusion) sont OBLIGATOIRES - même pour un audio de 30 secondes
-3. ⚠️ Utilise EXACTEMENT ces titres : "**Introduction:**", "**Contenu:**", "**Conclusion:**"
-4. ⚠️ Mets EXACTEMENT 2-3 lignes vides entre Introduction et Contenu, et entre Contenu et Conclusion
-5. ⚠️ Mets 1 ligne vide entre chaque section numérotée (I, II, III) OU entre chaque paragraphe
-6. ⚠️ N'utilise JAMAIS de listes à puces (-, *, •) - toujours des paragraphes en prose
-7. ⚠️ La longueur cible est ${targetSummaryWords} mots (±10%) - ratio 16% de la transcription
-8. ⚠️ TOUS les éléments de la transcription doivent être présents (exhaustivité absolue)
-
-═══════════════════════════════════════════════════════════════
-
-MÉTHODE DE TRAVAIL EN 5 ÉTAPES (OBLIGATOIRE)
-
-Avant de générer le résumé, tu DOIS suivre ces 5 étapes :
-
-Étape 1 : Lire la transcription ENTIÈREMENT
-Étape 2 : Identifier le TYPE de contenu (liste/énumération OU narratif/explicatif)
-Étape 3 : Lister TOUS les points/arguments/aspects à inclure
-Étape 4 : Rédiger le résumé en suivant la STRUCTURE EXACTE
-Étape 5 : Vérifier que les 3 sections sont présentes ET que rien n'est oublié
-
-═══════════════════════════════════════════════════════════════
-
-EXEMPLES DE RÉSUMÉS CORRECTS
-
-EXEMPLE 1 - Liste (Top 5 stratégies marketing)
-
-**Introduction:**
-Cette présentation expose les cinq stratégies marketing essentielles pour développer son entreprise en 2026 et maximiser sa visibilité en ligne.
-
-
-
-**Contenu:**
-
-**I. Marketing de contenu**
-Le marketing de contenu consiste à créer des articles de blog de qualité pour attirer des clients potentiels. Cette approche génère du trafic organique durable et établit l'autorité de la marque dans son secteur.
-
-**II. Réseaux sociaux**
-Les plateformes comme Instagram et TikTok permettent de toucher une audience jeune et engagée. La régularité des publications et l'interaction authentique avec les abonnés sont essentielles pour réussir.
-
-**III. Email marketing**
-L'email marketing offre un retour sur investissement exceptionnel avec une moyenne de 42€ pour 1€ investi. La personnalisation des messages selon le comportement client augmente significativement les taux de conversion.
-
-**IV. Publicité ciblée**
-Les publicités Facebook, Instagram et Google permettent de toucher précisément son audience cible avec des budgets maîtrisés. Il est crucial de tester différentes créatives pour optimiser les performances.
-
-**V. Partenariats influenceurs**
-Collaborer avec des micro-influenceurs offre un excellent rapport qualité-prix avec des audiences très engagées. Les budgets démarrent généralement entre 200€ et 1000€ selon la notoriété.
-
-
-
-**Conclusion:**
-Ces cinq stratégies marketing forment un écosystème complet pour développer efficacement sa présence digitale et accélérer la croissance de son entreprise de manière durable.
-
-EXEMPLE 2 - Narratif (Explication du réchauffement climatique)
-
-**Introduction:**
-Ce contenu explique les mécanismes du réchauffement climatique, ses causes principales et les conséquences observables sur notre environnement.
-
-
-
-**Contenu:**
-
-Le réchauffement climatique résulte principalement de l'augmentation des gaz à effet de serre dans l'atmosphère, notamment le CO2 émis par la combustion des énergies fossiles. Ces gaz emprisonnent la chaleur solaire et provoquent une élévation progressive des températures mondiales.
-
-Les conséquences sont multiples et déjà observables à l'échelle planétaire. La fonte accélérée des glaciers et des calottes polaires entraîne une montée du niveau des océans qui menace les zones côtières. Les phénomènes météorologiques extrêmes comme les canicules, inondations et sécheresses deviennent plus fréquents et intenses.
-
-La biodiversité subit également des impacts majeurs avec de nombreuses espèces animales et végétales incapables de s'adapter suffisamment rapidement aux changements climatiques. Les écosystèmes marins sont particulièrement affectés par l'acidification des océans causée par l'absorption massive de CO2.
-
-
-
-**Conclusion:**
-Le réchauffement climatique constitue un défi environnemental majeur qui nécessite une action collective urgente pour limiter la hausse des températures et préserver les écosystèmes terrestres.
-
-═══════════════════════════════════════════════════════════════
-
-CHECKLIST FINALE (VÉRIFIER AVANT D'ENVOYER LE RÉSUMÉ)
-
-Avant de renvoyer le résumé, vérifie OBLIGATOIREMENT :
-
-✓ Le résumé commence par "**Introduction:**"
-✓ Les 3 sections sont présentes : Introduction, Contenu, Conclusion
-✓ Il y a 2-3 lignes vides entre Introduction et Contenu
-✓ Il y a 2-3 lignes vides entre Contenu et Conclusion
-✓ Le Contenu utilise I, II, III... SI c'est une liste, OU des paragraphes SI c'est narratif
-✓ Aucune liste à puces (-, *, •) n'est utilisée
-✓ Tous les éléments de la transcription sont présents
-✓ Le résumé fait environ ${targetSummaryWords} mots (±10%)
-✓ Les ${targetPointsCles} points clés sont générés
-✓ Les ${targetNotions} notions sont générées
-
-Si UNE SEULE de ces conditions n'est pas respectée, RECOMMENCE le résumé.
-
-═══════════════════════════════════════════════════════════════
-
-Transcription à résumer (voir message utilisateur ci-dessous).
-
-
-
-
-Génère maintenant un résumé de ${targetSummaryWords} mots (±10%) en respectant STRICTEMENT toutes les règles ci-dessus.
-
-Format de réponse JSON OBLIGATOIRE :
 {
-  "titre": "Titre court et descriptif (max 60 caractères)",
-  "resume": "...",
-  "pointsCles": [...${targetPointsCles} points],
-  "notions": [...${targetNotions} notions]
+  "titre": "Titre du contenu",
+  "introduction": "Texte de l'introduction (1-3 phrases de contexte)",
+  "contenu": {
+    "type": "liste" ou "narratif",
+    "sections": [
+      {
+        "titre": "Titre de la section (optionnel si narratif)",
+        "texte": "Contenu de la section (2-4 phrases minimum)"
+      }
+    ]
+  },
+  "conclusion": "Texte de la conclusion (1-3 phrases de synthèse)",
+  "pointsCles": ["Point clé 1", "Point clé 2", ...],
+  "notions": [
+    {
+      "terme": "Terme à retenir",
+      "definition": "Définition claire en 1-2 phrases"
+    }
+  ]
 }
 
-⚠️ RAPPEL FINAL : Le résumé DOIT commencer par "**Introduction:**" et contenir les 3 sections. AUCUNE EXCEPTION.`;
+RÈGLES STRICTES :
+
+1. INTRODUCTION (obligatoire)
+   - 1 à 3 phrases de mise en contexte
+   - Présente le sujet global
+
+2. CONTENU (obligatoire)
+   - Type "liste" SI la transcription contient une énumération (ex: "Top 5", "3 stratégies", "Les meilleures façons")
+   - Type "narratif" SINON
+   
+   Pour type "liste" :
+   - sections : tableau de {titre: "...", texte: "..."}
+   - Minimum 2-4 phrases par section
+   - Exemple : {titre: "Marketing de contenu", texte: "Le marketing de contenu consiste à..."}
+   
+   Pour type "narratif" :
+   - sections : tableau de {texte: "..."} (titre optionnel, peut être vide)
+   - Minimum 2-4 phrases par section
+   - Un paragraphe = une section
+
+3. CONCLUSION (obligatoire)
+   - 1 à 3 phrases de synthèse globale
+
+4. POINTS CLÉS
+   - Générer ${targetPointsCles} points clés maximum
+   - Phrases courtes et percutantes
+
+5. NOTIONS
+   - Générer ${targetNotions} notions maximum
+   - Chaque notion DOIT avoir un "terme" ET une "definition"
+   - La définition doit être claire et complète (1-2 phrases)
+
+6. LONGUEUR
+   - Le texte total (introduction + contenu + conclusion) doit faire environ ${targetSummaryWords} mots (±10%)
+
+7. EXHAUSTIVITÉ
+   - TOUS les éléments de la transcription doivent être présents
+   - Ne rien omettre, même pour les longs audios
+
+EXEMPLE DE RÉPONSE ATTENDUE (Type liste) :
+
+{
+  "titre": "Les 5 stratégies marketing essentielles",
+  "introduction": "Cette présentation expose les cinq stratégies marketing fondamentales pour développer son entreprise en 2026 et maximiser sa visibilité digitale.",
+  "contenu": {
+    "type": "liste",
+    "sections": [
+      {
+        "titre": "Marketing de contenu",
+        "texte": "Le marketing de contenu consiste à créer des articles de blog de qualité pour attirer des clients potentiels. Cette approche génère du trafic organique durable et établit l'autorité de la marque dans son secteur."
+      },
+      {
+        "titre": "Réseaux sociaux",
+        "texte": "Les plateformes comme Instagram et TikTok permettent de toucher une audience jeune et engagée. La régularité des publications et l'interaction authentique avec les abonnés sont essentielles pour réussir sur ces canaux."
+      }
+    ]
+  },
+  "conclusion": "Ces cinq stratégies marketing forment un écosystème complet pour développer efficacement sa présence digitale et accélérer la croissance de son entreprise.",
+  "pointsCles": [
+    "Le marketing de contenu génère du trafic organique durable",
+    "Les réseaux sociaux permettent de créer une communauté engagée"
+  ],
+  "notions": [
+    {
+      "terme": "ROI",
+      "definition": "Retour sur investissement, indicateur qui mesure la rentabilité d'une action marketing en comparant les gains obtenus aux coûts engagés."
+    }
+  ]
+}
+
+EXEMPLE DE RÉPONSE ATTENDUE (Type narratif) :
+
+{
+  "titre": "Le réchauffement climatique expliqué",
+  "introduction": "Ce contenu explique les mécanismes du réchauffement climatique, ses causes principales et les conséquences observables sur notre environnement.",
+  "contenu": {
+    "type": "narratif",
+    "sections": [
+      {
+        "texte": "Le réchauffement climatique résulte principalement de l'augmentation des gaz à effet de serre dans l'atmosphère, notamment le CO2 émis par la combustion des énergies fossiles. Ces gaz emprisonnent la chaleur solaire et provoquent une élévation progressive des températures mondiales."
+      },
+      {
+        "texte": "Les conséquences sont multiples et déjà observables à l'échelle planétaire. La fonte accélérée des glaciers et des calottes polaires entraîne une montée du niveau des océans qui menace les zones côtières."
+      }
+    ]
+  },
+  "conclusion": "Le réchauffement climatique constitue un défi environnemental majeur qui nécessite une action collective urgente pour limiter la hausse des températures.",
+  "pointsCles": [
+    "Le CO2 des énergies fossiles est la principale cause du réchauffement",
+    "La fonte des glaciers entraîne une montée des océans"
+  ],
+  "notions": [
+    {
+      "terme": "Gaz à effet de serre",
+      "definition": "Gaz présents dans l'atmosphère qui retiennent la chaleur du soleil, provoquant un réchauffement de la planète. Les principaux sont le CO2, le méthane et le protoxyde d'azote."
+    }
+  ]
+}
+
+Transcription à résumer : voir le message utilisateur ci-dessous.
+
+Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.`;
 
     const userPrompt = `Transcription complète (${transcriptionWordCount} mots) :
 
@@ -410,49 +367,97 @@ ${truncated}`;
 
     const summaryContent =
       completion.choices[0]?.message?.content ??
-      '{"titre":"Résumé","resume":"","pointsCles":[],"notions":[]}';
+      '{"titre":"Résumé","introduction":"","contenu":{"type":"narratif","sections":[]},"conclusion":"","pointsCles":[],"notions":[]}';
 
     let summary: { titre: string; resume: string; pointsCles: string[]; notions: Array<{ terme: string; definition: string }> | string[] };
 
+    // Transforme le JSON structuré (introduction/contenu/conclusion) en markdown avec structure obligatoire
+    function structuredJsonToMarkdown(data: {
+      introduction?: string;
+      contenu?: { type?: string; sections?: Array<{ titre?: string; texte?: string }> };
+      conclusion?: string;
+    }): string {
+      const intro = (data.introduction ?? "").trim();
+      const concl = (data.conclusion ?? "").trim();
+      const sections = data.contenu?.sections ?? [];
+      const typeContenu = (data.contenu?.type ?? "narratif").toLowerCase();
+
+      let resumeMarkdown = `**Introduction:**\n${intro}\n\n\n\n**Contenu:**\n\n`;
+
+      if (typeContenu === "liste") {
+        const numerals = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+        for (let i = 0; i < sections.length; i++) {
+          const section = sections[i];
+          const titre = (section.titre ?? "").trim();
+          const texte = (section.texte ?? "").trim();
+          const heading = titre ? `${numerals[i]}. ${titre}` : numerals[i];
+          resumeMarkdown += `**${heading}**\n${texte}\n\n`;
+        }
+      } else {
+        for (const section of sections) {
+          const texte = (section.texte ?? "").trim();
+          if (texte) resumeMarkdown += `${texte}\n\n`;
+        }
+      }
+
+      resumeMarkdown += `\n\n**Conclusion:**\n${concl}`;
+      return resumeMarkdown;
+    }
+
+    // Normaliser les notions : terme + definition (obligatoire pour le nouveau format)
+    function normalizeNotions(notions: unknown): Array<{ terme: string; definition: string }> {
+      if (!Array.isArray(notions)) return [];
+      return notions.map((n) => {
+        if (typeof n === "string") {
+          return { terme: n, definition: "" };
+        }
+        if (typeof n === "object" && n !== null && ("terme" in n || "term" in n)) {
+          const term = "terme" in n ? (n as { terme?: string }).terme : (n as { term?: string }).term;
+          const def = "definition" in n ? (n as { definition?: string }).definition : "";
+          return {
+            terme: typeof term === "string" ? term : "",
+            definition: typeof def === "string" ? def : "",
+          };
+        }
+        return { terme: String(n), definition: "" };
+      });
+    }
+
     try {
-      const parsed = JSON.parse(summaryContent) as {
+      // Nettoyer le contenu (l'IA peut renvoyer du markdown autour du JSON)
+      let rawContent = summaryContent.trim();
+      const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
+      if (jsonMatch) rawContent = jsonMatch[0];
+
+      const parsed = JSON.parse(rawContent) as {
         titre?: string;
-        resume?: string;
+        introduction?: string;
+        contenu?: { type?: string; sections?: Array<{ titre?: string; texte?: string }> };
+        conclusion?: string;
         pointsCles?: string[];
-        notions?: Array<{ terme: string; definition: string }> | string[];
-        // Support du format ancien pour rétrocompatibilité
-        structuredSummary?: StructuredSummary['structuredSummary'];
+        notions?: Array<{ terme?: string; definition?: string; term?: string }>;
+        resume?: string;
+        structuredSummary?: StructuredSummary["structuredSummary"];
         keyPoints?: string[];
       };
 
-      // Normaliser les notions : convertir en format { terme, definition }
-      const normalizeNotions = (notions: unknown): Array<{ terme: string; definition: string }> => {
-        if (!Array.isArray(notions)) return [];
-        return notions.map((n) => {
-          if (typeof n === "string") {
-            // Format ancien : string simple → convertir en objet avec définition vide
-            return { terme: n, definition: "" };
-          }
-          if (typeof n === "object" && n !== null && "terme" in n) {
-            // Format nouveau : { terme, definition }
-            return {
-              terme: typeof n.terme === "string" ? n.terme : "",
-              definition: typeof n.definition === "string" ? n.definition : "",
-            };
-          }
-          if (typeof n === "object" && n !== null && "term" in n) {
-            // Format alternatif : { term, definition }
-            return {
-              terme: typeof (n as { term?: string }).term === "string" ? (n as { term: string }).term : "",
-              definition: typeof (n as { definition?: string }).definition === "string" ? (n as { definition: string }).definition : "",
-            };
-          }
-          return { terme: String(n), definition: "" };
-        });
-      };
-
-      // Si format nouveau (titre/resume/pointsCles/notions), utiliser directement
-      if (parsed.titre && parsed.resume !== undefined) {
+      // Format nouveau : introduction + contenu + conclusion (structure JSON forcée)
+      if (
+        parsed.introduction != null &&
+        parsed.contenu != null &&
+        Array.isArray(parsed.contenu.sections) &&
+        parsed.conclusion != null
+      ) {
+        const resumeMarkdown = structuredJsonToMarkdown(parsed);
+        const notionsNorm = normalizeNotions(parsed.notions);
+        summary = {
+          titre: typeof parsed.titre === "string" ? parsed.titre : "Résumé",
+          resume: resumeMarkdown,
+          pointsCles: Array.isArray(parsed.pointsCles) ? parsed.pointsCles : [],
+          notions: notionsNorm,
+        };
+      } else if (parsed.titre && parsed.resume !== undefined) {
+        // Ancien format (titre + resume texte libre) — rétrocompatibilité
         summary = {
           titre: parsed.titre || "Résumé",
           resume: parsed.resume || "",
@@ -460,13 +465,13 @@ ${truncated}`;
           notions: normalizeNotions(parsed.notions),
         };
       } else if (parsed.structuredSummary) {
-        // Format ancien (structuredSummary) → convertir
         const rawSummary: StructuredSummary = {
           structuredSummary: parsed.structuredSummary,
           keyPoints: parsed.keyPoints || [],
-          notions: parsed.notions?.map((n: unknown) =>
-            typeof n === "string" ? { term: n, definition: "" } : (n as { term: string; definition: string })
-          ) || [],
+          notions:
+            (parsed.notions as Array<{ term?: string; definition?: string }>)?.map((n) =>
+              typeof n === "string" ? { term: n, definition: "" } : { term: n?.term ?? "", definition: n?.definition ?? "" }
+            ) ?? [],
         };
         const legacySummary = toLegacyFormat(rawSummary);
         summary = {
@@ -476,7 +481,6 @@ ${truncated}`;
           notions: normalizeNotions(legacySummary.notions),
         };
       } else {
-        // Fallback
         summary = {
           titre: "Résumé",
           resume: textToSend.substring(0, 200) + "...",
