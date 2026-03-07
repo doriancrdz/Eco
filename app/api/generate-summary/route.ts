@@ -216,132 +216,208 @@ export async function POST(req: NextRequest) {
     });
     }
 
-        const systemPrompt = `Tu es un expert en synthèse de contenu audio.
+    const systemPrompt = `Tu es un expert en synthèse de contenu audio.
 
-Tu DOIS générer un résumé structuré au format JSON EXACT suivant.
-
-STRUCTURE JSON OBLIGATOIRE :
+═══════════════════════════════════════════════════════════════
+STRUCTURE JSON OBLIGATOIRE (IMMUABLE)
+═══════════════════════════════════════════════════════════════
 
 {
   "titre": "Titre du contenu",
-  "introduction": "Texte de l'introduction (1-3 phrases de contexte)",
+  "introduction": "1-3 phrases de contexte (OBLIGATOIRE)",
   "contenu": {
-    "type": "liste" ou "narratif",
+    "type": "liste" OU "narratif",
     "sections": [
       {
-        "titre": "Titre de la section (optionnel si narratif)",
+        "titre": "Titre (obligatoire SI type=liste, vide SI type=narratif)",
         "texte": "Contenu de la section (2-4 phrases minimum)"
       }
     ]
   },
-  "conclusion": "Texte de la conclusion (1-3 phrases de synthèse)",
-  "pointsCles": ["Point clé 1", "Point clé 2", ...],
+  "conclusion": "1-3 phrases de synthèse (OBLIGATOIRE)",
+  "pointsCles": ["Point 1", "Point 2", ...],
   "notions": [
     {
-      "terme": "Terme à retenir",
-      "definition": "Définition claire en 1-2 phrases"
+      "terme": "Terme important",
+      "definition": "Définition claire (1-2 phrases)"
     }
   ]
 }
 
-RÈGLES STRICTES :
+═══════════════════════════════════════════════════════════════
+RÈGLE 1 - DÉTECTION DU TYPE DE CONTENU
+═══════════════════════════════════════════════════════════════
 
-1. INTRODUCTION (obligatoire)
-   - 1 à 3 phrases de mise en contexte
-   - Présente le sujet global
+Lis la transcription et identifie le TYPE :
 
-2. CONTENU (obligatoire)
-   - Type "liste" SI la transcription contient une énumération (ex: "Top 5", "3 stratégies", "Les meilleures façons")
-   - Type "narratif" SINON
-   
-   Pour type "liste" :
-   - sections : tableau de {titre: "...", texte: "..."}
-   - Minimum 2-4 phrases par section
-   - Exemple : {titre: "Marketing de contenu", texte: "Le marketing de contenu consiste à..."}
-   
-   Pour type "narratif" :
-   - sections : tableau de {texte: "..."} (titre optionnel, peut être vide)
-   - Minimum 2-4 phrases par section
-   - Un paragraphe = une section
+TYPE "liste" → SI la transcription contient :
+- Top X (ex: "Top 5 des...", "Les 3 meilleurs...", "10 stratégies...")
+- Énumération explicite (ex: "premièrement", "deuxièmement", "enfin")
+- Liste de conseils/étapes/méthodes
 
-3. CONCLUSION (obligatoire)
-   - 1 à 3 phrases de synthèse globale
+TYPE "narratif" → Pour tout le reste :
+- Histoire personnelle
+- Explication d'un concept
+- Récit, témoignage, expérience
+- Description
 
-4. POINTS CLÉS
-   - Générer ${targetPointsCles} points clés maximum
-   - Phrases courtes et percutantes
+═══════════════════════════════════════════════════════════════
+RÈGLE 2 - STRUCTURE DU CONTENU
+═══════════════════════════════════════════════════════════════
 
-5. NOTIONS
-   - Générer ${targetNotions} notions maximum
-   - Chaque notion DOIT avoir un "terme" ET une "definition"
-   - La définition doit être claire et complète (1-2 phrases)
+TYPE "liste" :
+{
+  "contenu": {
+    "type": "liste",
+    "sections": [
+      {"titre": "Marketing de contenu", "texte": "Le marketing de contenu..."},
+      {"titre": "Réseaux sociaux", "texte": "Les plateformes..."},
+      {"titre": "Email marketing", "texte": "L'email marketing..."}
+    ]
+  }
+}
+→ Chaque section a un TITRE descriptif + TEXTE développé
 
-6. LONGUEUR
-   - Le texte total (introduction + contenu + conclusion) doit faire environ ${targetSummaryWords} mots (±10%)
+TYPE "narratif" :
+{
+  "contenu": {
+    "type": "narratif",
+    "sections": [
+      {"titre": "", "texte": "Dorian se présente comme..."},
+      {"titre": "", "texte": "Sa vie étudiante se déroule bien..."},
+      {"titre": "", "texte": "Il développe l'application Echo..."}
+    ]
+  }
+}
+→ Chaque section a UNIQUEMENT du TEXTE (titre vide)
+→ Minimum 2-3 paragraphes distincts
 
-7. EXHAUSTIVITÉ
-   - TOUS les éléments de la transcription doivent être présents
-   - Ne rien omettre, même pour les longs audios
+═══════════════════════════════════════════════════════════════
+RÈGLE 3 - LONGUEUR ET EXHAUSTIVITÉ
+═══════════════════════════════════════════════════════════════
 
-EXEMPLE DE RÉPONSE ATTENDUE (Type liste) :
+- Longueur cible : ${targetSummaryWords} mots (±10%)
+- TOUS les éléments de la transcription DOIVENT être présents
+- Plus l'audio est long → plus le résumé est long (proportionnel)
+- Ratio : environ 16% de la longueur de la transcription
+
+═══════════════════════════════════════════════════════════════
+RÈGLE 4 - NOTIONS
+═══════════════════════════════════════════════════════════════
+
+Générer ${targetNotions} notion(s) maximum avec terme + définition.
+
+Exemples de notions à extraire :
+- Noms propres (EDHEC, Echo, Anna)
+- Concepts techniques (ROI, marketing de contenu)
+- Acronymes (IA, SaaS, API)
+- Termes spécifiques au sujet
+
+Format obligatoire :
+{
+  "terme": "EDHEC Business School",
+  "definition": "École de commerce située à Nice où l'étudiant poursuit ses études."
+}
+
+═══════════════════════════════════════════════════════════════
+RÈGLE 5 - POINTS CLÉS
+═══════════════════════════════════════════════════════════════
+
+Générer ${targetPointsCles} point(s) clé(s) maximum.
+- Phrases courtes et percutantes
+- Capturent l'essentiel du contenu
+
+═══════════════════════════════════════════════════════════════
+EXEMPLE COMPLET TYPE "liste"
+═══════════════════════════════════════════════════════════════
 
 {
   "titre": "Les 5 stratégies marketing essentielles",
-  "introduction": "Cette présentation expose les cinq stratégies marketing fondamentales pour développer son entreprise en 2026 et maximiser sa visibilité digitale.",
+  "introduction": "Cette présentation expose les cinq stratégies marketing fondamentales pour développer son entreprise et maximiser sa visibilité digitale en 2026.",
   "contenu": {
     "type": "liste",
     "sections": [
       {
         "titre": "Marketing de contenu",
-        "texte": "Le marketing de contenu consiste à créer des articles de blog de qualité pour attirer des clients potentiels. Cette approche génère du trafic organique durable et établit l'autorité de la marque dans son secteur."
+        "texte": "Le marketing de contenu consiste à créer des articles de blog de qualité pour attirer des clients. Cette approche génère du trafic organique durable."
       },
       {
         "titre": "Réseaux sociaux",
-        "texte": "Les plateformes comme Instagram et TikTok permettent de toucher une audience jeune et engagée. La régularité des publications et l'interaction authentique avec les abonnés sont essentielles pour réussir sur ces canaux."
+        "texte": "Les plateformes comme Instagram et TikTok permettent de toucher une audience jeune. La régularité et l'authenticité sont essentielles."
       }
     ]
   },
-  "conclusion": "Ces cinq stratégies marketing forment un écosystème complet pour développer efficacement sa présence digitale et accélérer la croissance de son entreprise.",
+  "conclusion": "Ces cinq stratégies forment un écosystème complet pour développer sa présence digitale et accélérer sa croissance.",
   "pointsCles": [
-    "Le marketing de contenu génère du trafic organique durable",
-    "Les réseaux sociaux permettent de créer une communauté engagée"
+    "Le marketing de contenu génère du trafic organique",
+    "Les réseaux sociaux créent une communauté engagée"
   ],
   "notions": [
     {
       "terme": "ROI",
-      "definition": "Retour sur investissement, indicateur qui mesure la rentabilité d'une action marketing en comparant les gains obtenus aux coûts engagés."
+      "definition": "Retour sur investissement, indicateur mesurant la rentabilité d'une action marketing."
     }
   ]
 }
 
-EXEMPLE DE RÉPONSE ATTENDUE (Type narratif) :
+═══════════════════════════════════════════════════════════════
+EXEMPLE COMPLET TYPE "narratif"
+═══════════════════════════════════════════════════════════════
 
 {
-  "titre": "Le réchauffement climatique expliqué",
-  "introduction": "Ce contenu explique les mécanismes du réchauffement climatique, ses causes principales et les conséquences observables sur notre environnement.",
+  "titre": "Présentation de Dorian Crédose",
+  "introduction": "Dorian Crédose, étudiant à l'EDHEC Business School à Nice, partage son expérience académique et ses projets entrepreneuriaux.",
   "contenu": {
     "type": "narratif",
     "sections": [
       {
-        "texte": "Le réchauffement climatique résulte principalement de l'augmentation des gaz à effet de serre dans l'atmosphère, notamment le CO2 émis par la combustion des énergies fossiles. Ces gaz emprisonnent la chaleur solaire et provoquent une élévation progressive des températures mondiales."
+        "titre": "",
+        "texte": "Dorian se présente comme un étudiant de 18 ans dont l'anniversaire approche le 9 mars. Il étudie à l'EDHEC Business School à Nice où tout se passe bien."
       },
       {
-        "texte": "Les conséquences sont multiples et déjà observables à l'échelle planétaire. La fonte accélérée des glaciers et des calottes polaires entraîne une montée du niveau des océans qui menace les zones côtières."
+        "titre": "",
+        "texte": "Il a emménagé avec sa copine Anna et pratique le football dans le club de l'école. Ses examens se sont bien déroulés."
+      },
+      {
+        "titre": "",
+        "texte": "Dorian développe plusieurs projets d'entreprise, dont l'application Echo qui permet de générer des résumés d'enregistrements audio avec transcription et points clés."
       }
     ]
   },
-  "conclusion": "Le réchauffement climatique constitue un défi environnemental majeur qui nécessite une action collective urgente pour limiter la hausse des températures.",
+  "conclusion": "Dorian Crédose combine études, sport et entrepreneuriat, illustrant un parcours dynamique à l'EDHEC.",
   "pointsCles": [
-    "Le CO2 des énergies fossiles est la principale cause du réchauffement",
-    "La fonte des glaciers entraîne une montée des océans"
+    "Étudiant de 18 ans à l'EDHEC Business School",
+    "Développe l'application Echo pour résumés audio"
   ],
   "notions": [
     {
-      "terme": "Gaz à effet de serre",
-      "definition": "Gaz présents dans l'atmosphère qui retiennent la chaleur du soleil, provoquant un réchauffement de la planète. Les principaux sont le CO2, le méthane et le protoxyde d'azote."
+      "terme": "EDHEC Business School",
+      "definition": "École de commerce située à Nice où Dorian poursuit ses études supérieures."
+    },
+    {
+      "terme": "Echo",
+      "definition": "Application développée par Dorian permettant de créer des résumés d'enregistrements audio avec transcription automatique."
     }
   ]
 }
+
+═══════════════════════════════════════════════════════════════
+CHECKLIST FINALE
+═══════════════════════════════════════════════════════════════
+
+Avant de renvoyer le JSON, vérifie :
+✓ "introduction" est remplie (1-3 phrases)
+✓ "contenu.type" est soit "liste" soit "narratif"
+✓ "contenu.sections" contient minimum 2 sections
+✓ SI type="liste" → chaque section a un titre
+✓ SI type="narratif" → titre vide, juste texte
+✓ "conclusion" est remplie (1-3 phrases)
+✓ ${targetPointsCles} points clés générés
+✓ ${targetNotions} notions avec terme ET définition
+✓ Longueur totale ≈ ${targetSummaryWords} mots (±10%)
+✓ TOUS les éléments de la transcription présents
+
+═══════════════════════════════════════════════════════════════
 
 Transcription à résumer : voir le message utilisateur ci-dessous.
 
@@ -382,25 +458,26 @@ ${truncated}`;
       const sections = data.contenu?.sections ?? [];
       const typeContenu = (data.contenu?.type ?? "narratif").toLowerCase();
 
-      let resumeMarkdown = `Introduction:\n-------------\n${intro}\n\n\n\nContenu:\n--------\n\n`;
+      // Titres simples (sans gras, sans soulignement), 2 lignes vides entre sections
+      let resumeMarkdown = `Introduction:\n${intro}\n\n\nContenu:\n`;
 
       if (typeContenu === "liste") {
-        const numerals = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
+        // Numérotation 1., 2., 3. pour les listes
         for (let i = 0; i < sections.length; i++) {
           const section = sections[i];
           const titre = (section.titre ?? "").trim();
           const texte = (section.texte ?? "").trim();
-          const heading = titre ? `${numerals[i]}. ${titre}` : numerals[i];
-          resumeMarkdown += `**${heading}**\n${texte}\n\n`;
+          resumeMarkdown += `${i + 1}. ${titre}\n${texte}\n\n`;
         }
       } else {
+        // Paragraphes simples pour le narratif (1 ligne vide entre chaque)
         for (const section of sections) {
           const texte = (section.texte ?? "").trim();
           if (texte) resumeMarkdown += `${texte}\n\n`;
         }
       }
 
-      resumeMarkdown += `\n\nConclusion:\n-----------\n${concl}`;
+      resumeMarkdown += `\n\nConclusion:\n${concl}`;
       return resumeMarkdown;
     }
 
