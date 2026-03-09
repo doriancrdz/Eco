@@ -10,6 +10,7 @@ const ADMIN_EMAIL = 'cdorian654@yahoo.com';
 
 interface User {
   id: string;
+  clerkUserId: string;
   email: string;
   firstName: string | null;
   lastName: string | null;
@@ -67,6 +68,7 @@ export default function AdminPage() {
   const handleGrantPlan = async (userId: string, plan: string) => {
     setUpdating(true);
     try {
+      console.log('[Admin] Envoi grant-plan:', { userId, plan });
       const response = await fetch('/api/admin/grant-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -290,7 +292,7 @@ export default function AdminPage() {
                   Annuler
                 </button>
                 <button
-                  onClick={() => handleGrantPlan(selectedUser.id, newPlan)}
+                  onClick={() => handleGrantPlan(selectedUser.clerkUserId, newPlan)}
                   disabled={updating}
                   className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg disabled:opacity-50"
                 >

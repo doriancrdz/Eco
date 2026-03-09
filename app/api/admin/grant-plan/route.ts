@@ -25,28 +25,46 @@ export async function POST(request: NextRequest) {
 
     const { userId, plan } = await request.json();
 
+    console.log("[Grant Plan] Reçu:", { userId, plan });
+
     const allowedPlans: PlanType[] = ["student", "pro", "business"];
 
-    if (!userId || !plan || !allowedPlans.includes(plan)) {
+    if (!userId || !plan) {
+      console.log("[Grant Plan] ❌ Paramètres manquants", {
+        hasUserId: !!userId,
+        hasPlan: !!plan,
+      });
       return NextResponse.json(
-        { error: "Paramètres invalides" },
+        {
+          error: "Paramètres manquants",
+          details: { hasUserId: !!userId, hasPlan: !!plan },
+        },
+        { status: 400 }
+      );
+    }
+
+    if (!allowedPlans.includes(plan)) {
+      console.log("[Grant Plan] ❌ Plan invalide:", plan);
+      return NextResponse.json(
+        { error: "Plan invalide", details: { plan, allowedPlans } },
         { status: 400 }
       );
     }
 
     const existingUser = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { clerkUserId: userId },
       select: { id: true },
     });
 
     if (!existingUser) {
+      console.log("[Grant Plan] ❌ Utilisateur non trouvé:", userId);
       return NextResponse.json(
-        { error: "Utilisateur introuvable" },
+        { error: "Utilisateur non trouvé", userId },
         { status: 404 }
       );
     }
 
-    await updateUserPlan(userId, plan as PlanType, undefined, null, {
+    await updateUserPlan(existingUser.id, plan as PlanType, undefined, null, {
       billingMode: null,
       commitmentEndAt: null,
       subscriptionStatus: null,
@@ -56,7 +74,7 @@ export async function POST(request: NextRequest) {
     });
 
     const updated = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { id: existingUser.id },
       select: {
         id: true,
         plan: true,

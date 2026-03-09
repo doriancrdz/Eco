@@ -54,6 +54,7 @@ export async function GET() {
 
           return {
             id: u.id,
+            clerkUserId: u.clerkUserId,
             email,
             firstName,
             lastName,
@@ -75,6 +76,7 @@ export async function GET() {
 
           return {
             id: u.id,
+            clerkUserId: u.clerkUserId,
             email: "",
             firstName: null,
             lastName: null,
