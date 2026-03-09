@@ -29,7 +29,7 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [newPlan, setNewPlan] = useState('pro');
+  const [newPlan, setNewPlan] = useState('student');
   const [updating, setUpdating] = useState(false);
 
   // Vérifier que c'est l'admin
@@ -65,14 +65,15 @@ export default function AdminPage() {
     setLoading(false);
   };
 
-  const handleGrantPlan = async (userId: string, plan: string) => {
+  const handleGrantPlan = async (userId: string) => {
     setUpdating(true);
     try {
-      console.log('[Admin] Envoi grant-plan:', { userId, plan });
+      console.log('[Admin] Plan sélectionné:', newPlan);
+      console.log('[Admin] Envoi grant-plan:', { userId, plan: newPlan });
       const response = await fetch('/api/admin/grant-plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, plan }),
+        body: JSON.stringify({ userId, plan: newPlan }),
       });
 
       const data = await response.json();
@@ -237,7 +238,7 @@ export default function AdminPage() {
                     <button
                       onClick={() => {
                         setSelectedUser(u);
-                        setNewPlan(u.plan);
+                      setNewPlan('student');
                       }}
                       className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition-shadow"
                     >
@@ -292,7 +293,7 @@ export default function AdminPage() {
                   Annuler
                 </button>
                 <button
-                  onClick={() => handleGrantPlan(selectedUser.clerkUserId, newPlan)}
+                  onClick={() => handleGrantPlan(selectedUser.clerkUserId)}
                   disabled={updating}
                   className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-medium hover:shadow-lg disabled:opacity-50"
                 >
