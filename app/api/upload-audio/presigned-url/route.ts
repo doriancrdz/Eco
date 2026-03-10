@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
@@ -90,7 +91,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { presignedUrl, fileId, r2Key },
+      { presignedUrl, fileId, r2Key, key: r2Key },
       {
         headers: {
           "X-RateLimit-Limit": limit.toString(),

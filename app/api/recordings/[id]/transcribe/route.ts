@@ -1,4 +1,6 @@
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+export const maxDuration = 300;
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
@@ -208,73 +210,117 @@ export async function POST(
       throw new Error("Transcription échouée après retries");
     }
 
-    const whisperStart = performance.now();
-    const transcription = await transcribeWithRetry(audioFile);
-    const whisperMs = performance.now() - whisperStart;
+    // Lancer le traitement en arrière-plan et répondre immédiatement
+    (async () => {
+      try {
+        const whisperStart = performance.now();
+        const transcription = await transcribeWithRetry(audioFile);
+        const whisperMs = performance.now() - whisperStart;
 
-    const dbUpdateStart = performance.now();
-    await prisma.recording.update({
-      where: { id: recordingId },
-      data: {
-        status: "TRANSCRIBED",
-        transcriptionText: transcription,
-        audioBlobSize: audioFile.size,
-      },
-    });
-    if (process.env.NODE_ENV === "development") {
-      console.log("[transcribe] recording updated", {
-        hasTranscription: !!transcription,
-        len: transcription?.length ?? 0,
-        ts: Date.now(),
-      });
-    }
+        const dbUpdateStart = performance.now();
+        await prisma.recording.update({
+          where: { id: recordingId },
+          data: {
+            status: "TRANSCRIBED",
+            transcriptionText: transcription,
+            audioBlobSize: audioFile.size,
+          },
+        });
+        if (process.env.NODE_ENV === "development") {
+          console.log("[transcribe/bg] recording updated", {
+            hasTranscription: !!transcription,
+            len: transcription?.length ?? 0,
+            ts: Date.now(),
+          });
+        }
 
-    // Sync Eco (id = recordingId) : upsert pour être robuste si l'Eco n'existe pas encore
-    if (process.env.NODE_ENV === "development") {
-      console.log("[transcribe] syncing eco", { ecoId: recordingId });
-    }
-    const defaultTitle = `Eco du ${new Date().toLocaleDateString("fr-FR")}`;
-    const updatedEco = await prisma.eco.upsert({
-      where: { id: recordingId },
-      create: {
-        id: recordingId,
-        userId: user.id,
-        title: defaultTitle,
-        transcriptionText: transcription,
-        content: null,
-      },
-      update: { transcriptionText: transcription },
-      select: { id: true, transcriptionText: true },
-    });
-    if (process.env.NODE_ENV === "development") {
-      console.log("[transcribe] eco synced", {
-        ecoId: updatedEco?.id,
-        hasTranscription: !!updatedEco?.transcriptionText,
-        len: updatedEco?.transcriptionText?.length ?? 0,
-        ts: Date.now(),
-      });
-    }
+        if (process.env.NODE_ENV === "development") {
+          console.log("[transcribe/bg] syncing eco", { ecoId: recordingId });
+        }
+        const defaultTitle = `Eco du ${new Date().toLocaleDateString("fr-FR")}`;
+        const updatedEco = await prisma.eco.upsert({
+          where: { id: recordingId },
+          create: {
+            id: recordingId,
+            userId: user.id,
+            title: defaultTitle,
+            transcriptionText: transcription,
+            content: null,
+          },
+          update: { transcriptionText: transcription },
+          select: { id: true, transcriptionText: true },
+        });
+        if (process.env.NODE_ENV === "development") {
+          console.log("[transcribe/bg] eco synced", {
+            ecoId: updatedEco?.id,
+            hasTranscription: !!updatedEco?.transcriptionText,
+            len: updatedEco?.transcriptionText?.length ?? 0,
+            ts: Date.now(),
+          });
+        }
 
-    const dbUpdateMs = performance.now() - dbUpdateStart;
-    const totalMs = performance.now() - reqStart;
-    const transcriptionLen = transcription?.length ?? 0;
-    if (process.env.NODE_ENV === "development") {
-      console.log("[transcribe] end", {
-        traceId,
-        recordingId,
-        transcriptionLen,
-        whisperMs: whisperMs.toFixed(0),
-        dbUpdateMs: dbUpdateMs.toFixed(0),
-        totalMs: totalMs.toFixed(0),
-        ts: Date.now(),
-      });
-    }
+        // Enchaîner la génération du résumé en tâche de fond
+        try {
+          const sumRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL ?? ""}/api/generate-summary`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              ...(traceId ? { "x-eco-trace": traceId } : {}),
+            },
+            body: JSON.stringify({ recordingId }),
+          });
+          if (process.env.NODE_ENV === "development") {
+            const sumJson = await sumRes.json().catch(() => ({}));
+            console.log("[transcribe/bg] generate-summary", {
+              status: sumRes.status,
+              body: sumJson,
+            });
+          }
+        } catch (e) {
+          if (process.env.NODE_ENV === "development") {
+            console.error("[transcribe/bg] generate-summary failed", e);
+          }
+        }
 
+        const dbUpdateMs = performance.now() - dbUpdateStart;
+        const totalMs = performance.now() - reqStart;
+        const transcriptionLen = transcription?.length ?? 0;
+        if (process.env.NODE_ENV === "development") {
+          console.log("[transcribe/bg] end", {
+            traceId,
+            recordingId,
+            transcriptionLen,
+            whisperMs: whisperMs.toFixed(0),
+            dbUpdateMs: dbUpdateMs.toFixed(0),
+            totalMs: totalMs.toFixed(0),
+            ts: Date.now(),
+          });
+        }
+      } catch (error) {
+        const err = error as { message?: string };
+        if (process.env.NODE_ENV === "development") {
+          console.error("[recordings/transcribe/bg] Background error:", err?.message ?? String(error));
+        }
+        try {
+          await prisma.recording.update({
+            where: { id: recordingId },
+            data: {
+              status: "ERROR",
+              errorMessage: err?.message ?? "Erreur lors de la transcription en arrière-plan",
+            },
+          });
+        } catch (e) {
+          if (process.env.NODE_ENV === "development") {
+            console.error("[recordings/transcribe/bg] Failed to set ERROR status:", e);
+          }
+        }
+      }
+    })();
+
+    // Réponse immédiate pour éviter le timeout côté client / Vercel
     return NextResponse.json({
       recordingId,
-      transcription,
-      status: "TRANSCRIBED",
-      transcriptionLen,
+      status: "PROCESSING",
     });
   } catch (error: unknown) {
     const err = error as { message?: string; status?: number; code?: string; type?: string };

@@ -782,27 +782,10 @@ export default function Home() {
         throw new Error(createJson.error || "Erreur création Eco");
       }
 
+      // Débit du quota + démarrage transcription (backend non bloquant)
       await completeAndTranscribeFromR2(recordingId, durationSeconds, traceId, logStep);
 
-      // 3b) Déclencher generate-summary tout de suite (EcoView le fera aussi au poll si besoin)
-      try {
-        const sumRes = await fetch("/api/generate-summary", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-eco-trace": traceId },
-          body: JSON.stringify({ recordingId }),
-        });
-        const sumJson = await sumRes.json().catch(() => ({}));
-        if (process.env.NODE_ENV !== "production") {
-          console.log("[PIPELINE] generate-summary", "status=" + sumRes.status, sumJson);
-          logStep({ step: "generate-summary", status: sumRes.status, json: sumJson });
-        }
-      } catch (e) {
-        if (process.env.NODE_ENV === "development") {
-          console.warn("[processRecording] generate-summary kick failed", e);
-        }
-        logStep({ step: "generate-summary", status: 0, json: { error: String(e) } });
-      }
-
+      // Mettre immédiatement l'Eco minimal en focus (placeholder) pendant le traitement
       const newEco: Eco = {
         ...minimalEco,
         transcription_text: "",
@@ -810,7 +793,6 @@ export default function Home() {
         folder: "",
       };
       setIsFocusMode(false);
-      setIsProcessing(false);
       setSelectedEco(newEco.id);
       setCurrentEco(newEco);
       setSelectedFolder(null);
@@ -819,27 +801,96 @@ export default function Home() {
       // Rafraîchir le quota UI (minutes en haut à droite)
       window.dispatchEvent(new Event("quota-updated"));
 
-      // 4) Charger l'Eco (mise à jour avec données complètes)
-      try {
-        const getRes = await fetch(`/api/ecos/${newEco.id}`, {
-          cache: "no-store",
-          headers: traceId ? { "x-eco-trace": traceId } : undefined,
-        });
-        logStep({ step: "getEco", status: getRes.status });
-        if (getRes.ok) {
-          const data = await getRes.json();
-          if (data.eco) {
-            setCurrentEco(data.eco);
-            currentEcoCacheRef.current = { id: newEco.id, data: data.eco, timestamp: Date.now() };
-          }
-        }
-      } catch (e) {
-        if (process.env.NODE_ENV === "development") {
-          console.error("[processRecording] Erreur chargement ECO", e);
-        }
-      }
+      // Polling statut recording → chargement ECO complet quand DONE
+      await new Promise<void>((resolve, reject) => {
+        const startTs = Date.now();
+        const interval = setInterval(async () => {
+          try {
+            const res = await fetch(`/api/recordings/${recordingId}/status`);
+            if (!res.ok) {
+              if (process.env.NODE_ENV === "development") {
+                console.warn("[pollRecordingStatus] Statut HTTP non OK", {
+                  status: res.status,
+                  recordingId,
+                });
+              }
+              return;
+            }
+            const { status, summary, transcription, error } = await res.json();
 
-      window.dispatchEvent(new Event("eco-updated"));
+            if (status === "DONE" || status === "TRANSCRIBED") {
+              clearInterval(interval);
+
+              try {
+                const getRes = await fetch(`/api/ecos/${recordingId}`, {
+                  cache: "no-store",
+                  headers: traceId ? { "x-eco-trace": traceId } : undefined,
+                });
+                logStep({ step: "getEco", status: getRes.status });
+                if (getRes.ok) {
+                  const data = await getRes.json();
+                  if (data.eco) {
+                    setCurrentEco(data.eco);
+                    currentEcoCacheRef.current = {
+                      id: recordingId!,
+                      data: data.eco,
+                      timestamp: Date.now(),
+                    };
+                  }
+                }
+              } catch (e) {
+                if (process.env.NODE_ENV === "development") {
+                  console.error("[pollRecordingStatus] Erreur chargement ECO", e);
+                }
+              }
+
+              window.dispatchEvent(new Event("eco-updated"));
+              setIsProcessing(false);
+              resolve();
+            } else if (status === "ERROR") {
+              clearInterval(interval);
+              setIsProcessing(false);
+              const message =
+                error || "Une erreur est survenue pendant le traitement. Réessayez.";
+              if (process.env.NODE_ENV === "development") {
+                console.error("[pollRecordingStatus] ERROR", { recordingId, message });
+              }
+              alert(message);
+              reject(new Error(message));
+            } else {
+              // PROCESSING → continuer
+              if (process.env.NODE_ENV === "development") {
+                const elapsed = ((Date.now() - startTs) / 1000).toFixed(0);
+                console.log("[pollRecordingStatus] Toujours en traitement…", {
+                  recordingId,
+                  status,
+                  elapsedSeconds: elapsed,
+                });
+              }
+            }
+          } catch (e) {
+            clearInterval(interval);
+            setIsProcessing(false);
+            if (process.env.NODE_ENV === "development") {
+              console.error("[pollRecordingStatus] Exception", e);
+            }
+            reject(e as Error);
+          }
+        }, 3000);
+
+        // Timeout de sécurité : 10 minutes
+        setTimeout(() => {
+          clearInterval(interval);
+          setIsProcessing(false);
+          const message =
+            "Le traitement prend trop de temps. Veuillez réessayer dans quelques instants.";
+          if (process.env.NODE_ENV === "development") {
+            console.warn("[pollRecordingStatus] Timeout", { recordingId });
+          }
+          alert(message);
+          reject(new Error("Polling timeout"));
+        }, 600000);
+      });
 
       // 5) Diagnostic DEV : tableau + GET /api/debug/pipeline/[id]
       if (process.env.NODE_ENV !== "production" && recordingId) {

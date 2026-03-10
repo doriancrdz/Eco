@@ -1,9 +1,11 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import OpenAI from "openai";
+import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { canUseMinutes } from "@/lib/billing";
 import { prisma } from "@/lib/prisma";
 import { getOrCreateUserWithQuotaSeconds, getAvailableSeconds, debitRecordingSeconds } from "@/lib/usage";
@@ -13,6 +15,35 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
   timeout: 120000, // 120 secondes pour les longs audios (25+ min)
 });
+
+function getR2Client(): S3Client | null {
+  const accountId =
+    process.env.R2_ACCOUNT_ID ||
+    process.env.CLOUDFLARE_R2_ACCOUNT_ID ||
+    process.env.CLOUDFLARE_R2_ACCOUNT_ID;
+  const accessKeyId =
+    process.env.R2_ACCESS_KEY_ID ||
+    process.env.CLOUDFLARE_R2_ACCESS_KEY_ID ||
+    process.env.CLOUDFLARE_R2_ACCESS_KEY_ID;
+  const secretAccessKey =
+    process.env.R2_SECRET_ACCESS_KEY ||
+    process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY ||
+    process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY;
+  const endpoint =
+    process.env.CLOUDFLARE_R2_ENDPOINT ||
+    (accountId ? `https://${accountId}.r2.cloudflarestorage.com` : undefined);
+
+  if (!endpoint || !accessKeyId || !secretAccessKey) return null;
+
+  return new S3Client({
+    region: "auto",
+    endpoint,
+    credentials: {
+      accessKeyId,
+      secretAccessKey,
+    },
+  });
+}
 
 /**
  * PHASE A: Transcription rapide uniquement
@@ -42,69 +73,162 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 2. Récupérer le fichier audio depuis FormData (clé "audio")
-    const formDataStart = performance.now();
-    const formData = await req.formData();
-    const audioFile = formData.get("audio");
-    const durationSecondsStr = formData.get("durationSeconds");
-    timings.formDataParse = performance.now() - formDataStart;
+    // 2. Récupérer soit :
+    //    - une key R2 + durée (JSON) pour éviter l'upload direct vers Vercel
+    //    - soit, en fallback, le fichier audio via FormData (clé "audio")
+    const contentTypeHeader = req.headers.get("content-type") || "";
+    let audioFile: File | null = null;
+    let durationSeconds: number | null = null;
 
-    if (process.env.NODE_ENV === "development") {
-      console.log("[transcribe] FormData reçu", {
-        hasAudioFile: !!audioFile,
-        audioFileType: audioFile && typeof audioFile === "object" && "type" in audioFile ? (audioFile as File).type : typeof audioFile,
-        audioFileSize: audioFile && typeof audioFile === "object" && "size" in audioFile ? (audioFile as File).size : null,
-        durationSecondsStr,
-      });
-    }
+    if (contentTypeHeader.startsWith("application/json")) {
+      const jsonStart = performance.now();
+      const body = await req.json().catch(() => null);
+      timings.formDataParse = performance.now() - jsonStart;
 
-    if (!audioFile || !(audioFile instanceof File)) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("[transcribe] Fichier audio invalide");
+      const key = body?.key as string | undefined;
+      const durationSecondsValue = body?.durationSeconds as number | undefined;
+
+      if (!key || typeof key !== "string") {
+        return NextResponse.json(
+          { error: "Clé R2 manquante ou invalide." },
+          { status: 400 }
+        );
       }
-      return NextResponse.json(
-        { error: "Aucun fichier audio valide fourni." },
-        { status: 400 }
-      );
-    }
 
-    if (audioFile.size === 0) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("[transcribe] Fichier audio vide");
+      if (
+        typeof durationSecondsValue !== "number" ||
+        !Number.isFinite(durationSecondsValue) ||
+        durationSecondsValue <= 0
+      ) {
+        return NextResponse.json(
+          { error: "Durée de l'enregistrement manquante ou invalide." },
+          { status: 400 }
+        );
       }
-      return NextResponse.json(
-        { error: "Le fichier audio est vide." },
-        { status: 400 }
+
+      durationSeconds = durationSecondsValue;
+
+      const s3 = getR2Client();
+      const bucket =
+        process.env.R2_BUCKET_NAME || process.env.CLOUDFLARE_R2_BUCKET_NAME;
+      if (!s3 || !bucket) {
+        return NextResponse.json(
+          { error: "Stockage R2 non configuré." },
+          { status: 503 }
+        );
+      }
+
+      const object = await s3.send(
+        new GetObjectCommand({
+          Bucket: bucket,
+          Key: key,
+        })
       );
+
+      const bodyStream = object.Body;
+      if (!bodyStream) {
+        return NextResponse.json(
+          { error: "Impossible de lire le fichier audio depuis R2." },
+          { status: 500 }
+        );
+      }
+
+      const audioBuffer = Buffer.from(await bodyStream.transformToByteArray());
+      const fileName = key.split("/").pop() || "recording.webm";
+      const mimeType =
+        object.ContentType || "audio/webm";
+      audioFile = new File([audioBuffer], fileName, { type: mimeType });
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("[transcribe] Récupéré depuis R2", {
+          key,
+          mimeType,
+          sizeBytes: audioBuffer.length,
+          sizeMB: (audioBuffer.length / 1024 / 1024).toFixed(2),
+        });
+      }
+    } else {
+      const formDataStart = performance.now();
+      const formData = await req.formData();
+      const formAudioFile = formData.get("audio");
+      const durationSecondsStr = formData.get("durationSeconds");
+      timings.formDataParse = performance.now() - formDataStart;
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("[transcribe] FormData reçu", {
+          hasAudioFile: !!formAudioFile,
+          audioFileType:
+            formAudioFile &&
+            typeof formAudioFile === "object" &&
+            "type" in formAudioFile
+              ? (formAudioFile as File).type
+              : typeof formAudioFile,
+          audioFileSize:
+            formAudioFile &&
+            typeof formAudioFile === "object" &&
+            "size" in formAudioFile
+              ? (formAudioFile as File).size
+              : null,
+          durationSecondsStr,
+        });
+      }
+
+      if (!formAudioFile || !(formAudioFile instanceof File)) {
+        if (process.env.NODE_ENV === "development") {
+          console.error("[transcribe] Fichier audio invalide");
+        }
+        return NextResponse.json(
+          { error: "Aucun fichier audio valide fourni." },
+          { status: 400 }
+        );
+      }
+
+      if (formAudioFile.size === 0) {
+        if (process.env.NODE_ENV === "development") {
+          console.error("[transcribe] Fichier audio vide");
+        }
+        return NextResponse.json(
+          { error: "Le fichier audio est vide." },
+          { status: 400 }
+        );
+      }
+
+      const fileSizeInMB = formAudioFile.size / (1024 * 1024);
+      if (process.env.NODE_ENV === "development") {
+        console.log("[transcribe] Taille fichier:", fileSizeInMB.toFixed(2), "MB");
+      }
+      if (fileSizeInMB > 24) {
+        return NextResponse.json(
+          {
+            error:
+              "Fichier audio trop volumineux (max 24MB). Veuillez raccourcir votre enregistrement.",
+          },
+          { status: 400 }
+        );
+      }
+
+      if (!durationSecondsStr || typeof durationSecondsStr !== "string") {
+        return NextResponse.json(
+          { error: "Durée de l'enregistrement manquante ou invalide." },
+          { status: 400 }
+        );
+      }
+
+      const parsed = parseFloat(durationSecondsStr);
+      if (isNaN(parsed) || parsed < 0) {
+        return NextResponse.json(
+          { error: "Durée de l'enregistrement invalide." },
+          { status: 400 }
+        );
+      }
+
+      durationSeconds = parsed;
+      audioFile = formAudioFile;
     }
 
-    const fileSizeInMB = audioFile.size / (1024 * 1024);
-    if (process.env.NODE_ENV === "development") {
-      console.log("[transcribe] Taille fichier:", fileSizeInMB.toFixed(2), "MB");
-    }
-    if (fileSizeInMB > 24) {
+    if (!audioFile || durationSeconds == null) {
       return NextResponse.json(
-        { error: "Fichier audio trop volumineux (max 24MB). Veuillez raccourcir votre enregistrement." },
-        { status: 400 }
-      );
-    }
-
-    // 3. Calculer la durée EXACTE de l'audio en secondes
-    let durationSeconds: number;
-    if (!durationSecondsStr || typeof durationSecondsStr !== "string") {
-      // Fallback: essayer de calculer depuis le fichier audio
-      // Note: côté serveur, on ne peut pas facilement lire la durée d'un Blob
-      // On utilise la durée fournie par le client qui l'a calculée depuis l'audio réel
-      return NextResponse.json(
-        { error: "Durée de l'enregistrement manquante ou invalide." },
-        { status: 400 }
-      );
-    }
-
-    durationSeconds = parseFloat(durationSecondsStr);
-    if (isNaN(durationSeconds) || durationSeconds < 0) {
-      return NextResponse.json(
-        { error: "Durée de l'enregistrement invalide." },
+        { error: "Requête invalide (audio ou durée manquants)." },
         { status: 400 }
       );
     }
