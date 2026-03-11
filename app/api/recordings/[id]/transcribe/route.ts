@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 
 import { NextRequest, NextResponse } from "next/server";
+import { waitUntil } from "@vercel/functions";
 import { auth } from "@clerk/nextjs/server";
 import OpenAI from "openai";
 import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
@@ -36,6 +37,7 @@ export async function POST(
 ) {
   const reqStart = performance.now();
   const traceId = req.headers.get("x-eco-trace") ?? null;
+  const origin = req.nextUrl.origin;
 
   try {
     const authStart = performance.now();
@@ -130,6 +132,7 @@ export async function POST(
       const mime = getRes.ContentType ?? "audio/webm";
       audioFile = new File([buffer], "recording.webm", { type: mime });
       const sizeMB = (audioFile.size / 1024 / 1024).toFixed(2);
+      console.log(`[ECO] Audio fetched from R2 recordingId=${recordingId} sizeMB=${sizeMB} mime=${mime}`);
       if (process.env.NODE_ENV === "development") {
         console.log("[transcribe] Fichier R2 récupéré", {
           key,
@@ -170,6 +173,19 @@ export async function POST(
     }
 
     const fileSize = audioFile.size;
+    const fileSizeMB = fileSize / (1024 * 1024);
+    if (fileSizeMB > 24) {
+      const message =
+        `Fichier audio trop volumineux (${fileSizeMB.toFixed(2)}MB). Limite Whisper ~25MB. ` +
+        `Réduisez le bitrate (ex: 48kbps) ou raccourcissez l'enregistrement.`;
+      console.error(`[ECO] FILE_TOO_LARGE recordingId=${recordingId} sizeMB=${fileSizeMB.toFixed(2)}`);
+      await prisma.recording.update({
+        where: { id: recordingId },
+        data: { status: "ERROR", errorMessage: message, audioBlobSize: fileSize },
+      }).catch(() => {});
+      return NextResponse.json({ ok: false, error: message, code: "FILE_TOO_LARGE" }, { status: 400 });
+    }
+
     if (process.env.NODE_ENV === "development") {
       console.log("[transcribe] start", { traceId, recordingId, userId: user.id, fileSize, ts: Date.now() });
     }
@@ -210,12 +226,14 @@ export async function POST(
       throw new Error("Transcription échouée après retries");
     }
 
-    // Lancer le traitement en arrière-plan et répondre immédiatement
-    (async () => {
+    console.log(`[ECO] Start processing recordingId=${recordingId}`);
+
+    const processInBackground = async () => {
       try {
         const whisperStart = performance.now();
         const transcription = await transcribeWithRetry(audioFile);
         const whisperMs = performance.now() - whisperStart;
+        console.log(`[ECO] Whisper transcription done recordingId=${recordingId} chars=${transcription.length} whisperMs=${whisperMs.toFixed(0)}`);
 
         const dbUpdateStart = performance.now();
         await prisma.recording.update({
@@ -261,7 +279,8 @@ export async function POST(
 
         // Enchaîner la génération du résumé en tâche de fond
         try {
-          const sumRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL ?? ""}/api/generate-summary`, {
+          console.log(`[ECO] Summary generation start recordingId=${recordingId}`);
+          const sumRes = await fetch(`${origin}/api/generate-summary`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -276,15 +295,15 @@ export async function POST(
               body: sumJson,
             });
           }
+          console.log(`[ECO] Summary generation request done recordingId=${recordingId} status=${sumRes.status}`);
         } catch (e) {
-          if (process.env.NODE_ENV === "development") {
-            console.error("[transcribe/bg] generate-summary failed", e);
-          }
+          console.error(`[ECO] Summary generation failed recordingId=${recordingId}`, e);
         }
 
         const dbUpdateMs = performance.now() - dbUpdateStart;
         const totalMs = performance.now() - reqStart;
         const transcriptionLen = transcription?.length ?? 0;
+        console.log(`[ECO] DB updated recordingId=${recordingId} status=TRANSCRIBED dbMs=${dbUpdateMs.toFixed(0)} totalMs=${totalMs.toFixed(0)}`);
         if (process.env.NODE_ENV === "development") {
           console.log("[transcribe/bg] end", {
             traceId,
@@ -298,9 +317,7 @@ export async function POST(
         }
       } catch (error) {
         const err = error as { message?: string };
-        if (process.env.NODE_ENV === "development") {
-          console.error("[recordings/transcribe/bg] Background error:", err?.message ?? String(error));
-        }
+        console.error(`[ECO] Background error recordingId=${recordingId}`, err?.message ?? String(error));
         try {
           await prisma.recording.update({
             where: { id: recordingId },
@@ -309,13 +326,17 @@ export async function POST(
               errorMessage: err?.message ?? "Erreur lors de la transcription en arrière-plan",
             },
           });
+          console.log(`[ECO] DB updated recordingId=${recordingId} status=ERROR`);
         } catch (e) {
           if (process.env.NODE_ENV === "development") {
             console.error("[recordings/transcribe/bg] Failed to set ERROR status:", e);
           }
         }
       }
-    })();
+    };
+
+    // IMPORTANT (Vercel): garantir que le background continue après réponse
+    waitUntil(processInBackground());
 
     // Réponse immédiate pour éviter le timeout côté client / Vercel
     return NextResponse.json({

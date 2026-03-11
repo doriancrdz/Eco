@@ -474,12 +474,12 @@ export default function Home() {
         console.log("[RECORDER] Format choisi:", chosenMimeType || "navigateur par défaut");
       }
 
-      // Créer MediaRecorder avec bitrate 96 kbps (bon compromis qualité/taille pour 60 min)
+      // Créer MediaRecorder avec bitrate 48 kbps (garantit < 25MB pour ~60 min, compatible Whisper)
       const recorderOptions: MediaRecorderOptions = {};
       if (chosenMimeType) {
         recorderOptions.mimeType = chosenMimeType;
       }
-      recorderOptions.audioBitsPerSecond = 96000; // 96 kbps (60 min ≈ 41 MB)
+      recorderOptions.audioBitsPerSecond = 48000; // 48 kbps (60 min ≈ 21.6 MB)
       const mediaRecorder = new MediaRecorder(stream, recorderOptions);
       
       if (process.env.NODE_ENV === "development") {
@@ -818,7 +818,7 @@ export default function Home() {
             }
             const { status, summary, transcription, error } = await res.json();
 
-            if (status === "DONE" || status === "TRANSCRIBED") {
+            if (status === "DONE") {
               clearInterval(interval);
 
               try {
@@ -857,6 +857,13 @@ export default function Home() {
               }
               alert(message);
               reject(new Error(message));
+            } else if (status === "TRANSCRIBED") {
+              // Transcription OK mais résumé pas forcément prêt : on continue de poller jusqu'à DONE.
+              if (process.env.NODE_ENV === "development") {
+                console.log("[pollRecordingStatus] TRANSCRIBED (attente résumé)…", {
+                  recordingId,
+                });
+              }
             } else {
               // PROCESSING → continuer
               if (process.env.NODE_ENV === "development") {
