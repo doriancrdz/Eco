@@ -182,8 +182,8 @@ export async function POST(req: NextRequest) {
 
     const textToSend = recording.transcriptionText;
     const textLength = textToSend.length;
-    // Limiter le contexte si transcription très longue (optionnel)
-    const maxChars = 12000;
+    // Couvrir jusqu'à 60 min d'audio (~39 000 chars) — GPT-4o-mini supporte 128k tokens
+    const maxChars = 80000;
     const truncated = textLength > maxChars ? textToSend.slice(0, maxChars) + "\n[...]" : textToSend;
 
     // Nombre de mots de la transcription — RÈGLES DÉFINITIVES STRICTES
