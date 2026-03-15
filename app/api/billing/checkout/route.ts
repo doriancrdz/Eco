@@ -9,7 +9,6 @@ import {
   getStripePriceIdAnnualCommitMonthly,
   getStripePriceIdForPack,
   validateStripeConfig,
-  PACKS,
   PlanType,
   BillingPeriod,
   BillingMode,
@@ -257,29 +256,12 @@ export async function POST(req: NextRequest) {
 
       console.log("[Checkout] 1️⃣2️⃣ Création de la session Stripe Checkout (pack)…");
 
-      const pack = PACKS[packIndex];
-      const packLabels: Record<number, string> = {
-        0: "étudiant",
-        1: "pro",
-        2: "business",
-      };
-      const packDescription = pack
-        ? `${pack.minutes} minutes (pack ${packLabels[packIndex] ?? ""})`
-        : undefined;
-
       const session = await stripe.checkout.sessions.create({
         customer: customerId,
         mode: "payment",
         line_items: [
           {
-            price_data: {
-              currency: "eur",
-              product_data: {
-                name: pack?.name ?? `Pack ${packIndex + 1}`,
-                description: packDescription ?? undefined,
-              },
-              unit_amount: pack ? Math.round(pack.price * 100) : 0,
-            },
+            price: priceId,
             quantity: 1,
           },
         ],

@@ -173,6 +173,25 @@ export function getStripePriceIdAnnualCommitMonthly(plan: PlanType): string {
 }
 
 /**
+ * Résout le plan (student/pro/business) depuis un priceId Stripe, en comparant aux env.
+ * Retourne null si le priceId n'est pas reconnu.
+ */
+export function resolvePlanFromPriceId(priceId: string): PlanType | null {
+  if (!priceId) return null;
+  for (const plan of PAID_PLANS) {
+    for (const period of ["monthly", "yearly"] as BillingPeriod[]) {
+      try {
+        if (getStripePriceId(plan, period) === priceId) return plan;
+      } catch { /* env non configuré */ }
+    }
+    try {
+      if (getStripePriceIdAnnualCommitMonthly(plan) === priceId) return plan;
+    } catch { /* env non configuré */ }
+  }
+  return null;
+}
+
+/**
  * Vérifie si un priceId Stripe correspond au mode annual_commit_monthly (par comparaison aux env)
  */
 export function isAnnualCommitMonthlyPriceId(priceId: string): boolean {

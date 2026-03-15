@@ -44,6 +44,7 @@ model Transaction {
   stripeCustomerId     String?
   stripeSubscriptionId String?
   stripePriceId        String
+  stripeSessionId      String?  @unique
   type                 String
   minutesDelta         Int      @default(0)
   createdAt            DateTime @default(now())

@@ -8,7 +8,7 @@ import { getOrCreateUserWithQuota, updateUserPlan, creditExtraMinutes } from "@/
 import { getOrCreateUserWithQuotaSeconds, updateUserQuotaTotal, creditExtraSeconds, creditBonusSeconds } from "@/lib/usage";
 import { getCurrentMonthKey } from "@/lib/billing";
 import { prisma } from "@/lib/prisma";
-import { PlanType, isAnnualCommitMonthlyPriceId, PACKS } from "@/lib/billingConfig";
+import { PlanType, isAnnualCommitMonthlyPriceId, resolvePlanFromPriceId, PACKS } from "@/lib/billingConfig";
 
 export async function POST(req: NextRequest) {
   const stripe = getStripeOrNull();
@@ -45,9 +45,7 @@ export async function POST(req: NextRequest) {
       process.env.STRIPE_WEBHOOK_SECRET
     );
   } catch (err) {
-    if (process.env.NODE_ENV === "development") {
-      console.error("Erreur vérification signature webhook:", err);
-    }
+    console.error("[webhook] Signature invalide:", err);
     return NextResponse.json(
       { error: "Signature invalide" },
       { status: 400 }
@@ -61,9 +59,15 @@ export async function POST(req: NextRequest) {
 
       const clerkUserId = session.metadata?.clerkUserId;
       if (!clerkUserId) {
-        if (process.env.NODE_ENV === "development") {
-          console.error("clerkUserId manquant dans metadata");
-        }
+        console.error("[webhook] clerkUserId manquant dans metadata, sessionId:", session.id);
+        return NextResponse.json({ received: true });
+      }
+
+      // Idempotence : ignorer si cet événement a déjà été traité
+      const alreadyProcessed = await prisma.transaction.findUnique({
+        where: { stripeSessionId: session.id },
+      });
+      if (alreadyProcessed) {
         return NextResponse.json({ received: true });
       }
 
@@ -115,6 +119,7 @@ export async function POST(req: NextRequest) {
             stripeCustomerId: customerId,
             stripeSubscriptionId: subscriptionId,
             stripePriceId: priceId || "",
+            stripeSessionId: session.id,
             type: "subscription",
             minutesDelta: 0,
           },
@@ -142,17 +147,17 @@ export async function POST(req: NextRequest) {
               userId: user.id,
               stripeCustomerId: customerId,
               stripePriceId: session.metadata.priceId || "",
+              stripeSessionId: session.id,
               type: "pack",
               minutesDelta: packMinutes,
             },
           });
         } else {
-          // PackIndex invalide ou pack inconnu - log warning mais ne pas crash
-          if (process.env.NODE_ENV === "development") {
-            console.warn(
-            `[webhook] Pack invalide ou inconnu: packIndex=${packIndex}, priceId=${session.metadata.priceId || "N/A"}, customerId=${customerId}`
-            );
-          }
+          // PackIndex invalide → retourner 500 pour que Stripe rejoue l'event
+          console.error(
+            `[webhook] Pack invalide: packIndex=${packIndex}, sessionId=${session.id}, customerId=${customerId}`
+          );
+          return NextResponse.json({ error: "Pack invalide" }, { status: 500 });
         }
       }
     } else if (event.type === "invoice.payment_failed") {
@@ -182,18 +187,27 @@ export async function POST(req: NextRequest) {
         try {
           const subscription = await stripe.subscriptions.retrieve(subscriptionId);
           const periodEnd = subscription.current_period_end;
-          
+          const now = new Date();
+
+          // Renouvellement : l'ancienne currentPeriodEnd est dépassée → reset quota
+          const isRenewal = user.currentPeriodEnd != null && now >= user.currentPeriodEnd;
+
           await prisma.user.update({
             where: { id: user.id },
             data: {
               subscriptionStatus: "active",
               currentPeriodEnd: periodEnd ? new Date(periodEnd * 1000) : null,
+              ...(isRenewal && {
+                quotaSecondsUsed: 0,
+                quotaExtraSeconds: 0,
+                minutesUsedMonth: 0,
+                extraMinutesMonth: 0,
+                monthKey: getCurrentMonthKey(),
+              }),
             },
           });
         } catch (error) {
-          if (process.env.NODE_ENV === "development") {
-            console.error("[webhook] Erreur récupération subscription dans invoice.payment_succeeded:", error);
-          }
+          console.error("[webhook] Erreur récupération subscription dans invoice.payment_succeeded:", error);
           // Fallback: mettre à jour seulement le status
           await prisma.user.update({
             where: { id: user.id },
@@ -227,17 +241,31 @@ export async function POST(req: NextRequest) {
           end.setUTCMonth(end.getUTCMonth() + 12);
           commitmentEndAt = end;
         }
-        await prisma.user.update({
-          where: { id: user.id },
-          data: {
-            stripeSubscriptionId: subscriptionId,
-            ...(priceId && { stripePriceId: priceId }),
+
+        // Mettre à jour le plan si le priceId a changé (upgrade/downgrade Stripe)
+        const resolvedPlan = priceId ? resolvePlanFromPriceId(priceId) : null;
+        if (resolvedPlan && resolvedPlan !== user.plan) {
+          await updateUserPlan(user.id, resolvedPlan, undefined, subscriptionId, {
+            stripePriceId: priceId,
             billingMode,
             ...(commitmentEndAt && { commitmentEndAt }),
             subscriptionStatus: status,
             currentPeriodEnd: periodEnd ? new Date(periodEnd * 1000) : null,
-          },
-        });
+          });
+          await updateUserQuotaTotal(user.id, resolvedPlan);
+        } else {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: {
+              stripeSubscriptionId: subscriptionId,
+              ...(priceId && { stripePriceId: priceId }),
+              billingMode,
+              ...(commitmentEndAt && { commitmentEndAt }),
+              subscriptionStatus: status,
+              currentPeriodEnd: periodEnd ? new Date(periodEnd * 1000) : null,
+            },
+          });
+        }
       }
     } else if (event.type === "customer.subscription.deleted") {
       const subscription = event.data.object as any;
@@ -263,9 +291,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    if (process.env.NODE_ENV === "development") {
-      console.error("Erreur traitement webhook:", error);
-    }
+    console.error("[webhook] Erreur traitement webhook:", error);
     return NextResponse.json(
       { error: "Erreur traitement webhook" },
       { status: 500 }
