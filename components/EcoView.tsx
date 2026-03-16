@@ -422,45 +422,6 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
     </div>
   );
 
-  // Tab 4: Notions à retenir
-  const notionsContent = (
-    <div className="prose prose-base max-w-none">
-      {summary && summary.notions && summary.notions.length > 0 ? (
-        <div className="space-y-4">
-          {summary.notions.map((notion: { terme: string; definition: string } | string, index: number) => {
-            // Gérer les deux formats : ancien (string) et nouveau ({ terme, definition })
-            const terme = typeof notion === "string" ? notion : notion.terme;
-            const definition = typeof notion === "string" ? "" : notion.definition;
-            
-            return (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                whileHover={{ y: -2, transition: { duration: 0.2 } }}
-                className="px-5 py-4 bg-white/50 backdrop-blur-xl rounded-xl border border-white/15 shadow-lg hover:bg-white/60 hover:border-white/25 hover:shadow-xl transition-all"
-              >
-                <h4 className="font-bold text-gray-900">{terme}</h4>
-                {definition && (
-                  <p className="text-sm text-gray-600 mt-1">{definition}</p>
-                )}
-              </motion.div>
-            );
-          })}
-        </div>
-      ) : isGenerating ? (
-        <div className="space-y-4 animate-pulse">
-          <div className="h-12 bg-white/10 rounded-xl w-full backdrop-blur-sm" />
-          <div className="h-12 bg-white/10 rounded-xl w-5/6 backdrop-blur-sm" />
-          <div className="h-12 bg-white/10 rounded-xl w-4/5 backdrop-blur-sm" />
-        </div>
-      ) : (
-        <p className="text-gray-400">Aucune notion disponible</p>
-      )}
-    </div>
-  );
-
   const tabs = [
     {
       id: "summary",
@@ -468,19 +429,14 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
       content: summaryContent,
     },
     {
-      id: "transcription",
-      label: "Transcription",
-      content: transcriptionContent,
-    },
-    {
       id: "keypoints",
       label: "Points clés",
       content: keyPointsContent,
     },
     {
-      id: "notions",
-      label: "Notions à retenir",
-      content: notionsContent,
+      id: "transcription",
+      label: "Transcription",
+      content: transcriptionContent,
     },
   ];
 

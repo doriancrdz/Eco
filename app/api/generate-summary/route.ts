@@ -188,8 +188,8 @@ export async function POST(req: NextRequest) {
 
     // Nombre de mots de la transcription — RÈGLES DÉFINITIVES STRICTES
     const transcriptionWordCount = textToSend.trim().split(/\s+/).filter(Boolean).length;
-    // RÈGLE 1 : RÉSUMÉ = EXACTEMENT 16% DE LA TRANSCRIPTION
-    const targetSummaryWords = Math.round(transcriptionWordCount * 0.16);
+    // RÈGLE 1 : RÉSUMÉ = EXACTEMENT 15% DE LA TRANSCRIPTION
+    const targetSummaryWords = Math.round(transcriptionWordCount * 0.15);
     const minSummaryWords = targetSummaryWords - 10;
     const maxSummaryWords = targetSummaryWords + 10;
     // RÈGLE 2 : POINTS CLÉS = 1 TOUS LES 800 MOTS (MINIMUM 1)
@@ -300,7 +300,10 @@ RÈGLE 3 - LONGUEUR ET EXHAUSTIVITÉ
 - Longueur cible : ${targetSummaryWords} mots (±10%)
 - TOUS les éléments de la transcription DOIVENT être présents
 - Plus l'audio est long → plus le résumé est long (proportionnel)
-- Ratio : environ 16% de la longueur de la transcription
+- Ratio : exactement 15% de la longueur de la transcription
+- Ordre chronologique OBLIGATOIRE : respecter l'ordre dans lequel les idées apparaissent dans l'audio
+- Zéro point important oublié : le résumé doit couvrir l'intégralité de l'audio
+- Si top-X ou liste : développer chaque élément dans l'ordre (2-3 lignes minimum par élément)
 
 ═══════════════════════════════════════════════════════════════
 RÈGLE 4 - NOTIONS
@@ -324,9 +327,16 @@ Format obligatoire :
 RÈGLE 5 - POINTS CLÉS
 ═══════════════════════════════════════════════════════════════
 
-Générer ${targetPointsCles} point(s) clé(s) maximum.
-- Phrases courtes et percutantes
-- Capturent l'essentiel du contenu
+Les points clés sont DIRECTEMENT tirés du contenu du résumé structuré, dans le MÊME ordre chronologique.
+
+RÈGLE ABSOLUE selon le type :
+- TYPE "liste" : autant de points clés que de sections dans "contenu.sections" (ex: top-5 → 5 points clés dans l'ordre)
+- TYPE "narratif" : ${targetPointsCles} point(s) clé(s) dans l'ordre chronologique
+
+Chaque point clé = une idée importante développée en 1-2 lignes complètes (pas une phrase fragmentée).
+Exemple : "Le marketing de contenu génère du trafic organique durable en créant des articles de blog qui attirent naturellement les clients."
+
+Ne pas résumer en une phrase trop courte — développer chaque idée en 1-2 lignes.
 
 ═══════════════════════════════════════════════════════════════
 EXEMPLE COMPLET TYPE "liste"
@@ -415,7 +425,7 @@ Avant de renvoyer le JSON, vérifie :
 ✓ "conclusion" est remplie (1-3 phrases)
 ✓ ${targetPointsCles} points clés générés
 ✓ ${targetNotions} notions avec terme ET définition
-✓ Longueur totale ≈ ${targetSummaryWords} mots (±10%)
+✓ Longueur totale ≈ ${targetSummaryWords} mots (±10%) — soit 15% de la transcription
 ✓ TOUS les éléments de la transcription présents
 
 ═══════════════════════════════════════════════════════════════

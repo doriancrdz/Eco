@@ -1079,7 +1079,7 @@ export default function Home() {
             <Header
               onGoHome={goHome}
               onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
-              isDetailView={!!selectedEco}
+              isDetailView={!!selectedEco || isProcessing}
               onShare={selectedEco ? async () => {
                 const url = window.location.href;
                 if (navigator.share) {
@@ -1392,16 +1392,22 @@ export default function Home() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -16 }}
                       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                      className="flex-1 flex items-center justify-center"
+                      className="flex-1 flex flex-col items-center justify-center min-h-[60vh] gap-6"
                     >
-                      <div className="text-center flex flex-col items-center gap-6">
-                        <Logo state="generating" size={120} showMicroWarning={false} />
-                        <p className="text-xl font-bold text-gray-800">Traitement en cours...</p>
-                        <p className="text-sm text-gray-600 max-w-sm">
-                          Transcription et analyse de votre enregistrement.
-                          {processingDurationMinutes > 10 && " Cela peut prendre 1-2 minutes pour les longs audios."}
-                        </p>
-                      </div>
+                      <Logo state="generating" size={120} showMicroWarning={false} />
+                      <p className="text-xl font-bold text-gray-800">Traitement en cours...</p>
+                      <p className="text-sm text-gray-600 max-w-sm text-center">
+                        Transcription et analyse de votre enregistrement.
+                        {processingDurationMinutes > 10 && " Cela peut prendre 1-2 minutes pour les longs audios."}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => goHome()}
+                        className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mt-2 transition-colors"
+                      >
+                        <ArrowLeft className="w-4 h-4" />
+                        <span>Retour à l&apos;accueil</span>
+                      </button>
                     </motion.div>
                   )}
               </AnimatePresence>
