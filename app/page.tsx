@@ -72,6 +72,7 @@ export default function Home() {
   const [recordingElapsedSeconds, setRecordingElapsedSeconds] = useState(0);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [processingDurationMinutes, setProcessingDurationMinutes] = useState(0);
+  const [processingStep, setProcessingStep] = useState<"uploading" | "transcribing" | "summarizing">("uploading");
   const [ecos, setEcos] = useState<Eco[]>([]);
 
   const { soundLevel, frequencyData, isAvailable, startAudioLevel, stopAudioLevel, analyserRef } = useAudioLevel(isPaused);
@@ -674,6 +675,7 @@ export default function Home() {
       }
     }
     setProcessingDurationMinutes(durationSeconds / 60);
+    setProcessingStep("uploading");
     setIsRecording(false);
     setIsProcessing(true);
     setIsFocusMode(false);
@@ -785,8 +787,9 @@ export default function Home() {
 
       // Débit du quota + démarrage transcription (backend non bloquant)
       await completeAndTranscribeFromR2(recordingId, durationSeconds, traceId, logStep);
+      setProcessingStep("transcribing");
 
-      // Mettre immédiatement l'Eco minimal en focus (placeholder) pendant le traitement
+      // Préparer l'Eco minimal en mémoire (pas encore affiché — on attend DONE)
       const newEco: Eco = {
         ...minimalEco,
         transcription_text: "",
@@ -859,14 +862,16 @@ export default function Home() {
               alert(message);
               reject(new Error(message));
             } else if (status === "TRANSCRIBED") {
-              // Transcription OK mais résumé pas forcément prêt : on continue de poller jusqu'à DONE.
+              // Transcription OK — génération du résumé en cours
+              setProcessingStep("summarizing");
               if (process.env.NODE_ENV === "development") {
                 console.log("[pollRecordingStatus] TRANSCRIBED (attente résumé)…", {
                   recordingId,
                 });
               }
             } else {
-              // PROCESSING → continuer
+              // PROCESSING → transcription en cours
+              setProcessingStep("transcribing");
               if (process.env.NODE_ENV === "development") {
                 const elapsed = ((Date.now() - startTs) / 1000).toFixed(0);
                 console.log("[pollRecordingStatus] Toujours en traitement…", {
@@ -1111,7 +1116,7 @@ export default function Home() {
                   {(() => {
                     const conditionHome = !selectedEco && !isFocusMode && !viewAllEcos && !isProcessing;
                     const conditionList = viewAllEcos && !selectedEco && !isFocusMode && !isProcessing;
-                    const conditionDetail = selectedEco && !isFocusMode && !viewAllEcos;
+                    const conditionDetail = selectedEco && !isFocusMode && !viewAllEcos && !isProcessing;
                     const conditionGenerating = isProcessing;
                     const noViewMatched = !conditionHome && !conditionList && !conditionDetail && !conditionGenerating;
                     const showHome = conditionHome || noViewMatched;
@@ -1309,7 +1314,7 @@ export default function Home() {
                       </div>
                     </motion.div>
                   )}
-                  {selectedEco && !isFocusMode && !viewAllEcos && (
+                  {selectedEco && !isFocusMode && !viewAllEcos && !isProcessing && (
                     <motion.div
                       key="detail"
                       initial={{ opacity: 0, y: 16 }}
@@ -1396,15 +1401,51 @@ export default function Home() {
                       className="flex-1 flex flex-col items-center justify-center min-h-[60vh] gap-6"
                     >
                       <Logo state="generating" size={120} showMicroWarning={false} />
-                      <p className="text-xl font-bold text-gray-800">Traitement en cours...</p>
-                      <p className="text-sm text-gray-600 max-w-sm text-center">
-                        Transcription et analyse de votre enregistrement.
-                        {processingDurationMinutes > 10 && " Cela peut prendre 1-2 minutes pour les longs audios."}
-                      </p>
+                      <AnimatePresence mode="wait">
+                        <motion.div
+                          key={processingStep}
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -6 }}
+                          transition={{ duration: 0.3 }}
+                          className="flex flex-col items-center gap-2 text-center"
+                        >
+                          <p className="text-xl font-bold text-gray-800">
+                            {processingStep === "uploading" && "Envoi de l\u2019enregistrement\u2026"}
+                            {processingStep === "transcribing" && "Transcription en cours\u2026"}
+                            {processingStep === "summarizing" && "G\u00e9n\u00e9ration du r\u00e9sum\u00e9\u2026"}
+                          </p>
+                          <p className="text-sm text-gray-500 max-w-xs">
+                            {processingStep === "uploading" && "Chargement de l\u2019audio vers nos serveurs."}
+                            {processingStep === "transcribing" && "Analyse de votre voix par Whisper AI."}
+                            {processingStep === "summarizing" && (
+                              <>
+                                Cr\u00e9ation du r\u00e9sum\u00e9, des points cl\u00e9s et de la transcription.
+                                {processingDurationMinutes > 10 && " Cela peut prendre 1\u20132\u00a0min pour les longs audios."}
+                              </>
+                            )}
+                          </p>
+                        </motion.div>
+                      </AnimatePresence>
+                      {/* Étapes visuelles */}
+                      <div className="flex items-center gap-3 mt-2">
+                        {(["uploading", "transcribing", "summarizing"] as const).map((step, i) => {
+                          const steps = ["uploading", "transcribing", "summarizing"];
+                          const currentIdx = steps.indexOf(processingStep);
+                          const isDone = i < currentIdx;
+                          const isActive = i === currentIdx;
+                          return (
+                            <span key={step} className="flex items-center gap-3">
+                              <span className={`w-2.5 h-2.5 rounded-full transition-all duration-500 ${isDone ? "bg-emerald-400" : isActive ? "bg-gray-800 animate-pulse" : "bg-gray-200"}`} />
+                              {i < 2 && <span className={`w-8 h-px block transition-all duration-500 ${isDone ? "bg-emerald-400" : "bg-gray-200"}`} />}
+                            </span>
+                          );
+                        })}
+                      </div>
                       <button
                         type="button"
                         onClick={() => goHome()}
-                        className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mt-2 transition-colors"
+                        className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 mt-2 transition-colors"
                       >
                         <ArrowLeft className="w-4 h-4" />
                         <span>Retour à l&apos;accueil</span>
