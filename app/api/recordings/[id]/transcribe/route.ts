@@ -130,7 +130,12 @@ export async function POST(
       const bytes = await body.transformToByteArray();
       const buffer = Buffer.from(bytes);
       const mime = getRes.ContentType ?? "audio/webm";
-      audioFile = new File([buffer], "recording.webm", { type: mime });
+      // Extension must match the actual format — Whisper uses the filename to detect format
+      const ext = mime.includes("mp4") || mime.includes("m4a") ? "mp4"
+        : mime.includes("ogg") ? "ogg"
+        : mime.includes("wav") ? "wav"
+        : "webm";
+      audioFile = new File([buffer], `recording.${ext}`, { type: mime });
       const sizeMB = (audioFile.size / 1024 / 1024).toFixed(2);
       console.log(`[ECO] Audio fetched from R2 recordingId=${recordingId} sizeMB=${sizeMB} mime=${mime}`);
       if (process.env.NODE_ENV === "development") {

@@ -436,7 +436,8 @@ export default function Home() {
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
-          sampleRate: 44100,
+          // sampleRate as ideal — strict enforcement can return silent streams on some devices
+          sampleRate: { ideal: 44100 },
         },
       });
 
