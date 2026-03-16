@@ -251,13 +251,15 @@ export default function Home() {
         const res = await fetch(`/api/ecos/${selectedEco}`, { cache: "no-store" });
         const t1 = performance.now();
         const duration = t1 - t0;
+        // Guard: abandon si navigation arrière déclenchée pendant le fetch
+        if (isNavigatingHomeRef.current) return;
         if (res.ok) {
           const data = await res.json();
           const payloadSize = JSON.stringify(data).length;
           if (process.env.NODE_ENV === "development") {
             console.log(`[loadCurrentEco] Succès - ${duration.toFixed(0)}ms - ${payloadSize} bytes`);
           }
-          if (data.eco) {
+          if (data.eco && !isNavigatingHomeRef.current) {
             setCurrentEco(data.eco);
             // Mettre en cache
             currentEcoCacheRef.current = { id: selectedEco, data: data.eco, timestamp: Date.now() };
@@ -266,9 +268,7 @@ export default function Home() {
           if (process.env.NODE_ENV === "development") {
             console.log(`[loadCurrentEco] Erreur ${res.status} - ${duration.toFixed(0)}ms`);
           }
-          setSelectedEco(null);
-          setSelectedFolder(null);
-          setCurrentEco(null);
+          // Ne pas naviguer vers l'accueil sur erreur API : l'eco pourrait être temporairement indisponible
           currentEcoCacheRef.current = null;
         }
       } catch (error) {
@@ -276,9 +276,7 @@ export default function Home() {
         if (process.env.NODE_ENV === "development") {
           console.error(`[loadCurrentEco] Exception - ${duration.toFixed(0)}ms`, error);
         }
-        setSelectedEco(null);
-        setSelectedFolder(null);
-        setCurrentEco(null);
+        // Ne pas naviguer vers l'accueil sur exception réseau
         currentEcoCacheRef.current = null;
       }
     };
@@ -327,12 +325,8 @@ export default function Home() {
             if (process.env.NODE_ENV === "development") {
               console.log(`[refreshCurrentEco] Erreur ${res.status} - ${duration.toFixed(0)}ms`);
             }
-            if (!isNavigatingHomeRef.current) {
-              setSelectedEco(null);
-              setSelectedFolder(null);
-              setCurrentEco(null);
-              currentEcoCacheRef.current = null;
-            }
+            // Ne pas naviguer vers l'accueil sur erreur : l'eco est peut-être temporairement indisponible
+            currentEcoCacheRef.current = null;
           }
         } catch (error) {
           const duration = performance.now() - t0;
@@ -1011,7 +1005,7 @@ export default function Home() {
     if (typeof document !== "undefined") document.body.style.overflow = "unset";
     setTimeout(() => {
       isNavigatingHomeRef.current = false;
-    }, 300);
+    }, 600);
   }, []);
 
   const goHome = resetToHome;
@@ -1369,7 +1363,7 @@ export default function Home() {
                                 return null;
                               })
                               .then((data) => {
-                                if (data?.eco) {
+                                if (data?.eco && !isNavigatingHomeRef.current) {
                                   setCurrentEco(data.eco);
                                   // Mettre en cache
                                   currentEcoCacheRef.current = { id: selectedEco, data: data.eco, timestamp: Date.now() };
