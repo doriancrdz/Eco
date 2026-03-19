@@ -195,10 +195,11 @@ export async function POST(
       console.log("[transcribe] start", { traceId, recordingId, userId: user.id, fileSize, ts: Date.now() });
     }
 
-    async function transcribeWithRetry(file: File, maxRetries = 3): Promise<string> {
+    async function transcribeWithRetry(file: File, maxRetries = 3, signal?: AbortSignal): Promise<string> {
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        if (signal?.aborted) throw new Error("Whisper timeout — audio trop court ou silencieux");
         try {
           if (process.env.NODE_ENV === "development") {
             console.log(`[transcribe] Tentative ${attempt}/${maxRetries}`);
@@ -209,7 +210,7 @@ export async function POST(
             model: "whisper-1",
             language: "fr",
             response_format: "text",
-          });
+          }, { signal });
           const text = typeof response === "string" ? response : (response as { text?: string }).text ?? "";
           if (process.env.NODE_ENV === "development") {
             console.log("[transcribe] Succès, longueur:", text.length, "caractères");
@@ -235,9 +236,40 @@ export async function POST(
 
     const processInBackground = async () => {
       try {
+        // Guard 1: fichier trop petit → audio vide (ex: micro silencieux sur Chrome Mac)
+        if (audioFile.size < 1000) {
+          console.error(`[ECO] EMPTY_AUDIO recordingId=${recordingId} sizeBytes=${audioFile.size}`);
+          await prisma.recording.update({
+            where: { id: recordingId },
+            data: { status: "ERROR", errorMessage: "Audio vide détecté — vérifiez que votre micro est bien activé.", audioBlobSize: audioFile.size },
+          });
+          return;
+        }
+
+        // Timeout Whisper adaptatif : 15s pour les fichiers courts (<500KB), 120s sinon
+        const isShortFile = audioFile.size < 500 * 1024;
+        const whisperTimeoutMs = isShortFile ? 15000 : 120000;
+        const whisperController = new AbortController();
+        const whisperTimeoutId = setTimeout(() => whisperController.abort(), whisperTimeoutMs);
+
         const whisperStart = performance.now();
-        const transcription = await transcribeWithRetry(audioFile);
+        let transcription: string;
+        try {
+          transcription = await transcribeWithRetry(audioFile, 3, whisperController.signal);
+        } finally {
+          clearTimeout(whisperTimeoutId);
+        }
         const whisperMs = performance.now() - whisperStart;
+
+        // Guard 2: transcription vide → Whisper n'a rien capté (audio silencieux)
+        if (!transcription || transcription.trim().length < 10) {
+          console.error(`[ECO] EMPTY_TRANSCRIPTION recordingId=${recordingId} chars=${transcription?.length ?? 0}`);
+          await prisma.recording.update({
+            where: { id: recordingId },
+            data: { status: "ERROR", errorMessage: "Transcription vide — audio non capté. Vérifiez votre micro.", audioBlobSize: audioFile.size },
+          });
+          return;
+        }
         console.log(`[ECO] Whisper transcription done recordingId=${recordingId} chars=${transcription.length} whisperMs=${whisperMs.toFixed(0)}`);
 
         const dbUpdateStart = performance.now();
