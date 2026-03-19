@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Eco } from "@/types";
+import { Eco, QuizQuestion } from "@/types";
 import { motion } from "framer-motion";
 import { RefreshCw, Copy, Check, ArrowLeft } from "lucide-react";
 import { generateSummary } from "@/lib/transcription";
@@ -84,6 +84,9 @@ interface EcoViewProps {
 export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
   const [showRetryHint, setShowRetryHint] = useState(false);
   const [lastSummaryStatus, setLastSummaryStatus] = useState<number | null>(null);
+  const [quizAnswers, setQuizAnswers] = useState<Record<number, string>>({});
+  const [revealedOpen, setRevealedOpen] = useState<Set<number>>(new Set());
+  const [quizSubmitted, setQuizSubmitted] = useState(false);
   const [lastEcoFetch, setLastEcoFetch] = useState<{
     url: string;
     statusCode: number;
@@ -93,6 +96,12 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
     contentLen: number;
     updatedAt: string | null;
   } | null>(null);
+  useEffect(() => {
+    setQuizAnswers({});
+    setRevealedOpen(new Set());
+    setQuizSubmitted(false);
+  }, [eco?.id]);
+
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const generateSummaryTriggeredRef = useRef(false);
   const pollCountRef = useRef(0);
@@ -422,6 +431,140 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
     </div>
   );
 
+  // Tab 4: Quiz
+  const quizData = eco?.quiz as QuizQuestion[] | null | undefined;
+  const mcqCount = quizData?.filter((q) => q.type === "mcq").length ?? 0;
+  const correctCount = quizSubmitted
+    ? (quizData?.filter((q, i) => q.type === "mcq" && quizAnswers[i] === q.answer).length ?? 0)
+    : 0;
+
+  const quizContent = (
+    <div>
+      {isGenerating ? (
+        <div className="space-y-4 animate-pulse">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="p-5 rounded-xl bg-white/5 border border-white/10 space-y-3">
+              <div className="h-4 bg-white/10 rounded w-3/4" />
+              <div className="space-y-2">
+                <div className="h-10 bg-white/10 rounded-lg" />
+                <div className="h-10 bg-white/10 rounded-lg" />
+                <div className="h-10 bg-white/10 rounded-lg" />
+                <div className="h-10 bg-white/10 rounded-lg" />
+              </div>
+            </div>
+          ))}
+          <p className="text-sm text-gray-400">Génération du quiz en cours…</p>
+        </div>
+      ) : quizData && quizData.length > 0 ? (
+        <div className="space-y-5">
+          {quizSubmitted && mcqCount > 0 && (
+            <div className={`p-4 rounded-xl border text-sm font-medium ${
+              correctCount === mcqCount
+                ? "bg-emerald-50/80 border-emerald-200 text-emerald-800"
+                : correctCount >= Math.ceil(mcqCount * 0.6)
+                ? "bg-blue-50/80 border-blue-200 text-blue-800"
+                : "bg-amber-50/80 border-amber-200 text-amber-800"
+            }`}>
+              {correctCount}/{mcqCount} QCM correctes —{" "}
+              {correctCount === mcqCount
+                ? "Parfait !"
+                : correctCount >= Math.ceil(mcqCount * 0.6)
+                ? "Bon travail !"
+                : "Continuez à réviser !"}
+            </div>
+          )}
+
+          {quizData.map((question, idx) => (
+            <div key={idx} className="p-5 rounded-xl bg-white/5 border border-white/10">
+              <p className="font-medium text-gray-900 mb-4 leading-relaxed">
+                {idx + 1}. {question.question}
+              </p>
+
+              {question.type === "mcq" ? (
+                <div className="space-y-2">
+                  {(question.options ?? []).map((option) => {
+                    const letter = option.charAt(0);
+                    const isSelected = quizAnswers[idx] === letter;
+                    const isCorrect = letter === question.answer;
+                    let cls =
+                      "w-full text-left px-4 py-3 rounded-lg border transition-all text-sm cursor-pointer ";
+                    if (!quizSubmitted) {
+                      cls += isSelected
+                        ? "bg-emerald-100/80 border-emerald-400 text-emerald-900 font-medium"
+                        : "bg-white/5 border-white/20 text-gray-700 hover:bg-white/10 hover:border-white/30";
+                    } else {
+                      if (isCorrect)
+                        cls += "bg-emerald-100/80 border-emerald-400 text-emerald-900 font-medium";
+                      else if (isSelected)
+                        cls += "bg-red-100/80 border-red-400 text-red-900";
+                      else cls += "bg-white/5 border-white/10 text-gray-400";
+                    }
+                    return (
+                      <button
+                        key={letter}
+                        type="button"
+                        disabled={quizSubmitted}
+                        onClick={() =>
+                          setQuizAnswers((prev) => ({ ...prev, [idx]: letter }))
+                        }
+                        className={cls}
+                      >
+                        {option}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div>
+                  {revealedOpen.has(idx) ? (
+                    <div className="p-4 bg-white/5 rounded-lg border border-white/15 text-gray-700 text-sm leading-relaxed">
+                      {question.answer}
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setRevealedOpen((prev) => new Set([...prev, idx]))
+                      }
+                      className="px-4 py-2.5 text-sm bg-white/10 border border-white/20 rounded-lg text-gray-700 hover:bg-white/15 hover:border-white/30 transition-all"
+                    >
+                      Voir la réponse modèle
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+
+          {mcqCount > 0 && !quizSubmitted && (
+            <button
+              type="button"
+              onClick={() => setQuizSubmitted(true)}
+              className="w-full px-6 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 active:scale-[0.98] transition-all shadow-lg"
+            >
+              Valider le quiz
+            </button>
+          )}
+          {quizSubmitted && (
+            <button
+              type="button"
+              onClick={() => {
+                setQuizAnswers({});
+                setRevealedOpen(new Set());
+                setQuizSubmitted(false);
+              }}
+              className="w-full px-6 py-3 bg-white/10 border border-white/20 text-gray-700 rounded-xl font-medium hover:bg-white/15 transition-all"
+            >
+              Recommencer le quiz
+            </button>
+          )}
+        </div>
+      ) : (
+        <p className="text-gray-400">Aucun quiz disponible</p>
+      )}
+    </div>
+  );
+
   const tabs = [
     {
       id: "summary",
@@ -432,6 +575,11 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
       id: "keypoints",
       label: "Points clés",
       content: keyPointsContent,
+    },
+    {
+      id: "quiz",
+      label: "Quiz",
+      content: quizContent,
     },
     {
       id: "transcription",

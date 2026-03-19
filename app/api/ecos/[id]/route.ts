@@ -49,6 +49,7 @@ export async function GET(
         folderId: true,
         createdAt: true,
         updatedAt: true,
+        quiz: true,
       },
     });
     const dbMs = Date.now() - dbStart;
@@ -87,6 +88,7 @@ export async function GET(
       folder: eco.folderId || "",
       created_at: eco.createdAt.toISOString(),
       duration_seconds: durationSeconds,
+      quiz: eco.quiz ?? null,
     };
 
     return NextResponse.json({ eco: formattedEco });

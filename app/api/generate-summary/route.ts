@@ -438,22 +438,82 @@ Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.`;
 
 ${truncated}`;
 
+    // Nombre de questions quiz selon la durée de l'enregistrement
+    const durationMinutes =
+      recording.durationMs != null
+        ? recording.durationMs / 1000 / 60
+        : recording.durationSeconds != null
+        ? recording.durationSeconds / 60
+        : transcriptionWordCount / 150;
+
+    const numQuestions =
+      durationMinutes < 5 ? 3 : durationMinutes < 15 ? 5 : durationMinutes < 30 ? 8 : 12;
+    const numMcq = Math.round(numQuestions * 0.6);
+    const numOpen = numQuestions - numMcq;
+
+    const quizSystemPrompt = `Tu es un expert en création de quiz pédagogiques.
+
+Génère exactement ${numQuestions} questions de quiz à partir de la transcription fournie.
+
+Format JSON strict :
+{
+  "quiz": [
+    {
+      "type": "mcq",
+      "question": "Question ici ?",
+      "options": ["A. Option A", "B. Option B", "C. Option C", "D. Option D"],
+      "answer": "A"
+    },
+    {
+      "type": "open",
+      "question": "Question ouverte ici ?",
+      "answer": "Réponse modèle : ..."
+    }
+  ]
+}
+
+Règles :
+- Exactement ${numQuestions} questions : ${numMcq} QCM et ${numOpen} questions ouvertes
+- QCM : 4 options (A, B, C, D), une seule bonne réponse, distracteurs plausibles
+- La bonne réponse doit être répartie aléatoirement entre A, B, C, D (pas toujours A)
+- Questions ouvertes : courtes et directes, réponse commençant par "Réponse modèle : "
+- Toutes les questions en français
+- Tirées des points les plus importants de la transcription
+
+Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.`;
+
     const gptStart = performance.now();
-    const completion = await openai.chat.completions.create({
-      model: AI_SUMMARY_MODEL,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      response_format: { type: "json_object" },
-      temperature: 0.5,
-      max_tokens: maxTokens,
-    });
+    const [completion, quizCompletionResult] = await Promise.allSettled([
+      openai.chat.completions.create({
+        model: AI_SUMMARY_MODEL,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.5,
+        max_tokens: maxTokens,
+      }),
+      openai.chat.completions.create({
+        model: AI_SUMMARY_MODEL,
+        messages: [
+          { role: "system", content: quizSystemPrompt },
+          { role: "user", content: `Transcription (${transcriptionWordCount} mots) :\n\n${truncated}` },
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+        max_tokens: 2500,
+      }),
+    ]);
+
+    if (completion.status === "rejected") {
+      throw completion.reason;
+    }
 
     timings.gptSummary = performance.now() - gptStart;
 
     const summaryContent =
-      completion.choices[0]?.message?.content ??
+      completion.value.choices[0]?.message?.content ??
       '{"titre":"Résumé","introduction":"","contenu":{"type":"narratif","sections":[]},"conclusion":"","pointsCles":[],"notions":[]}';
 
     let summary: { titre: string; resume: string; pointsCles: string[]; notions: Array<{ terme: string; definition: string }> | string[] };
@@ -619,6 +679,24 @@ ${truncated}`;
       };
     }
 
+    // Parse quiz
+    let quizData: Array<{ type: string; question: string; options?: string[]; answer: string }> | null = null;
+    if (quizCompletionResult.status === "fulfilled") {
+      try {
+        let rawQuiz = (quizCompletionResult.value.choices[0]?.message?.content ?? "").trim();
+        const jsonMatch = rawQuiz.match(/\{[\s\S]*\}/);
+        if (jsonMatch) rawQuiz = jsonMatch[0];
+        const parsedQuiz = JSON.parse(rawQuiz);
+        if (Array.isArray(parsedQuiz.quiz)) {
+          quizData = parsedQuiz.quiz;
+        }
+      } catch {
+        if (process.env.NODE_ENV === "development") {
+          console.warn("[generate-summary] Quiz parsing failed, storing null");
+        }
+      }
+    }
+
     const summaryJson = JSON.stringify(summary);
     if (process.env.NODE_ENV === "development") {
       console.log("[summary] generated", { hasJson: !!summaryJson, size: summaryJson?.length ?? 0, ts: Date.now() });
@@ -649,10 +727,12 @@ ${truncated}`;
         title: summary.titre,
         content: contentStr,
         transcriptionText: recording.transcriptionText,
+        quiz: quizData ?? undefined,
       },
       update: {
         title: summary.titre,
         content: contentStr,
+        quiz: quizData ?? undefined,
       },
       select: { id: true, content: true, title: true },
     });

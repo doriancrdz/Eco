@@ -1,3 +1,10 @@
+export interface QuizQuestion {
+  type: "mcq" | "open";
+  question: string;
+  options?: string[];
+  answer: string;
+}
+
 export interface Eco {
   id: string;
   title: string;
@@ -7,6 +14,7 @@ export interface Eco {
   folder: string;
   created_at: string;
   duration_seconds?: number | null; // Durée de l'enregistrement en secondes
+  quiz?: QuizQuestion[] | null;
 }
 
 export interface Folder {
