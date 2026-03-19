@@ -315,24 +315,24 @@ export async function POST(
         }
 
         // Enchaîner la génération du résumé en tâche de fond
+        // L'appel est interne (pas de session Clerk) — on signe la requête avec HMAC pour l'authentifier
         try {
-          console.log(`[ECO] Summary generation start recordingId=${recordingId}`);
+          console.log(`[ECO] Summary generation start recordingId=${recordingId} ts=${Date.now()}`);
+          const { createHmac } = await import("crypto");
+          const internalKey = createHmac("sha256", process.env.OPENAI_API_KEY ?? "internal")
+            .update(`${recordingId}:${userId}`)
+            .digest("hex");
           const sumRes = await fetch(`${origin}/api/generate-summary`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              "x-internal-key": internalKey,
               ...(traceId ? { "x-eco-trace": traceId } : {}),
             },
-            body: JSON.stringify({ recordingId }),
+            body: JSON.stringify({ recordingId, internalUserId: userId }),
           });
-          if (process.env.NODE_ENV === "development") {
-            const sumJson = await sumRes.json().catch(() => ({}));
-            console.log("[transcribe/bg] generate-summary", {
-              status: sumRes.status,
-              body: sumJson,
-            });
-          }
-          console.log(`[ECO] Summary generation request done recordingId=${recordingId} status=${sumRes.status}`);
+          const sumJson = await sumRes.json().catch(() => ({}));
+          console.log(`[ECO] Summary generation request done recordingId=${recordingId} status=${sumRes.status} ts=${Date.now()}`, sumRes.status !== 200 ? sumJson : "");
         } catch (e) {
           console.error(`[ECO] Summary generation failed recordingId=${recordingId}`, e);
         }

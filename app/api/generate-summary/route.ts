@@ -55,23 +55,6 @@ export async function POST(req: NextRequest) {
   const traceId = req.headers.get("x-eco-trace") ?? null;
 
   try {
-    const authStart = performance.now();
-    const { userId } = await auth();
-    timings.auth = performance.now() - authStart;
-
-    if (!userId) {
-      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
-    }
-
-    // Rate limiting résumés IA : 5 par heure par utilisateur
-    const { success } = await summaryLimiter.limit(userId);
-    if (!success) {
-      return NextResponse.json(
-        { error: "Trop de résumés générés. Réessayez dans 1 heure." },
-        { status: 429 }
-      );
-    }
-
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
         { error: "Clé API OpenAI manquante côté serveur." },
@@ -79,16 +62,57 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Lire le body en premier (nécessaire pour l'auth interne)
     const body = await req.json();
-    const { recordingId } = body;
+    const { recordingId, internalUserId } = body;
     recordingIdForError = typeof recordingId === "string" ? recordingId : undefined;
 
     if (!recordingId || typeof recordingId !== "string") {
+      return NextResponse.json({ error: "recordingId requis" }, { status: 400 });
+    }
+
+    // Auth : soit via Clerk (appel navigateur), soit via HMAC interne (appel transcribe/background)
+    let resolvedUserId: string | null = null;
+    const internalKeyHeader = req.headers.get("x-internal-key");
+
+    if (internalKeyHeader && typeof internalUserId === "string") {
+      const { createHmac, timingSafeEqual } = await import("crypto");
+      const expectedKey = createHmac("sha256", process.env.OPENAI_API_KEY ?? "internal")
+        .update(`${recordingId}:${internalUserId}`)
+        .digest("hex");
+      try {
+        const match = timingSafeEqual(
+          Buffer.from(internalKeyHeader, "hex"),
+          Buffer.from(expectedKey, "hex")
+        );
+        if (match) resolvedUserId = internalUserId;
+      } catch {
+        // Buffers de longueur différente → clé invalide
+      }
+    }
+
+    if (!resolvedUserId) {
+      // Appel navigateur : vérifier Clerk session
+      const authStart = performance.now();
+      const { userId } = await auth();
+      timings.auth = performance.now() - authStart;
+      resolvedUserId = userId ?? null;
+    }
+
+    if (!resolvedUserId) {
+      return NextResponse.json({ error: "Non authentifié" }, { status: 401 });
+    }
+
+    // Rate limiting résumés IA : 5 par heure par utilisateur
+    const { success } = await summaryLimiter.limit(resolvedUserId);
+    if (!success) {
       return NextResponse.json(
-        { error: "recordingId requis" },
-        { status: 400 }
+        { error: "Trop de résumés générés. Réessayez dans 1 heure." },
+        { status: 429 }
       );
     }
+
+    const userId = resolvedUserId;
 
     const dbReadStart = performance.now();
     const user = await prisma.user.findUnique({
@@ -439,6 +463,7 @@ Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.`;
 
 ${truncated}`;
 
+    console.log(`[ECO] generate-summary start recordingId=${recordingId} words=${transcriptionWordCount} ts=${Date.now()}`);
     const gptStart = performance.now();
     const completion = await openai.chat.completions.create({
       model: AI_SUMMARY_MODEL,
@@ -452,6 +477,7 @@ ${truncated}`;
     });
 
     timings.gptSummary = performance.now() - gptStart;
+    console.log(`[ECO] generate-summary GPT done recordingId=${recordingId} gptMs=${timings.gptSummary.toFixed(0)} ts=${Date.now()}`);
 
     const summaryContent =
       completion.choices[0]?.message?.content ??
@@ -660,6 +686,7 @@ ${truncated}`;
     const contentLen = updatedEco?.content?.length ?? 0;
     timings.dbUpdate = performance.now() - dbUpdateStart;
     timings.total = performance.now() - perfStart;
+    console.log(`[ECO] generate-summary DONE recordingId=${recordingId} totalMs=${timings.total.toFixed(0)} gptMs=${timings.gptSummary?.toFixed(0)} ts=${Date.now()}`);
     if (process.env.NODE_ENV === "development") {
       console.log("[summary] end", {
         traceId,

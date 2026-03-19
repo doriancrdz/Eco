@@ -5,6 +5,7 @@ const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/api/webhooks(.*)',
+  '/api/generate-summary', // appelé en interne par transcribe/background (pas de session Clerk)
   '/',
   '/pricing',
   '/legal/terms',
