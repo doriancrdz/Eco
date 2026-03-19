@@ -10,7 +10,8 @@ interface UseAudioLevelResult {
   frequencyData: number[];
   isAvailable: boolean;
   error: string | null;
-  startAudioLevel: (stream: MediaStream) => Promise<void>;
+  /** Passer un AudioContext pré-créé dans le handler du geste utilisateur pour éviter la suspension Chrome */
+  startAudioLevel: (stream: MediaStream, existingContext?: AudioContext) => Promise<void>;
   stopAudioLevel: () => void;
   /** Ref vers l'AnalyserNode (pour ScrollingWaveformBars canvas). Rempli après startAudioLevel(). */
   analyserRef: React.RefObject<AnalyserNode | null>;
@@ -54,13 +55,12 @@ export function useAudioLevel(isPaused: boolean = false): UseAudioLevelResult {
     setFrequencyData(ZERO_FREQUENCY_DATA);
   }, []);
 
-  const startAudioLevel = useCallback(async (stream: MediaStream) => {
+  const startAudioLevel = useCallback(async (stream: MediaStream, existingContext?: AudioContext) => {
     if (typeof navigator === "undefined" || !window.AudioContext) {
       setError("API non supportée");
       return;
     }
 
-    // BUG 2 FIX: Vérifier que le stream est actif et a des pistes audio actives
     if (!stream || stream.getTracks().length === 0) {
       console.error("[useAudioLevel] Stream invalide ou vide");
       setError("Stream audio invalide");
@@ -76,7 +76,6 @@ export function useAudioLevel(isPaused: boolean = false): UseAudioLevelResult {
       return;
     }
 
-    // Vérifier qu'au moins une piste est active
     const activeTracks = audioTracks.filter(t => t.enabled && t.readyState === "live");
     if (activeTracks.length === 0) {
       console.error("[useAudioLevel] Aucune piste audio active", {
@@ -95,17 +94,29 @@ export function useAudioLevel(isPaused: boolean = false): UseAudioLevelResult {
       activeTrackCount: activeTracks.length,
       trackEnabled: audioTracks[0]?.enabled,
       trackReadyState: audioTracks[0]?.readyState,
+      reusingContext: !!existingContext,
     });
 
     isStoppedRef.current = false;
     setError(null);
 
     try {
-      const audioContext = new AudioContext();
+      // Utiliser le contexte pré-créé (dans le geste utilisateur) ou en créer un nouveau
+      const audioContext = existingContext ?? new (window.AudioContext || (window as typeof window & { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
       audioContextRef.current = audioContext;
 
-      if (audioContext.state === "suspended") {
+      // Resume si suspendu — cast nécessaire car les types TS excluent "running" du domaine après narrowing
+      if ((audioContext.state as string) !== "running") {
         await audioContext.resume();
+        let attempts = 0;
+        while ((audioContext.state as string) !== "running" && attempts < 10) {
+          await new Promise((r) => setTimeout(r, 100));
+          attempts++;
+        }
+      }
+      console.log("[useAudioLevel] AudioContext state after resume:", audioContext.state);
+      if ((audioContext.state as string) !== "running") {
+        console.error("[useAudioLevel] AudioContext non running après tentatives — visualiseur peut être inactif");
       }
 
       const analyser = audioContext.createAnalyser();
@@ -115,6 +126,7 @@ export function useAudioLevel(isPaused: boolean = false): UseAudioLevelResult {
 
       const source = audioContext.createMediaStreamSource(stream);
       source.connect(analyser);
+      // NE PAS connecter analyser à destination — on lit seulement, pas de playback
       sourceRef.current = source;
 
       console.log("[useAudioLevel] Source connectée à l'analyser", {
@@ -155,18 +167,17 @@ export function useAudioLevel(isPaused: boolean = false): UseAudioLevelResult {
           return;
         }
 
-        if (ctx.state === "suspended") {
-          ctx.resume();
+        if ((ctx.state as string) === "suspended") {
+          ctx.resume().catch(() => {}); // fire-and-forget resume
+          animationRef.current = requestAnimationFrame(runLoop);
+          return;
         }
 
-        // BUG 2 FIX: S'assurer que getByteFrequencyData est appelé et que les données sont valides
         // @ts-expect-error - Type compatibility issue between ArrayBuffer and ArrayBufferLike
         analyserNode.getByteFrequencyData(data);
 
-        // Vérifier que les données ne sont pas toutes à zéro (debug)
         const dataSum = data.reduce((a, b) => a + b, 0);
         if (frameCount % 60 === 0) {
-          // Log toutes les secondes environ (60 frames à ~60fps)
           console.log("[useAudioLevel] Données audio", {
             frameCount,
             dataSum,
@@ -205,7 +216,6 @@ export function useAudioLevel(isPaused: boolean = false): UseAudioLevelResult {
         animationRef.current = requestAnimationFrame(runLoop);
       };
 
-      // BUG 2 FIX: Démarrer le loop immédiatement
       console.log("[useAudioLevel] Démarrage du RAF loop");
       runLoop();
     } catch (err) {

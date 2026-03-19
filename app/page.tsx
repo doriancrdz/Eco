@@ -73,6 +73,7 @@ export default function Home() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [processingDurationMinutes, setProcessingDurationMinutes] = useState(0);
   const [processingStep, setProcessingStep] = useState<"uploading" | "transcribing" | "summarizing">("uploading");
+  const [processingError, setProcessingError] = useState<string | null>(null);
   const [ecos, setEcos] = useState<Eco[]>([]);
 
   const { soundLevel, frequencyData, isAvailable, startAudioLevel, stopAudioLevel, analyserRef } = useAudioLevel(isPaused);
@@ -422,10 +423,30 @@ export default function Home() {
     setIsPaused(false);
     setRecordingElapsedSeconds(0);
 
+    // Créer l'AudioContext ICI, synchroniquement dans le handler du geste utilisateur
+    // Chrome refuse de le passer en "running" si créé après un await (hors user gesture)
+    const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const audioCtxForVisualizer = new AudioContextClass();
+
     try {
       if (process.env.NODE_ENV === "development") {
         console.log("[startRecording] Demande accès micro...");
       }
+
+      // Forcer resume — obligatoire sur Chrome (state = "suspended" par défaut)
+      await audioCtxForVisualizer.resume();
+      let attempts = 0;
+      while ((audioCtxForVisualizer.state as string) !== "running" && attempts < 10) {
+        await new Promise((r) => setTimeout(r, 100));
+        attempts++;
+      }
+      if (process.env.NODE_ENV === "development") {
+        console.log("[startRecording] AudioContext state:", audioCtxForVisualizer.state, "attempts:", attempts);
+      }
+      if ((audioCtxForVisualizer.state as string) !== "running") {
+        console.error("[startRecording] AudioContext failed to reach running state — visualiseur peut être inactif");
+      }
+
       // Chrome desktop filtre entièrement la voix avec echoCancellation/noiseSuppression activés
       // Safari/iOS : garder les contraintes standard qui fonctionnent
       const isChromeMac =
@@ -586,8 +607,8 @@ export default function Home() {
         console.log("[MediaRecorder] start(1000) appelé, state:", mediaRecorder.state);
       }
 
-      // Démarrer l'analyse audio (consomme aussi le stream)
-      await startAudioLevel(stream);
+      // Démarrer l'analyse audio — passer le contexte déjà "running" créé dans le geste utilisateur
+      await startAudioLevel(stream, audioCtxForVisualizer);
       if (process.env.NODE_ENV === "development") {
         console.log("[startRecording] Analyse audio démarrée");
       }
@@ -611,6 +632,8 @@ export default function Home() {
       if (process.env.NODE_ENV === "development") {
         console.error("[startRecording] Erreur:", error);
       }
+      // Fermer le contexte si on n'a pas pu démarrer
+      audioCtxForVisualizer.close().catch(() => {});
       setIsFocusMode(false);
       setIsRecording(false);
       alert("Impossible d'accéder au microphone. Veuillez autoriser l'accès.");
@@ -689,6 +712,7 @@ export default function Home() {
     }
     setProcessingDurationMinutes(durationSeconds / 60);
     setProcessingStep("uploading");
+    setProcessingError(null);
     setIsRecording(false);
     setIsProcessing(true);
     setIsFocusMode(false);
@@ -872,7 +896,7 @@ export default function Home() {
               if (process.env.NODE_ENV === "development") {
                 console.error("[pollRecordingStatus] ERROR", { recordingId, message });
               }
-              alert(message);
+              setProcessingError(message);
               reject(new Error(message));
             } else if (status === "TRANSCRIBED") {
               // Transcription OK — génération du résumé en cours
@@ -904,18 +928,18 @@ export default function Home() {
           }
         }, 3000);
 
-        // Timeout de sécurité : 10 minutes
+        // Timeout de sécurité : 3 minutes
         setTimeout(() => {
           clearInterval(interval);
           setIsProcessing(false);
           const message =
-            "Le traitement prend trop de temps. Veuillez réessayer dans quelques instants.";
+            "Le traitement prend trop de temps. Veuillez réessayer.";
           if (process.env.NODE_ENV === "development") {
             console.warn("[pollRecordingStatus] Timeout", { recordingId });
           }
-          alert(message);
+          setProcessingError(message);
           reject(new Error("Polling timeout"));
-        }, 600000);
+        }, 180000);
       });
 
       // 5) Diagnostic DEV : tableau + GET /api/debug/pipeline/[id]
@@ -1404,7 +1428,7 @@ export default function Home() {
                       />
                     </motion.div>
                   )}
-                  {isProcessing && (
+                  {(isProcessing || processingError) && (
                     <motion.div
                       key="generating"
                       initial={{ opacity: 0, y: 16 }}
@@ -1413,46 +1437,68 @@ export default function Home() {
                       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
                       className="flex-1 flex flex-col items-center justify-center min-h-[60vh] gap-6"
                     >
-                      <Logo state="generating" size={120} showMicroWarning={false} />
-                      <AnimatePresence mode="wait">
-                        <motion.div
-                          key={processingStep}
-                          initial={{ opacity: 0, y: 6 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -6 }}
-                          transition={{ duration: 0.3 }}
-                          className="flex flex-col items-center gap-2 text-center"
-                        >
-                          <p className="text-xl font-bold text-gray-800">
-                            {processingStep === "uploading" && "Envoi de l\u2019enregistrement\u2026"}
-                            {processingStep === "transcribing" && "Transcription en cours\u2026"}
-                            {processingStep === "summarizing" && "G\u00e9n\u00e9ration du r\u00e9sum\u00e9\u2026"}
-                          </p>
-                        </motion.div>
-                      </AnimatePresence>
-                      {/* Étapes visuelles */}
-                      <div className="flex items-center gap-3 mt-2">
-                        {(["uploading", "transcribing", "summarizing"] as const).map((step, i) => {
-                          const steps = ["uploading", "transcribing", "summarizing"];
-                          const currentIdx = steps.indexOf(processingStep);
-                          const isDone = i < currentIdx;
-                          const isActive = i === currentIdx;
-                          return (
-                            <span key={step} className="flex items-center gap-3">
-                              <span className={`w-2.5 h-2.5 rounded-full transition-all duration-500 ${isDone ? "bg-emerald-400" : isActive ? "bg-gray-800 animate-pulse" : "bg-gray-200"}`} />
-                              {i < 2 && <span className={`w-8 h-px block transition-all duration-500 ${isDone ? "bg-emerald-400" : "bg-gray-200"}`} />}
-                            </span>
-                          );
-                        })}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => goHome()}
-                        className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 mt-2 transition-colors"
-                      >
-                        <ArrowLeft className="w-4 h-4" />
-                        <span>Retour à l&apos;accueil</span>
-                      </button>
+                      {processingError ? (
+                        <>
+                          <div className="flex flex-col items-center gap-4 text-center max-w-sm">
+                            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                              <span className="text-red-600 text-xl">✕</span>
+                            </div>
+                            <p className="text-lg font-semibold text-gray-900">Traitement échoué</p>
+                            <p className="text-sm text-gray-500">{processingError}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => { setProcessingError(null); goHome(); }}
+                            className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 transition-colors font-medium"
+                          >
+                            <ArrowLeft className="w-4 h-4" />
+                            <span>Retour à l&apos;accueil</span>
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <Logo state="generating" size={120} showMicroWarning={false} />
+                          <AnimatePresence mode="wait">
+                            <motion.div
+                              key={processingStep}
+                              initial={{ opacity: 0, y: 6 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -6 }}
+                              transition={{ duration: 0.3 }}
+                              className="flex flex-col items-center gap-2 text-center"
+                            >
+                              <p className="text-xl font-bold text-gray-800">
+                                {processingStep === "uploading" && "Envoi de l\u2019enregistrement\u2026"}
+                                {processingStep === "transcribing" && "Transcription en cours\u2026"}
+                                {processingStep === "summarizing" && "G\u00e9n\u00e9ration du r\u00e9sum\u00e9\u2026"}
+                              </p>
+                            </motion.div>
+                          </AnimatePresence>
+                          {/* Étapes visuelles */}
+                          <div className="flex items-center gap-3 mt-2">
+                            {(["uploading", "transcribing", "summarizing"] as const).map((step, i) => {
+                              const steps = ["uploading", "transcribing", "summarizing"];
+                              const currentIdx = steps.indexOf(processingStep);
+                              const isDone = i < currentIdx;
+                              const isActive = i === currentIdx;
+                              return (
+                                <span key={step} className="flex items-center gap-3">
+                                  <span className={`w-2.5 h-2.5 rounded-full transition-all duration-500 ${isDone ? "bg-emerald-400" : isActive ? "bg-gray-800 animate-pulse" : "bg-gray-200"}`} />
+                                  {i < 2 && <span className={`w-8 h-px block transition-all duration-500 ${isDone ? "bg-emerald-400" : "bg-gray-200"}`} />}
+                                </span>
+                              );
+                            })}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => goHome()}
+                            className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 mt-2 transition-colors"
+                          >
+                            <ArrowLeft className="w-4 h-4" />
+                            <span>Retour à l&apos;accueil</span>
+                          </button>
+                        </>
+                      )}
                     </motion.div>
                   )}
               </AnimatePresence>
