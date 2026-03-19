@@ -426,14 +426,33 @@ export default function Home() {
       if (process.env.NODE_ENV === "development") {
         console.log("[startRecording] Demande accès micro...");
       }
+      // Chrome desktop filtre entièrement la voix avec echoCancellation/noiseSuppression activés
+      // Safari/iOS : garder les contraintes standard qui fonctionnent
+      const isChromeMac =
+        typeof navigator !== "undefined" &&
+        /Chrome/.test(navigator.userAgent) &&
+        !/Mobile|Android/.test(navigator.userAgent);
+
+      const audioConstraints: MediaTrackConstraints = isChromeMac
+        ? {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false,
+            sampleRate: { ideal: 44100 },
+          }
+        : {
+            echoCancellation: true,
+            noiseSuppression: true,
+            sampleRate: { ideal: 44100 },
+          };
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("[startRecording] Contraintes audio:", { isChromeMac, audioConstraints });
+      }
+
       // Le navigateur garde la permission après la première autorisation ; ne pas appeler permissions.query() à chaque fois
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          // sampleRate as ideal — strict enforcement can return silent streams on some devices
-          sampleRate: { ideal: 44100 },
-        },
+        audio: audioConstraints,
       });
 
       if (process.env.NODE_ENV === "development") {
