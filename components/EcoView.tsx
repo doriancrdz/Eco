@@ -102,6 +102,16 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
     setQuizSubmitted(false);
   }, [eco?.id]);
 
+  // Polling quiz en arrière-plan : poll toutes les 3s tant que résumé ok mais quiz manquant
+  const isQuizPending = !!(eco?.summary_text && !eco?.quiz);
+  useEffect(() => {
+    if (!isQuizPending || !eco?.id) return;
+    const interval = setInterval(() => {
+      onRefresh?.();
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [isQuizPending, eco?.id, onRefresh]);
+
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const generateSummaryTriggeredRef = useRef(false);
   const pollCountRef = useRef(0);
@@ -440,7 +450,7 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
 
   const quizContent = (
     <div>
-      {isGenerating ? (
+      {isGenerating || isQuizPending ? (
         <div className="space-y-4 animate-pulse">
           {[1, 2, 3].map((i) => (
             <div key={i} className="p-5 rounded-xl bg-white/5 border border-white/10 space-y-3">
@@ -453,7 +463,7 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
               </div>
             </div>
           ))}
-          <p className="text-sm text-gray-400">Génération du quiz en cours…</p>
+          <p className="text-sm text-gray-400">Quiz en cours de génération…</p>
         </div>
       ) : quizData && quizData.length > 0 ? (
         <div className="space-y-5">

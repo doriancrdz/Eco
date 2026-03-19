@@ -1409,16 +1409,6 @@ export default function Home() {
                             {processingStep === "transcribing" && "Transcription en cours\u2026"}
                             {processingStep === "summarizing" && "G\u00e9n\u00e9ration du r\u00e9sum\u00e9\u2026"}
                           </p>
-                          <p className="text-sm text-gray-500 max-w-xs">
-                            {processingStep === "uploading" && "Chargement de l\u2019audio vers nos serveurs."}
-                            {processingStep === "transcribing" && "Analyse de votre voix par Whisper AI."}
-                            {processingStep === "summarizing" && (
-                              <>
-                                Cr\u00e9ation du r\u00e9sum\u00e9, des points cl\u00e9s et de la transcription.
-                                {processingDurationMinutes > 10 && " Cela peut prendre 1\u20132\u00a0min pour les longs audios."}
-                              </>
-                            )}
-                          </p>
                         </motion.div>
                       </AnimatePresence>
                       {/* Étapes visuelles */}

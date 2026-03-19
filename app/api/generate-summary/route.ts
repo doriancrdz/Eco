@@ -7,6 +7,7 @@ import { auth } from "@clerk/nextjs/server";
 import OpenAI from "openai";
 import { prisma } from "@/lib/prisma";
 import { summaryLimiter } from "@/lib/ratelimit";
+import { waitUntil } from "@vercel/functions";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -438,82 +439,22 @@ Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.`;
 
 ${truncated}`;
 
-    // Nombre de questions quiz selon la durée de l'enregistrement
-    const durationMinutes =
-      recording.durationMs != null
-        ? recording.durationMs / 1000 / 60
-        : recording.durationSeconds != null
-        ? recording.durationSeconds / 60
-        : transcriptionWordCount / 150;
-
-    const numQuestions =
-      durationMinutes < 5 ? 3 : durationMinutes < 15 ? 5 : durationMinutes < 30 ? 8 : 12;
-    const numMcq = Math.round(numQuestions * 0.6);
-    const numOpen = numQuestions - numMcq;
-
-    const quizSystemPrompt = `Tu es un expert en création de quiz pédagogiques.
-
-Génère exactement ${numQuestions} questions de quiz à partir de la transcription fournie.
-
-Format JSON strict :
-{
-  "quiz": [
-    {
-      "type": "mcq",
-      "question": "Question ici ?",
-      "options": ["A. Option A", "B. Option B", "C. Option C", "D. Option D"],
-      "answer": "A"
-    },
-    {
-      "type": "open",
-      "question": "Question ouverte ici ?",
-      "answer": "Réponse modèle : ..."
-    }
-  ]
-}
-
-Règles :
-- Exactement ${numQuestions} questions : ${numMcq} QCM et ${numOpen} questions ouvertes
-- QCM : 4 options (A, B, C, D), une seule bonne réponse, distracteurs plausibles
-- La bonne réponse doit être répartie aléatoirement entre A, B, C, D (pas toujours A)
-- Questions ouvertes : courtes et directes, réponse commençant par "Réponse modèle : "
-- Toutes les questions en français
-- Tirées des points les plus importants de la transcription
-
-Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.`;
-
     const gptStart = performance.now();
-    const [completion, quizCompletionResult] = await Promise.allSettled([
-      openai.chat.completions.create({
-        model: AI_SUMMARY_MODEL,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.5,
-        max_tokens: maxTokens,
-      }),
-      openai.chat.completions.create({
-        model: AI_SUMMARY_MODEL,
-        messages: [
-          { role: "system", content: quizSystemPrompt },
-          { role: "user", content: `Transcription (${transcriptionWordCount} mots) :\n\n${truncated}` },
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.7,
-        max_tokens: 2500,
-      }),
-    ]);
-
-    if (completion.status === "rejected") {
-      throw completion.reason;
-    }
+    const completion = await openai.chat.completions.create({
+      model: AI_SUMMARY_MODEL,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      response_format: { type: "json_object" },
+      temperature: 0.5,
+      max_tokens: maxTokens,
+    });
 
     timings.gptSummary = performance.now() - gptStart;
 
     const summaryContent =
-      completion.value.choices[0]?.message?.content ??
+      completion.choices[0]?.message?.content ??
       '{"titre":"Résumé","introduction":"","contenu":{"type":"narratif","sections":[]},"conclusion":"","pointsCles":[],"notions":[]}';
 
     let summary: { titre: string; resume: string; pointsCles: string[]; notions: Array<{ terme: string; definition: string }> | string[] };
@@ -679,24 +620,6 @@ Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.`;
       };
     }
 
-    // Parse quiz
-    let quizData: Array<{ type: string; question: string; options?: string[]; answer: string }> | null = null;
-    if (quizCompletionResult.status === "fulfilled") {
-      try {
-        let rawQuiz = (quizCompletionResult.value.choices[0]?.message?.content ?? "").trim();
-        const jsonMatch = rawQuiz.match(/\{[\s\S]*\}/);
-        if (jsonMatch) rawQuiz = jsonMatch[0];
-        const parsedQuiz = JSON.parse(rawQuiz);
-        if (Array.isArray(parsedQuiz.quiz)) {
-          quizData = parsedQuiz.quiz;
-        }
-      } catch {
-        if (process.env.NODE_ENV === "development") {
-          console.warn("[generate-summary] Quiz parsing failed, storing null");
-        }
-      }
-    }
-
     const summaryJson = JSON.stringify(summary);
     if (process.env.NODE_ENV === "development") {
       console.log("[summary] generated", { hasJson: !!summaryJson, size: summaryJson?.length ?? 0, ts: Date.now() });
@@ -717,7 +640,7 @@ Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.`;
       console.log("[summary] recording updated", { recordingId, ts: Date.now() });
     }
 
-    // Sync Eco (id = recordingId) : upsert pour être robuste si l'Eco n'existe pas encore
+    // Sync Eco — sans quiz (quiz généré en arrière-plan après la réponse)
     const contentStr = summaryJson;
     const updatedEco = await prisma.eco.upsert({
       where: { id: recordingId },
@@ -727,12 +650,10 @@ Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.`;
         title: summary.titre,
         content: contentStr,
         transcriptionText: recording.transcriptionText,
-        quiz: quizData ?? undefined,
       },
       update: {
         title: summary.titre,
         content: contentStr,
-        quiz: quizData ?? undefined,
       },
       select: { id: true, content: true, title: true },
     });
@@ -756,6 +677,86 @@ Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.`;
         model: AI_SUMMARY_MODEL,
       });
     }
+
+    // Génération du quiz en arrière-plan (timeout strict 20s — n'affecte pas le temps de réponse)
+    const durationMinutes =
+      recording.durationMs != null
+        ? recording.durationMs / 1000 / 60
+        : recording.durationSeconds != null
+        ? recording.durationSeconds / 60
+        : transcriptionWordCount / 150;
+    const numQuestions =
+      durationMinutes < 5 ? 3 : durationMinutes < 15 ? 5 : durationMinutes < 30 ? 8 : 12;
+    const numMcq = Math.round(numQuestions * 0.6);
+    const numOpen = numQuestions - numMcq;
+
+    waitUntil(
+      (async () => {
+        const quizController = new AbortController();
+        const quizTimeout = setTimeout(() => quizController.abort(), 20000);
+        try {
+          const quizSystemPrompt = `Tu es un expert en création de quiz pédagogiques.
+
+Génère exactement ${numQuestions} questions de quiz à partir de la transcription fournie.
+
+Format JSON strict :
+{
+  "quiz": [
+    {
+      "type": "mcq",
+      "question": "Question ici ?",
+      "options": ["A. Option A", "B. Option B", "C. Option C", "D. Option D"],
+      "answer": "A"
+    },
+    {
+      "type": "open",
+      "question": "Question ouverte ici ?",
+      "answer": "Réponse modèle : ..."
+    }
+  ]
+}
+
+Règles :
+- Exactement ${numQuestions} questions : ${numMcq} QCM et ${numOpen} questions ouvertes
+- QCM : 4 options (A, B, C, D), une seule bonne réponse, distracteurs plausibles
+- La bonne réponse répartie aléatoirement entre A, B, C, D (pas toujours A)
+- Questions ouvertes : courtes et directes, réponse commençant par "Réponse modèle : "
+- Toutes les questions en français
+- Tirées des points les plus importants de la transcription
+
+Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.`;
+
+          const quizCompletion = await openai.chat.completions.create({
+            model: AI_SUMMARY_MODEL,
+            messages: [
+              { role: "system", content: quizSystemPrompt },
+              { role: "user", content: `Transcription (${transcriptionWordCount} mots) :\n\n${truncated}` },
+            ],
+            response_format: { type: "json_object" },
+            temperature: 0.7,
+            max_tokens: 2500,
+          }, { signal: quizController.signal });
+
+          let rawQuiz = (quizCompletion.choices[0]?.message?.content ?? "").trim();
+          const jsonMatch = rawQuiz.match(/\{[\s\S]*\}/);
+          if (jsonMatch) rawQuiz = jsonMatch[0];
+          const parsedQuiz = JSON.parse(rawQuiz);
+          if (Array.isArray(parsedQuiz.quiz) && parsedQuiz.quiz.length > 0) {
+            await prisma.eco.update({
+              where: { id: recordingId },
+              data: { quiz: parsedQuiz.quiz },
+            });
+            if (process.env.NODE_ENV === "development") {
+              console.log("[quiz] saved", { recordingId, count: parsedQuiz.quiz.length });
+            }
+          }
+        } catch (err) {
+          console.error("[quiz] background generation failed", { recordingId, err });
+        } finally {
+          clearTimeout(quizTimeout);
+        }
+      })()
+    );
 
     return NextResponse.json({
       recordingId,
