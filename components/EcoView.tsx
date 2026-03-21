@@ -46,6 +46,69 @@ function RelancerButton({ ecoId, onSuccess }: { ecoId: string; onSuccess?: () =>
   );
 }
 
+function renderResume(resume: string) {
+  const sectionHeaders = ["Introduction:", "Contenu:", "Conclusion:"];
+  const hasStructure = sectionHeaders.some((h) => resume.includes(h));
+
+  if (!hasStructure) {
+    return <p className="whitespace-pre-wrap text-gray-700 leading-relaxed">{resume}</p>;
+  }
+
+  // Split on 2+ consecutive newlines to get logical blocks
+  const blocks = resume.split(/\n{2,}/);
+  const nodes: React.ReactNode[] = [];
+  let key = 0;
+
+  for (const block of blocks) {
+    const trimmed = block.trim();
+    if (!trimmed) continue;
+    const lines = trimmed.split("\n");
+    const firstLine = lines[0].trim();
+
+    if (sectionHeaders.includes(firstLine)) {
+      // Section header — styled separately
+      nodes.push(
+        <p
+          key={key++}
+          className={`font-semibold text-gray-900 mb-2 ${nodes.length > 0 ? "mt-5" : "mt-0"}`}
+        >
+          {firstLine}
+        </p>
+      );
+      // Content immediately after the header (same block, after the first line)
+      const rest = lines.slice(1).map((l) => l.trim()).filter(Boolean).join(" ");
+      if (rest) {
+        nodes.push(
+          <p key={key++} className="text-gray-700 leading-relaxed">
+            {rest}
+          </p>
+        );
+      }
+    } else if (/^\d+\.\s/.test(firstLine)) {
+      // Numbered list item (liste type)
+      nodes.push(
+        <div key={key++} className="mb-2">
+          <span className="font-medium text-gray-800">{firstLine}</span>
+          {lines.length > 1 && (
+            <p className="text-gray-700 leading-relaxed mt-0.5">
+              {lines.slice(1).map((l) => l.trim()).filter(Boolean).join(" ")}
+            </p>
+          )}
+        </div>
+      );
+    } else {
+      // Regular paragraph
+      nodes.push(
+        <p key={key++} className="text-gray-700 leading-relaxed mb-1">
+          {lines.map((l) => l.trim()).filter(Boolean).join(" ")}
+        </p>
+      );
+    }
+  }
+
+  return <div>{nodes}</div>;
+}
+
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   const handleCopy = async () => {
@@ -350,7 +413,7 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
           <>
             <h3 className="text-xl font-semibold mt-0 mb-4 text-gray-900">{summary.titre}</h3>
             <div className="prose prose-sm max-w-none">
-              <p className="whitespace-pre-line text-gray-700 leading-relaxed">{summary.resume}</p>
+              {renderResume(summary.resume)}
             </div>
           </>
         ) : summaryJson ? (

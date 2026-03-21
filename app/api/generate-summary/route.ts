@@ -646,6 +646,22 @@ ${truncated}`;
       };
     }
 
+    // Validation structure — log Vercel si une section manque
+    {
+      const hasIntro = summary.resume.includes("Introduction:");
+      const hasContenu = summary.resume.includes("Contenu:");
+      const hasConclusion = summary.resume.includes("Conclusion:");
+      if (!hasIntro || !hasContenu || !hasConclusion) {
+        console.error("[ECO] STRUCTURE MANQUANTE dans le résumé", {
+          recordingId,
+          hasIntro,
+          hasContenu,
+          hasConclusion,
+          resumeSnippet: summary.resume.substring(0, 300),
+        });
+      }
+    }
+
     const summaryJson = JSON.stringify(summary);
     if (process.env.NODE_ENV === "development") {
       console.log("[summary] generated", { hasJson: !!summaryJson, size: summaryJson?.length ?? 0, ts: Date.now() });
