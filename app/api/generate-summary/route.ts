@@ -77,7 +77,9 @@ export async function POST(req: NextRequest) {
 
     if (internalKeyHeader && typeof internalUserId === "string") {
       const { createHmac, timingSafeEqual } = await import("crypto");
-      const expectedKey = createHmac("sha256", process.env.OPENAI_API_KEY ?? "internal")
+      // Préférer INTERNAL_HMAC_SECRET dédié ; fallback OPENAI_API_KEY pour rétrocompatibilité
+      const hmacSecret = process.env.INTERNAL_HMAC_SECRET ?? process.env.OPENAI_API_KEY ?? "internal";
+      const expectedKey = createHmac("sha256", hmacSecret)
         .update(`${recordingId}:${internalUserId}`)
         .digest("hex");
       try {

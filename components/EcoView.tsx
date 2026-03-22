@@ -9,6 +9,8 @@ import type { Summary } from "@/lib/transcription";
 import Tabs from "@/components/ui/Tabs";
 
 const POLL_INTERVAL_MS = 2000;
+// Jitter 0-800ms pour éviter le thundering herd si plusieurs users en simultané
+const pollJitter = () => Math.floor(Math.random() * 800);
 
 function RelancerButton({ ecoId, onSuccess }: { ecoId: string; onSuccess?: () => void }) {
   const [loading, setLoading] = useState(false);
@@ -146,6 +148,7 @@ interface EcoViewProps {
 
 export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
   const [showRetryHint, setShowRetryHint] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
   const [lastSummaryStatus, setLastSummaryStatus] = useState<number | null>(null);
   const [quizAnswers, setQuizAnswers] = useState<Record<number, string>>({});
   const [revealedOpen, setRevealedOpen] = useState<Set<number>>(new Set());
@@ -282,12 +285,15 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
                 .then((r) => {
                   setLastSummaryStatus(r.status);
                   if (r.ok || r.status === 202) return;
-                  throw new Error(`Status ${r.status}`);
-                })
-                .catch((err) => {
-                  if (process.env.NODE_ENV === "development") {
-                    console.error("[EcoView.poll] generate-summary error", err);
+                  // Erreur serveur → afficher feedback immédiat (429, 500, etc.)
+                  if (r.status === 429) {
+                    setSummaryError("Limite de résumés atteinte. Réessayez dans quelques minutes.");
+                  } else {
+                    setSummaryError("La génération du résumé a échoué. Cliquez sur Relancer.");
                   }
+                })
+                .catch(() => {
+                  setSummaryError("La génération du résumé a échoué. Vérifiez votre connexion.");
                 });
             }
 
@@ -341,7 +347,7 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
     };
 
     poll();
-    pollRef.current = setInterval(poll, POLL_INTERVAL_MS);
+    pollRef.current = setInterval(poll, POLL_INTERVAL_MS + pollJitter());
     return () => {
       if (pollRef.current) {
         clearInterval(pollRef.current);
@@ -446,7 +452,13 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
         ) : (
           <div className="space-y-3">
             <p className="text-gray-400">Aucun résumé disponible</p>
-            {showRetryHint && (
+            {summaryError && (
+              <>
+                <p className="text-sm text-red-600">{summaryError}</p>
+                <RelancerButton ecoId={eco.id} onSuccess={() => { setSummaryError(null); onRefresh?.(); }} />
+              </>
+            )}
+            {!summaryError && showRetryHint && (
               <>
                 <p className="text-sm text-amber-600">Traitement en cours ou échoué.</p>
                 <RelancerButton ecoId={eco.id} onSuccess={onRefresh} />
@@ -505,7 +517,13 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
   );
 
   // Tab 4: Quiz
-  const quizData = eco?.quiz as QuizQuestion[] | null | undefined;
+  // Guard shape : s'assurer que c'est bien un tableau d'objets {type, question}
+  const rawQuiz = eco?.quiz;
+  const quizData: QuizQuestion[] | null | undefined = Array.isArray(rawQuiz) &&
+    rawQuiz.length > 0 &&
+    typeof (rawQuiz[0] as unknown as Record<string, unknown>)?.question === "string"
+    ? (rawQuiz as QuizQuestion[])
+    : null;
   const mcqCount = quizData?.filter((q) => q.type === "mcq").length ?? 0;
   const correctCount = quizSubmitted
     ? (quizData?.filter((q, i) => q.type === "mcq" && quizAnswers[i] === q.answer).length ?? 0)

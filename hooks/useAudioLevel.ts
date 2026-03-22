@@ -37,7 +37,7 @@ export function useAudioLevel(isPaused: boolean = false): UseAudioLevelResult {
   isPausedRef.current = isPaused;
 
   const stopAudioLevel = useCallback(() => {
-    console.log("[useAudioLevel] Arrêt de l'analyse audio");
+    if (process.env.NODE_ENV === "development") console.log("[useAudioLevel] Arrêt de l'analyse audio");
     isStoppedRef.current = true;
     if (animationRef.current !== null) {
       cancelAnimationFrame(animationRef.current);
@@ -89,7 +89,7 @@ export function useAudioLevel(isPaused: boolean = false): UseAudioLevelResult {
       return;
     }
 
-    console.log("[useAudioLevel] Démarrage avec stream", {
+    if (process.env.NODE_ENV === "development") console.log("[useAudioLevel] Démarrage avec stream", {
       trackCount: audioTracks.length,
       activeTrackCount: activeTracks.length,
       trackEnabled: audioTracks[0]?.enabled,
@@ -114,9 +114,11 @@ export function useAudioLevel(isPaused: boolean = false): UseAudioLevelResult {
           attempts++;
         }
       }
-      console.log("[useAudioLevel] AudioContext state after resume:", audioContext.state);
-      if ((audioContext.state as string) !== "running") {
-        console.error("[useAudioLevel] AudioContext non running après tentatives — visualiseur peut être inactif");
+      if (process.env.NODE_ENV === "development") {
+        console.log("[useAudioLevel] AudioContext state after resume:", audioContext.state);
+        if ((audioContext.state as string) !== "running") {
+          console.error("[useAudioLevel] AudioContext non running après tentatives — visualiseur peut être inactif");
+        }
       }
 
       const analyser = audioContext.createAnalyser();
@@ -129,7 +131,7 @@ export function useAudioLevel(isPaused: boolean = false): UseAudioLevelResult {
       // NE PAS connecter analyser à destination — on lit seulement, pas de playback
       sourceRef.current = source;
 
-      console.log("[useAudioLevel] Source connectée à l'analyser", {
+      if (process.env.NODE_ENV === "development") console.log("[useAudioLevel] Source connectée à l'analyser", {
         audioContextState: audioContext.state,
         analyserFftSize: analyser.fftSize,
         frequencyBinCount: analyser.frequencyBinCount,
@@ -149,7 +151,6 @@ export function useAudioLevel(isPaused: boolean = false): UseAudioLevelResult {
       let frameCount = 0;
       const runLoop = () => {
         if (isStoppedRef.current) {
-          console.log("[useAudioLevel] RAF loop arrêtée (isStopped)");
           return;
         }
 
@@ -158,11 +159,6 @@ export function useAudioLevel(isPaused: boolean = false): UseAudioLevelResult {
         const data = dataArrayRef.current;
 
         if (!ctx || !analyserNode || !data) {
-          console.warn("[useAudioLevel] Références manquantes dans RAF loop", {
-            hasContext: !!ctx,
-            hasAnalyser: !!analyserNode,
-            hasData: !!data,
-          });
           animationRef.current = requestAnimationFrame(runLoop);
           return;
         }
@@ -176,16 +172,6 @@ export function useAudioLevel(isPaused: boolean = false): UseAudioLevelResult {
         // @ts-expect-error - Type compatibility issue between ArrayBuffer and ArrayBufferLike
         analyserNode.getByteFrequencyData(data);
 
-        const dataSum = data.reduce((a, b) => a + b, 0);
-        if (frameCount % 60 === 0) {
-          console.log("[useAudioLevel] Données audio", {
-            frameCount,
-            dataSum,
-            maxValue: Math.max(...Array.from(data)),
-            audioContextState: ctx.state,
-            isPaused: isPausedRef.current,
-          });
-        }
         frameCount++;
 
         if (isPausedRef.current) {
@@ -216,7 +202,7 @@ export function useAudioLevel(isPaused: boolean = false): UseAudioLevelResult {
         animationRef.current = requestAnimationFrame(runLoop);
       };
 
-      console.log("[useAudioLevel] Démarrage du RAF loop");
+      if (process.env.NODE_ENV === "development") console.log("[useAudioLevel] Démarrage du RAF loop");
       runLoop();
     } catch (err) {
       console.error("[useAudioLevel] Erreur lors du démarrage:", err);

@@ -319,7 +319,8 @@ export async function POST(
         try {
           console.log(`[ECO] Summary generation start recordingId=${recordingId} ts=${Date.now()}`);
           const { createHmac } = await import("crypto");
-          const internalKey = createHmac("sha256", process.env.OPENAI_API_KEY ?? "internal")
+          const hmacSecret = process.env.INTERNAL_HMAC_SECRET ?? process.env.OPENAI_API_KEY ?? "internal";
+          const internalKey = createHmac("sha256", hmacSecret)
             .update(`${recordingId}:${userId}`)
             .digest("hex");
           const sumRes = await fetch(`${origin}/api/generate-summary`, {

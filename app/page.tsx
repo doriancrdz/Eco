@@ -443,7 +443,7 @@ export default function Home() {
       if (process.env.NODE_ENV === "development") {
         console.log("[startRecording] AudioContext state:", audioCtxForVisualizer.state, "attempts:", attempts);
       }
-      if ((audioCtxForVisualizer.state as string) !== "running") {
+      if ((audioCtxForVisualizer.state as string) !== "running" && process.env.NODE_ENV === "development") {
         console.error("[startRecording] AudioContext failed to reach running state — visualiseur peut être inactif");
       }
 
