@@ -484,6 +484,19 @@ export default function Home() {
         throw new Error("Aucune piste audio disponible");
       }
 
+      if (process.env.NODE_ENV === "development") {
+        console.log("[startRecording] Audio tracks:", stream.getAudioTracks().map(t => ({ enabled: t.enabled, readyState: t.readyState, label: t.label })));
+        console.log("[startRecording] AudioContext state avant connexion analyser:", audioCtxForVisualizer.state);
+      }
+
+      // Connecter l'analyser IMMÉDIATEMENT après getUserMedia, dans le même tick
+      // Chrome Mac : tout await supplémentaire avant la connexion peut suspendre le contexte
+      await startAudioLevel(stream, audioCtxForVisualizer);
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("[startRecording] Analyser connecté, AudioContext state:", audioCtxForVisualizer.state);
+      }
+
       // Réinitialiser les chunks
       audioChunksRef.current = [];
       if (process.env.NODE_ENV === "development") {
@@ -605,12 +618,6 @@ export default function Home() {
       mediaRecorder.start(1000);
       if (process.env.NODE_ENV === "development") {
         console.log("[MediaRecorder] start(1000) appelé, state:", mediaRecorder.state);
-      }
-
-      // Démarrer l'analyse audio — passer le contexte déjà "running" créé dans le geste utilisateur
-      await startAudioLevel(stream, audioCtxForVisualizer);
-      if (process.env.NODE_ENV === "development") {
-        console.log("[startRecording] Analyse audio démarrée");
       }
 
       // Initialiser le timer
