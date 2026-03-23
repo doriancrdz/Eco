@@ -9,7 +9,6 @@ import { Sparkles, ArrowRight, Settings, ArrowLeft, Mic, LogIn } from "lucide-re
 import { useUser, useClerk } from "@clerk/nextjs";
 import EcoView from "@/components/EcoView";
 import RecordButton from "@/components/RecordButton";
-import { useAudioLevel } from "@/hooks/useAudioLevel";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { Eco } from "@/types";
 import { getEcos } from "@/lib/storage";
@@ -76,7 +75,11 @@ export default function Home() {
   const [processingError, setProcessingError] = useState<string | null>(null);
   const [ecos, setEcos] = useState<Eco[]>([]);
 
-  const { soundLevel, frequencyData, isAvailable, startAudioLevel, stopAudioLevel, analyserRef } = useAudioLevel(isPaused);
+  const [soundLevel, setSoundLevel] = useState(1);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const vizAudioCtxRef = useRef<AudioContext | null>(null);
+  const vizAnimFrameRef = useRef<number | null>(null);
+  const vizSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
 
   // Empêcher la fermeture accidentelle pendant l'enregistrement
@@ -423,28 +426,9 @@ export default function Home() {
     setIsPaused(false);
     setRecordingElapsedSeconds(0);
 
-    // Créer l'AudioContext ICI, synchroniquement dans le handler du geste utilisateur
-    // Chrome refuse de le passer en "running" si créé après un await (hors user gesture)
-    const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    const audioCtxForVisualizer = new AudioContextClass();
-
     try {
       if (process.env.NODE_ENV === "development") {
         console.log("[startRecording] Demande accès micro...");
-      }
-
-      // Forcer resume — obligatoire sur Chrome (state = "suspended" par défaut)
-      await audioCtxForVisualizer.resume();
-      let attempts = 0;
-      while ((audioCtxForVisualizer.state as string) !== "running" && attempts < 10) {
-        await new Promise((r) => setTimeout(r, 100));
-        attempts++;
-      }
-      if (process.env.NODE_ENV === "development") {
-        console.log("[startRecording] AudioContext state:", audioCtxForVisualizer.state, "attempts:", attempts);
-      }
-      if ((audioCtxForVisualizer.state as string) !== "running" && process.env.NODE_ENV === "development") {
-        console.error("[startRecording] AudioContext failed to reach running state — visualiseur peut être inactif");
       }
 
       // Chrome desktop filtre entièrement la voix avec echoCancellation/noiseSuppression activés
@@ -484,18 +468,48 @@ export default function Home() {
         throw new Error("Aucune piste audio disponible");
       }
 
-      if (process.env.NODE_ENV === "development") {
-        console.log("[startRecording] Audio tracks:", stream.getAudioTracks().map(t => ({ enabled: t.enabled, readyState: t.readyState, label: t.label })));
-        console.log("[startRecording] AudioContext state avant connexion analyser:", audioCtxForVisualizer.state);
+      // === VISUALISEUR INLINE — création immédiate après getUserMedia ===
+      // Cleanup du visualiseur précédent si existant
+      if (vizAnimFrameRef.current !== null) {
+        cancelAnimationFrame(vizAnimFrameRef.current);
+        vizAnimFrameRef.current = null;
       }
+      vizSourceRef.current?.disconnect();
+      vizSourceRef.current = null;
+      analyserRef.current = null;
+      vizAudioCtxRef.current?.close().catch(() => {});
+      vizAudioCtxRef.current = null;
 
-      // Connecter l'analyser IMMÉDIATEMENT après getUserMedia, dans le même tick
-      // Chrome Mac : tout await supplémentaire avant la connexion peut suspendre le contexte
-      await startAudioLevel(stream, audioCtxForVisualizer);
+      try {
+        const audioCtx = new AudioContext();
+        if (audioCtx.state !== "running") {
+          await audioCtx.resume();
+          await new Promise((r) => setTimeout(r, 200));
+        }
+        if (process.env.NODE_ENV === "development") {
+          console.log("[visualiseur] AudioContext state:", audioCtx.state, "| audio tracks:", stream.getAudioTracks().length);
+        }
+        const source = audioCtx.createMediaStreamSource(stream);
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.8;
+        source.connect(analyser);
+        vizSourceRef.current = source;
+        analyserRef.current = analyser;
+        vizAudioCtxRef.current = audioCtx;
 
-      if (process.env.NODE_ENV === "development") {
-        console.log("[startRecording] Analyser connecté, AudioContext state:", audioCtxForVisualizer.state);
+        const data = new Uint8Array(analyser.frequencyBinCount);
+        const loop = () => {
+          analyser.getByteFrequencyData(data);
+          const vol = Math.max(...Array.from(data)) / 255;
+          setSoundLevel(0.95 + vol * 0.23);
+          vizAnimFrameRef.current = requestAnimationFrame(loop);
+        };
+        loop();
+      } catch (vizErr) {
+        console.error("[visualiseur] échec:", vizErr);
       }
+      // === FIN VISUALISEUR ===
 
       // Réinitialiser les chunks
       audioChunksRef.current = [];
@@ -557,7 +571,18 @@ export default function Home() {
         if (process.env.NODE_ENV === "development") {
           console.log("[onstop] Chunks collectés:", audioChunksRef.current.length);
         }
-        stopAudioLevel();
+        // Cleanup visualiseur inline
+        if (vizAnimFrameRef.current !== null) {
+          cancelAnimationFrame(vizAnimFrameRef.current);
+          vizAnimFrameRef.current = null;
+        }
+        vizSourceRef.current?.disconnect();
+        vizSourceRef.current = null;
+        analyserRef.current = null;
+        vizAudioCtxRef.current?.close().catch(() => {});
+        vizAudioCtxRef.current = null;
+        setSoundLevel(1);
+
         startTimeRef.current = null;
         totalPausedMsRef.current = 0;
         pausedAtRef.current = null;
@@ -639,8 +664,14 @@ export default function Home() {
       if (process.env.NODE_ENV === "development") {
         console.error("[startRecording] Erreur:", error);
       }
-      // Fermer le contexte si on n'a pas pu démarrer
-      audioCtxForVisualizer.close().catch(() => {});
+      // Cleanup visualiseur si erreur au démarrage
+      if (vizAnimFrameRef.current !== null) {
+        cancelAnimationFrame(vizAnimFrameRef.current);
+        vizAnimFrameRef.current = null;
+      }
+      vizAudioCtxRef.current?.close().catch(() => {});
+      vizAudioCtxRef.current = null;
+      analyserRef.current = null;
       setIsFocusMode(false);
       setIsRecording(false);
       alert("Impossible d'accéder au microphone. Veuillez autoriser l'accès.");
@@ -1085,7 +1116,6 @@ export default function Home() {
           isPaused={isPaused}
           onTogglePause={() => setIsPaused((p) => !p)}
           soundLevel={soundLevel}
-          frequencyData={frequencyData}
           showMicroWarning={false}
           onStartRecording={handleStartRecording}
           onStopRecording={stopRecording}
@@ -1522,7 +1552,6 @@ export default function Home() {
           isPaused={isPaused}
           onTogglePause={() => setIsPaused((p) => !p)}
           soundLevel={soundLevel}
-          frequencyData={frequencyData}
           showMicroWarning={false}
           onStartRecording={handleStartRecording}
           onStopRecording={stopRecording}
