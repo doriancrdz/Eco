@@ -262,14 +262,32 @@ export async function POST(
         const whisperMs = performance.now() - whisperStart;
 
         // Guard 2: transcription vide → Whisper n'a rien capté (audio silencieux)
-        if (!transcription || transcription.trim().length < 10) {
+        if (!transcription || transcription.trim().length < 20) {
           console.error(`[ECO] EMPTY_TRANSCRIPTION recordingId=${recordingId} chars=${transcription?.length ?? 0}`);
           await prisma.recording.update({
             where: { id: recordingId },
-            data: { status: "ERROR", errorMessage: "Transcription vide — audio non capté. Vérifiez votre micro.", audioBlobSize: audioFile.size },
+            data: { status: "ERROR", errorMessage: "Audio non capté. Vérifiez que votre micro est bien activé et que vous parlez suffisamment fort.", audioBlobSize: audioFile.size },
           });
           return;
         }
+
+        // Guard 3: hallucination Whisper — texte généré sur audio silencieux
+        const WHISPER_HALLUCINATIONS = [
+          "amara", "sous-titres", "subtitles", "transcribed by", "transcript by",
+          "www.", ".org", ".com", "merci d'avoir regardé", "thanks for watching",
+          "thank you for watching", "please subscribe", "abonnez-vous",
+        ];
+        const transcriptionLower = transcription.toLowerCase().trim();
+        const isHallucination = WHISPER_HALLUCINATIONS.some((h) => transcriptionLower.includes(h));
+        if (isHallucination) {
+          console.error(`[ECO] HALLUCINATION recordingId=${recordingId} preview="${transcription.slice(0, 80)}"`);
+          await prisma.recording.update({
+            where: { id: recordingId },
+            data: { status: "ERROR", errorMessage: "Audio non capté. Vérifiez que votre micro est bien activé et que vous parlez suffisamment fort.", audioBlobSize: audioFile.size },
+          });
+          return;
+        }
+
         console.log(`[ECO] Whisper transcription done recordingId=${recordingId} chars=${transcription.length} whisperMs=${whisperMs.toFixed(0)}`);
 
         const dbUpdateStart = performance.now();
