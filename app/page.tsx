@@ -431,13 +431,13 @@ export default function Home() {
         console.log("[startRecording] Demande accès micro...");
       }
 
-      // Contraintes universelles — echoCancellation:true bloque la capture audio système sur Chrome
+      // deviceId:'default' force le vrai micro système (évite les devices virtuels Teams/Zoom)
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
+          deviceId: "default",
           echoCancellation: true,
           noiseSuppression: true,
           autoGainControl: true,
-          sampleRate: { ideal: 44100 },
         },
         video: false,
       });
