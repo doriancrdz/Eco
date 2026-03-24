@@ -517,41 +517,23 @@ export default function Home() {
         console.log("[startRecording] Chunks réinitialisés");
       }
 
-      // Détection format robuste : priorité WEBM/OPUS pour compatibilité Whisper
-      const preferredMimeTypes = [
-        "audio/webm;codecs=opus", // Format optimal (Chrome, Firefox moderne)
-        "audio/webm", // Fallback webm sans codec spécifié
-        "audio/ogg;codecs=opus", // Fallback rare (Firefox ancien)
-      ];
-      let chosenMimeType: string | undefined = undefined;
-      for (const mime of preferredMimeTypes) {
-        if (MediaRecorder.isTypeSupported(mime)) {
-          chosenMimeType = mime;
-          break;
-        }
-      }
-      // Si aucun format préféré supporté, laisser undefined (navigateur choisira)
+      // Détection mimeType — priorité opus pour compatibilité Whisper
+      const chosenMimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : MediaRecorder.isTypeSupported("audio/webm")
+        ? "audio/webm"
+        : "audio/mp4";
 
-      mimeTypeRef.current = chosenMimeType || "audio/webm";
-      if (process.env.NODE_ENV === "development") {
-        console.log("[RECORDER] Format choisi:", chosenMimeType || "navigateur par défaut");
-      }
+      mimeTypeRef.current = chosenMimeType;
 
-      // Créer MediaRecorder avec bitrate 48 kbps (garantit < 25MB pour ~60 min, compatible Whisper)
-      const recorderOptions: MediaRecorderOptions = {};
-      if (chosenMimeType) {
-        recorderOptions.mimeType = chosenMimeType;
-      }
-      recorderOptions.audioBitsPerSecond = 48000; // 48 kbps (60 min ≈ 21.6 MB)
-      const mediaRecorder = new MediaRecorder(stream, recorderOptions);
-      
-      if (process.env.NODE_ENV === "development") {
-        console.log("[RECORDER] MediaRecorder créé", {
-        requestedMimeType: chosenMimeType || "navigateur par défaut",
-        actualMimeType: mediaRecorder.mimeType,
-        audioBitsPerSecond: recorderOptions.audioBitsPerSecond,
-        state: mediaRecorder.state,
+      // 16kbps — suffisant pour la voix, garantit <7.2MB pour 60min (limite Whisper : 25MB)
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: chosenMimeType,
+        audioBitsPerSecond: 16000,
       });
+
+      if (process.env.NODE_ENV === "development") {
+        console.log("[ECO] bitrate:", mediaRecorder.audioBitsPerSecond, "| mimeType:", mediaRecorder.mimeType);
       }
 
       // IMPORTANT: Définir TOUS les handlers AVANT start()
@@ -608,14 +590,19 @@ export default function Home() {
         const audioBlob = new Blob(audioChunksRef.current, { type: mimeTypeUsed });
         
         const sizeMB = (audioBlob.size / 1024 / 1024).toFixed(2);
-        if (process.env.NODE_ENV === "development") {
-          console.log("[RECORDER] Blob final créé", {
-          type: audioBlob.type,
-          sizeBytes: audioBlob.size,
-          sizeMB: `${sizeMB} MB`,
-          chunksCount: audioChunksRef.current.length,
-          durationSeconds: elapsedAtStopRef.current,
-        });
+        console.log(`[ECO] Blob final — ${sizeMB} MB | ${audioBlob.type} | ${audioChunksRef.current.length} chunks | ${elapsedAtStopRef.current}s`);
+
+        // Sécurité : refuser si > 24MB (limite Whisper 25MB)
+        if (audioBlob.size > 24 * 1024 * 1024) {
+          setIsRecording(false);
+          setIsProcessing(false);
+          setIsFocusMode(false);
+          if (streamRef.current) {
+            streamRef.current.getTracks().forEach((t) => t.stop());
+            streamRef.current = null;
+          }
+          alert(`Enregistrement trop volumineux (${sizeMB} MB). Limite : 60 min. Veuillez réessayer.`);
+          return;
         }
 
         const durationSeconds = elapsedAtStopRef.current;
