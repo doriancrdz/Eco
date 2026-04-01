@@ -16,6 +16,20 @@ import { createPipelineTraceId, uploadAndComplete, completeAndTranscribeFromR2 }
 import { MAX_RECORDING_DURATION_MINUTES } from "@/lib/billingConfig";
 import { motion, AnimatePresence } from "framer-motion";
 
+// Compteur d'appels API — dev uniquement
+if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
+  (window as unknown as Record<string, unknown>).__ecoApiCalls = (window as unknown as Record<string, unknown>).__ecoApiCalls ?? 0;
+  const _origFetch = window.fetch.bind(window);
+  window.fetch = (...args) => {
+    const url = typeof args[0] === "string" ? args[0] : (args[0] as Request).url;
+    if (url.startsWith("/api/")) {
+      (window as unknown as Record<string, unknown>).__ecoApiCalls = ((window as unknown as Record<string, unknown>).__ecoApiCalls as number) + 1;
+      console.log(`[API_COUNTER] #${(window as unknown as Record<string, unknown>).__ecoApiCalls} → ${url}`);
+    }
+    return _origFetch(...args);
+  };
+}
+
 // Lazy load components non critiques
 const FocusMode = dynamic(() => import("@/components/FocusMode"), {
   loading: () => null,
@@ -852,7 +866,30 @@ export default function Home() {
       // Polling statut recording → chargement ECO complet quand DONE
       await new Promise<void>((resolve, reject) => {
         const startTs = Date.now();
+        let statusPollCount = 0;
+        const MAX_STATUS_POLLS = 40; // 40 × 8s = 320s max
+        if (process.env.NODE_ENV !== "production") {
+          console.log(`[pollRecordingStatus] Démarrage — max ${MAX_STATUS_POLLS} tentatives × 8s`);
+        }
         const interval = setInterval(async () => {
+          statusPollCount++;
+          if (process.env.NODE_ENV !== "production") {
+            console.log(`[pollRecordingStatus] #${statusPollCount}/${MAX_STATUS_POLLS}`);
+          }
+
+          // Sécurité : max tentatives atteint
+          if (statusPollCount >= MAX_STATUS_POLLS) {
+            clearInterval(interval);
+            setIsProcessing(false);
+            const message = "Génération trop longue, réessayez.";
+            if (process.env.NODE_ENV !== "production") {
+              console.warn("[pollRecordingStatus] Max tentatives atteint", { recordingId });
+            }
+            setProcessingError(message);
+            reject(new Error("Polling max attempts"));
+            return;
+          }
+
           try {
             const res = await fetch(`/api/recordings/${recordingId}/status`);
             if (!res.ok) {
@@ -864,10 +901,13 @@ export default function Home() {
               }
               return;
             }
-            const { status, summary, transcription, error } = await res.json();
+            const { status, error } = await res.json();
 
             if (status === "DONE") {
               clearInterval(interval);
+              if (process.env.NODE_ENV !== "production") {
+                console.log(`[pollRecordingStatus] DONE après ${statusPollCount} appels (${((Date.now() - startTs) / 1000).toFixed(0)}s)`);
+              }
 
               try {
                 const getRes = await fetch(`/api/ecos/${recordingId}`, {
@@ -906,7 +946,6 @@ export default function Home() {
               setProcessingError(message);
               reject(new Error(message));
             } else if (status === "TRANSCRIBED") {
-              // Transcription OK — génération du résumé en cours
               setProcessingStep("summarizing");
               if (process.env.NODE_ENV === "development") {
                 console.log("[pollRecordingStatus] TRANSCRIBED (attente résumé)…", {
@@ -914,7 +953,6 @@ export default function Home() {
                 });
               }
             } else {
-              // PROCESSING → transcription en cours
               setProcessingStep("transcribing");
               if (process.env.NODE_ENV === "development") {
                 const elapsed = ((Date.now() - startTs) / 1000).toFixed(0);
@@ -933,20 +971,7 @@ export default function Home() {
             }
             reject(e as Error);
           }
-        }, 3000);
-
-        // Timeout de sécurité : 3 minutes
-        setTimeout(() => {
-          clearInterval(interval);
-          setIsProcessing(false);
-          const message =
-            "Le traitement prend trop de temps. Veuillez réessayer.";
-          if (process.env.NODE_ENV === "development") {
-            console.warn("[pollRecordingStatus] Timeout", { recordingId });
-          }
-          setProcessingError(message);
-          reject(new Error("Polling timeout"));
-        }, 180000);
+        }, 8000);
       });
 
       // 5) Diagnostic DEV : tableau + GET /api/debug/pipeline/[id]

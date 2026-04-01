@@ -8,7 +8,7 @@ import { generateSummary } from "@/lib/transcription";
 import type { Summary } from "@/lib/transcription";
 import Tabs from "@/components/ui/Tabs";
 
-const POLL_INTERVAL_MS = 2000;
+const POLL_INTERVAL_MS = 8000;
 // Jitter 0-800ms pour éviter le thundering herd si plusieurs users en simultané
 const pollJitter = () => Math.floor(Math.random() * 800);
 
@@ -168,13 +168,26 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
     setQuizSubmitted(false);
   }, [eco?.id]);
 
-  // Polling quiz en arrière-plan : poll toutes les 3s tant que résumé ok mais quiz manquant
+  // Polling quiz en arrière-plan : poll toutes les 15s tant que résumé ok mais quiz manquant
   const isQuizPending = !!(eco?.summary_text && !eco?.quiz);
   useEffect(() => {
     if (!isQuizPending || !eco?.id) return;
+    let quizPollCount = 0;
+    const MAX_QUIZ_POLLS = 20;
     const interval = setInterval(() => {
+      quizPollCount++;
+      if (quizPollCount >= MAX_QUIZ_POLLS) {
+        clearInterval(interval);
+        if (process.env.NODE_ENV !== "production") {
+          console.log("[EcoView.quizPoll] Max tentatives atteint — quiz indisponible");
+        }
+        return;
+      }
+      if (process.env.NODE_ENV !== "production") {
+        console.log(`[EcoView.quizPoll] #${quizPollCount}/${MAX_QUIZ_POLLS}`);
+      }
       onRefresh?.();
-    }, 3000);
+    }, 15000);
     return () => clearInterval(interval);
   }, [isQuizPending, eco?.id, onRefresh]);
 
@@ -232,7 +245,7 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
     const ecoId = eco.id;
     const pollUrl = `/api/ecos/${ecoId}`;
     let pollAttempts = 0;
-    const maxPolls = 90; // 90 * 2s = 3 min max
+    const maxPolls = 40; // 40 * 8s = 320s max
 
     const poll = async () => {
       pollAttempts++;
@@ -240,7 +253,7 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
       const t0 = performance.now();
       try {
         if (process.env.NODE_ENV !== "production") {
-          console.log("[DEBUG EcoView.poll] GET", { url: pollUrl, ecoId });
+          console.log(`[EcoView.poll] #${pollAttempts}/${maxPolls} GET`, pollUrl);
         }
         const res = await fetch(pollUrl, { cache: "no-store" });
         const duration = performance.now() - t0;
@@ -268,14 +281,11 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
               updatedAt,
             });
 
-            // Rafraîchir le parent pour qu'il mette à jour currentEco (une seule source de vérité)
-            onRefresh?.();
-
             // Déclencher generate-summary une seule fois quand transcription prête mais pas le résumé
             if (hasTranscription && !hasContent && !generateSummaryTriggeredRef.current) {
               generateSummaryTriggeredRef.current = true;
               if (process.env.NODE_ENV !== "production") {
-                console.log("[DEBUG EcoView.poll] Trigger generate-summary", { ecoId });
+                console.log("[EcoView.poll] Trigger generate-summary", { ecoId });
               }
               fetch("/api/generate-summary", {
                 method: "POST",
@@ -285,7 +295,6 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
                 .then((r) => {
                   setLastSummaryStatus(r.status);
                   if (r.ok || r.status === 202) return;
-                  // Erreur serveur → afficher feedback immédiat (429, 500, etc.)
                   if (r.status === 429) {
                     setSummaryError("Limite de résumés atteinte. Réessayez dans quelques minutes.");
                   } else {
@@ -297,7 +306,7 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
                 });
             }
 
-            // Stop quand les deux sont remplis
+            // Stop quand les deux sont remplis — rafraîchir le parent une seule fois
             if (hasTranscription && hasContent) {
               if (pollRef.current) {
                 clearInterval(pollRef.current);
@@ -306,6 +315,8 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
               if (process.env.NODE_ENV !== "production") {
                 console.log("[EcoView.poll] Stop — transcription + content OK");
               }
+              // Notifier le parent une seule fois (pas de double-fetch en boucle)
+              onRefresh?.();
             }
           }
         } else {
@@ -321,13 +332,16 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
         }
 
         if (process.env.NODE_ENV !== "production") {
-          console.log("[EcoView.poll] #" + pollCountRef.current, { url: pollUrl, status: res.status, duration: duration.toFixed(0), hasTranscription, hasContent });
+          console.log("[EcoView.poll] #" + pollCountRef.current, { status: res.status, duration: duration.toFixed(0), hasTranscription, hasContent });
         }
 
         if (pollAttempts >= maxPolls) {
           if (pollRef.current) {
             clearInterval(pollRef.current);
             pollRef.current = null;
+          }
+          if (process.env.NODE_ENV !== "production") {
+            console.warn("[EcoView.poll] Max tentatives atteint");
           }
         }
       } catch (error) {
