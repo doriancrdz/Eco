@@ -461,7 +461,20 @@ Transcription à résumer : voir le message utilisateur ci-dessous.
 
 Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.`;
 
-    const userPrompt = `Transcription complète (${transcriptionWordCount} mots) :
+    const pdfContextBlock = recording.pdfContext
+      ? `CONTEXTE DU COURS (ne pas résumer ce document) :
+Le document suivant est fourni uniquement comme contexte de référence.
+Il t'aide à comprendre le vocabulaire, les notions et le cadre du cours.
+Tu dois résumer UNIQUEMENT ce qui a été dit dans l'audio.
+Utilise ce document pour mieux identifier et définir les notions importantes mentionnées dans l'audio, enrichir le quiz avec des questions pertinentes, et préciser les points clés.
+
+${recording.pdfContext}
+
+---
+`
+      : "";
+
+    const userPrompt = `${pdfContextBlock}Transcription complète (${transcriptionWordCount} mots) :
 
 ${truncated}`;
 

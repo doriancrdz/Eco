@@ -75,6 +75,7 @@ model Recording {
   usageRecorded     Boolean     @default(false)
   fileId            String?
   r2Key             String?
+  pdfContext        String?     @db.Text
   user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   usageEvents       UsageEvent?
 

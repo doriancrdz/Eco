@@ -13,6 +13,7 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { Eco } from "@/types";
 import { getEcos } from "@/lib/storage";
 import { createPipelineTraceId, uploadAndComplete, completeAndTranscribeFromR2 } from "@/lib/transcription";
+import { extractTextFromPdf, buildPdfContextBlock } from "@/lib/pdfExtractor";
 import { MAX_RECORDING_DURATION_MINUTES } from "@/lib/billingConfig";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -95,6 +96,12 @@ export default function Home() {
   const vizAnimFrameRef = useRef<number | null>(null);
   const vizSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
+
+  // PDF context
+  const [pdfFiles, setPdfFiles] = useState<Array<{ name: string; text: string }>>([]);
+  const [isPdfExtracting, setIsPdfExtracting] = useState(false);
+  const [pdfError, setPdfError] = useState<string | null>(null);
+  const pdfInputRef = useRef<HTMLInputElement>(null);
 
   // Empêcher la fermeture accidentelle pendant l'enregistrement
   useEffect(() => {
@@ -707,6 +714,8 @@ export default function Home() {
 
         const durationSeconds = elapsedAtStopRef.current;
         await processRecording(audioBlob, durationSeconds, mimeTypeUsed);
+        // Libérer les PDFs après traitement
+        setPdfFiles([]);
 
         if (streamRef.current) {
           streamRef.current.getTracks().forEach((t) => t.stop());
@@ -912,12 +921,14 @@ export default function Home() {
         console.log("[processRecording] Upload R2 réussi", { fileId, r2Key });
       }
 
+      const pdfContext = pdfFiles.length > 0 ? buildPdfContextBlock(pdfFiles) : undefined;
       const initBody: Record<string, unknown> = {
         durationSeconds,
         mimeType,
         traceId,
         fileId,
         r2Key,
+        ...(pdfContext && { pdfContext }),
       };
       const initRes = await fetch("/api/recordings/init", {
         method: "POST",
@@ -1146,6 +1157,36 @@ export default function Home() {
     }
   };
 
+  const handlePdfSelect = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const remaining = 3 - pdfFiles.length;
+    if (remaining <= 0) return;
+
+    const toProcess = Array.from(files).slice(0, remaining);
+    setPdfError(null);
+    setIsPdfExtracting(true);
+
+    const results: Array<{ name: string; text: string }> = [];
+    for (const file of toProcess) {
+      try {
+        const text = await extractTextFromPdf(file);
+        results.push({ name: file.name, text });
+      } catch (err) {
+        setPdfError(err instanceof Error ? err.message : "Erreur lecture PDF");
+      }
+    }
+
+    setPdfFiles((prev) => [...prev, ...results].slice(0, 3));
+    setIsPdfExtracting(false);
+    // Reset input pour permettre de re-sélectionner le même fichier
+    if (pdfInputRef.current) pdfInputRef.current.value = "";
+  };
+
+  const removePdf = (index: number) => {
+    setPdfFiles((prev) => prev.filter((_, i) => i !== index));
+    setPdfError(null);
+  };
+
   const handleStartRecording = () => {
     if (paymentBlocked) return;
     if (!isLoaded) return;
@@ -1371,7 +1412,7 @@ export default function Home() {
                           disabled={paymentBlocked}
                           className="flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm bg-white/70 border border-white/60 backdrop-blur-md text-gray-900 shadow hover:shadow-md hover:bg-white/90 transition-all disabled:opacity-40"
                         >
-                          🎙 Enregistrer ma voix
+                          🎙 Enregistrer
                         </motion.button>
                         <motion.button
                           whileHover={{ scale: 1.04, y: -2 }}
@@ -1380,9 +1421,70 @@ export default function Home() {
                           disabled={paymentBlocked}
                           className="flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm bg-white/70 border border-white/60 backdrop-blur-md text-gray-900 shadow hover:shadow-md hover:bg-white/90 transition-all disabled:opacity-40"
                         >
-                          🖥 Enregistrer l&apos;audio de l&apos;écran
+                          🖥 Capturer l&apos;audio
                         </motion.button>
                       </motion.div>
+
+                      {/* Lien PDF de contexte + liste des PDFs sélectionnés */}
+                      <div className="mt-4 flex flex-col items-center gap-2">
+                        {/* Input caché */}
+                        <input
+                          ref={pdfInputRef}
+                          type="file"
+                          accept=".pdf"
+                          multiple
+                          className="hidden"
+                          onChange={(e) => handlePdfSelect(e.target.files)}
+                        />
+
+                        {/* Lien discret */}
+                        {pdfFiles.length < 3 && (
+                          <button
+                            onClick={() => pdfInputRef.current?.click()}
+                            disabled={isPdfExtracting}
+                            className="text-sm text-gray-400 hover:text-gray-600 transition-colors flex items-center gap-1 disabled:opacity-50"
+                          >
+                            {isPdfExtracting ? (
+                              <>
+                                <span className="animate-spin inline-block">⏳</span>
+                                Lecture du PDF en cours...
+                              </>
+                            ) : (
+                              <>
+                                📄 Ajouter un PDF de contexte
+                                {pdfFiles.length > 0 && ` (${3 - pdfFiles.length} restant)`}
+                                <span className="text-gray-300 text-xs ml-1">(optionnel)</span>
+                              </>
+                            )}
+                          </button>
+                        )}
+
+                        {/* Erreur extraction */}
+                        {pdfError && (
+                          <p className="text-xs text-red-500 max-w-xs text-center">{pdfError}</p>
+                        )}
+
+                        {/* Liste des PDFs + badge */}
+                        {pdfFiles.length > 0 && (
+                          <div className="flex flex-col items-center gap-1 mt-1">
+                            <span className="text-xs font-semibold text-gray-500">
+                              📄 {pdfFiles.length} PDF{pdfFiles.length > 1 ? "s" : ""} de contexte
+                            </span>
+                            {pdfFiles.map((pdf, i) => (
+                              <div key={i} className="flex items-center gap-2 text-xs text-gray-500 bg-white/60 border border-white/50 rounded-full px-3 py-1">
+                                <span className="truncate max-w-[180px]">{pdf.name}</span>
+                                <button
+                                  onClick={() => removePdf(i)}
+                                  className="text-gray-400 hover:text-red-500 transition-colors font-bold leading-none"
+                                  aria-label="Supprimer"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
 
                       {isBillingLoading ? (
                         <div
@@ -1410,17 +1512,7 @@ export default function Home() {
                             transition={{ duration: 0.6 }}
                           />
                         </motion.button>
-                      ) : (
-                        <motion.button
-                          whileHover={{ scale: 1.05, y: -2 }}
-                          whileTap={{ scale: 0.97 }}
-                          onClick={() => router.push("/settings")}
-                          className="mt-6 px-7 py-3 rounded-full font-bold text-sm bg-white/60 border border-white/50 backdrop-blur-md text-gray-900 hover:bg-white/90 transition-all flex items-center gap-2"
-                        >
-                          <Settings className="w-4 h-4" />
-                          Gérer mon plan
-                        </motion.button>
-                      )}
+                      ) : null}
 
                       {/* Section Vos derniers ECOs */}
                       <motion.div
