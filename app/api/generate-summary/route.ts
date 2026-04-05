@@ -461,14 +461,27 @@ Transcription à résumer : voir le message utilisateur ci-dessous.
 
 Réponds UNIQUEMENT avec le JSON, sans texte avant ou après.`;
 
-    const pdfContextBlock = recording.pdfContext
+    // Safety guard : pdfContext + transcription ne doit pas dépasser ~100 000 tokens
+    // 100 000 tokens × 4 chars/token = 400 000 chars
+    const MAX_TOTAL_CONTEXT_CHARS = 400_000;
+    let pdfContextSafe = recording.pdfContext ?? "";
+    if (pdfContextSafe) {
+      const totalChars = pdfContextSafe.length + truncated.length;
+      if (totalChars > MAX_TOTAL_CONTEXT_CHARS) {
+        const allowedPdfChars = Math.max(0, MAX_TOTAL_CONTEXT_CHARS - truncated.length);
+        console.warn(`[ECO] pdfContext tronqué recordingId=${recordingId} original=${pdfContextSafe.length} tronquéÀ=${allowedPdfChars}`);
+        pdfContextSafe = pdfContextSafe.slice(0, allowedPdfChars);
+      }
+    }
+
+    const pdfContextBlock = pdfContextSafe
       ? `CONTEXTE DU COURS (ne pas résumer ce document) :
 Le document suivant est fourni uniquement comme contexte de référence.
 Il t'aide à comprendre le vocabulaire, les notions et le cadre du cours.
 Tu dois résumer UNIQUEMENT ce qui a été dit dans l'audio.
 Utilise ce document pour mieux identifier et définir les notions importantes mentionnées dans l'audio, enrichir le quiz avec des questions pertinentes, et préciser les points clés.
 
-${recording.pdfContext}
+${pdfContextSafe}
 
 ---
 `

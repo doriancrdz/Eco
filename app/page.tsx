@@ -1159,7 +1159,7 @@ export default function Home() {
 
   const handlePdfSelect = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
-    const remaining = 3 - pdfFiles.length;
+    const remaining = 1 - pdfFiles.length;
     if (remaining <= 0) return;
 
     const toProcess = Array.from(files).slice(0, remaining);
@@ -1176,7 +1176,7 @@ export default function Home() {
       }
     }
 
-    setPdfFiles((prev) => [...prev, ...results].slice(0, 3));
+    setPdfFiles((prev) => [...prev, ...results].slice(0, 1));
     setIsPdfExtracting(false);
     // Reset input pour permettre de re-sélectionner le même fichier
     if (pdfInputRef.current) pdfInputRef.current.value = "";
@@ -1438,7 +1438,7 @@ export default function Home() {
                         />
 
                         {/* Lien discret */}
-                        {pdfFiles.length < 3 && (
+                        {pdfFiles.length < 1 && (
                           <button
                             onClick={() => pdfInputRef.current?.click()}
                             disabled={isPdfExtracting}
@@ -1452,7 +1452,6 @@ export default function Home() {
                             ) : (
                               <>
                                 📄 Ajouter un PDF de contexte
-                                {pdfFiles.length > 0 && ` (${3 - pdfFiles.length} restant)`}
                                 <span className="text-gray-300 text-xs ml-1">(optionnel)</span>
                               </>
                             )}
@@ -1468,7 +1467,7 @@ export default function Home() {
                         {pdfFiles.length > 0 && (
                           <div className="flex flex-col items-center gap-1 mt-1">
                             <span className="text-xs font-semibold text-gray-500">
-                              📄 {pdfFiles.length} PDF{pdfFiles.length > 1 ? "s" : ""} de contexte
+                              📄 PDF de contexte ajouté
                             </span>
                             {pdfFiles.map((pdf, i) => (
                               <div key={i} className="flex items-center gap-2 text-xs text-gray-500 bg-white/60 border border-white/50 rounded-full px-3 py-1">
