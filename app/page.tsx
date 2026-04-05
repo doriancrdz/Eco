@@ -436,31 +436,126 @@ export default function Home() {
     fetchPlan();
   }, [isSignedIn]);
 
-  const startRecording = async () => {
+  const startRecording = async (mode: "mic" | "screen" = "mic") => {
     setIsPaused(false);
     setRecordingElapsedSeconds(0);
 
     try {
       if (process.env.NODE_ENV === "development") {
-        console.log("[startRecording] Demande accès micro...");
+        console.log("[startRecording] mode:", mode);
       }
 
-      // deviceId:'default' force le vrai micro système (évite les devices virtuels Teams/Zoom)
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          deviceId: "default",
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-        video: false,
-      });
+      let stream: MediaStream | null = null;
+
+      if (mode === "screen") {
+        // === AUDIO SYSTÈME (getDisplayMedia) ===
+        const displayStream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            sampleRate: 44100,
+          },
+        });
+
+        const audioTrack = displayStream.getAudioTracks()[0];
+        if (!audioTrack) {
+          displayStream.getTracks().forEach((t) => t.stop());
+          throw new Error("SCREEN_AUDIO_NONE");
+        }
+
+        // La piste vidéo n'est pas nécessaire
+        displayStream.getVideoTracks().forEach((t) => t.stop());
+        stream = new MediaStream([audioTrack]);
+      } else {
+      // === SÉLECTION INTELLIGENTE DU MICRO ===
+      // Énumérer tous les devices et exclure les devices virtuels connus
+      const allDevices = await navigator.mediaDevices.enumerateDevices();
+      const audioInputs = allDevices.filter((d) => d.kind === "audioinput");
+
+      if (audioInputs.length === 0) {
+        throw new Error("MICRO_NOT_DETECTED");
+      }
+
+      const blacklist = ["virtual", "teams", "zoom", "blackhole", "loopback", "soundflower", "aggregate", "multi-output"];
+      const realMics = audioInputs.filter((d) => !blacklist.some((b) => d.label.toLowerCase().includes(b)));
+      const virtualMics = audioInputs.filter((d) => blacklist.some((b) => d.label.toLowerCase().includes(b)));
+      // Essayer les vrais micros d'abord, virtuels en dernier recours
+      const sortedDevices = [...realMics, ...virtualMics];
 
       if (process.env.NODE_ENV === "development") {
-        console.log("[startRecording] Stream obtenu:", stream.id);
+        console.log("[ECO] Devices audio:", audioInputs.map((d) => d.label), "| Retenus:", realMics.map((d) => d.label));
       }
 
-      if (stream.getAudioTracks().length === 0) {
+      // Trouver le meilleur device via test de signal (500ms)
+      let fallbackStream: MediaStream | null = null;
+
+      for (const device of sortedDevices) {
+        let testStream: MediaStream | null = null;
+        try {
+          testStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              deviceId: { exact: device.deviceId },
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+            },
+            video: false,
+          });
+
+          // Garder le premier device accessible comme fallback si aucun ne produit de signal
+          if (!fallbackStream) {
+            fallbackStream = testStream;
+          }
+
+          // Vérifier que le device produit du signal
+          const testCtx = new AudioContext();
+          await testCtx.resume();
+          const testSource = testCtx.createMediaStreamSource(testStream);
+          const testAnalyser = testCtx.createAnalyser();
+          testAnalyser.fftSize = 256;
+          testSource.connect(testAnalyser);
+          await new Promise((r) => setTimeout(r, 500));
+          const testData = new Uint8Array(testAnalyser.frequencyBinCount);
+          testAnalyser.getByteFrequencyData(testData);
+          const testLevel = Math.max(...Array.from(testData));
+          testCtx.close();
+
+          console.log("[ECO] Niveau micro test:", testLevel, "— Device:", device.label);
+
+          if (testLevel > 0) {
+            stream = testStream;
+            break;
+          } else {
+            console.warn("[ECO] Device silencieux, essai device suivant:", device.label);
+            // Ne pas stopper le fallbackStream, stopper les autres
+            if (testStream !== fallbackStream) {
+              testStream.getTracks().forEach((t) => t.stop());
+            }
+          }
+        } catch (e) {
+          console.warn("[ECO] Impossible d'accéder au device:", device.label, e);
+          testStream?.getTracks().forEach((t) => t.stop());
+        }
+      }
+
+      // Si aucun device n'a produit de signal (user silencieux au moment du test),
+      // utiliser le fallback (premier device réel accessible) plutôt que de bloquer
+      if (!stream) {
+        if (fallbackStream) {
+          console.warn("[ECO] Aucun signal détecté — utilisation du fallback:", sortedDevices[0]?.label);
+          stream = fallbackStream;
+        } else {
+          throw new Error("MICRO_NOT_DETECTED");
+        }
+      } else if (fallbackStream && fallbackStream !== stream) {
+        // Stopper le fallback si on a trouvé mieux
+        fallbackStream.getTracks().forEach((t) => t.stop());
+      }
+      // === FIN SÉLECTION MICRO ===
+      } // fin else mode mic
+
+      if (!stream || stream.getAudioTracks().length === 0) {
         throw new Error("Aucune piste audio disponible");
       }
 
@@ -657,7 +752,14 @@ export default function Home() {
       analyserRef.current = null;
       setIsFocusMode(false);
       setIsRecording(false);
-      alert("Impossible d'accéder au microphone. Veuillez autoriser l'accès.");
+      const errMsg = error instanceof Error && error.message === "MICRO_NOT_DETECTED"
+        ? "Micro non détecté. Vérifiez vos permissions Chrome dans Préférences Système → Confidentialité → Microphone."
+        : error instanceof Error && error.message === "SCREEN_AUDIO_NONE"
+        ? "Aucun audio système capté. Dans la popup Chrome, cochez 'Partager l'audio système' avant de valider."
+        : (error instanceof Error && (error.name === "NotAllowedError" || error.name === "AbortError"))
+        ? null // User cancelled the picker — no alert needed
+        : "Impossible d'accéder au microphone. Veuillez autoriser l'accès.";
+      if (errMsg) alert(errMsg);
     }
   };
 
@@ -1043,7 +1145,19 @@ export default function Home() {
       return;
     }
     if (!isRecording) {
-      startRecording();
+      startRecording("mic");
+    }
+  };
+
+  const handleStartSystemAudioRecording = () => {
+    if (paymentBlocked) return;
+    if (!isLoaded) return;
+    if (!isSignedIn) {
+      setShowAuthModal(true);
+      return;
+    }
+    if (!isRecording) {
+      startRecording("screen");
     }
   };
 
@@ -1235,14 +1349,31 @@ export default function Home() {
                       >
                         Nouveau ECO
                       </motion.h1>
-                      <motion.p
+                      <motion.div
                         initial={{ opacity: 0, y: 4 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.15, duration: 0.4, ease: "easeOut" }}
-                        className="text-lg text-gray-500 font-medium mt-2 opacity-80"
+                        className="flex flex-col sm:flex-row gap-3 mt-4"
                       >
-                        Appuyez pour commencer
-                      </motion.p>
+                        <motion.button
+                          whileHover={{ scale: 1.04, y: -2 }}
+                          whileTap={{ scale: 0.97 }}
+                          onClick={handleStartRecording}
+                          disabled={paymentBlocked}
+                          className="flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm bg-white/70 border border-white/60 backdrop-blur-md text-gray-900 shadow hover:shadow-md hover:bg-white/90 transition-all disabled:opacity-40"
+                        >
+                          🎙 Enregistrer ma voix
+                        </motion.button>
+                        <motion.button
+                          whileHover={{ scale: 1.04, y: -2 }}
+                          whileTap={{ scale: 0.97 }}
+                          onClick={handleStartSystemAudioRecording}
+                          disabled={paymentBlocked}
+                          className="flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm bg-white/70 border border-white/60 backdrop-blur-md text-gray-900 shadow hover:shadow-md hover:bg-white/90 transition-all disabled:opacity-40"
+                        >
+                          🖥 Enregistrer l&apos;audio de l&apos;écran
+                        </motion.button>
+                      </motion.div>
 
                       {isBillingLoading ? (
                         <div
