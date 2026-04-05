@@ -477,15 +477,24 @@ export default function Home() {
         throw new Error("MICRO_NOT_DETECTED");
       }
 
-      const blacklist = ["virtual", "teams", "zoom", "blackhole", "loopback", "soundflower", "aggregate", "multi-output"];
-      const realMics = audioInputs.filter((d) => !blacklist.some((b) => d.label.toLowerCase().includes(b)));
-      const virtualMics = audioInputs.filter((d) => blacklist.some((b) => d.label.toLowerCase().includes(b)));
-      // Essayer les vrais micros d'abord, virtuels en dernier recours
-      const sortedDevices = [...realMics, ...virtualMics];
+      const blacklist = ["virtual", "teams", "zoom", "blackhole", "loopback", "soundflower", "aggregate", "multi-output", "défaut", "default", "par défaut"];
+      const preferredKeywords = ["built-in", "macbook", "intégré", "internal", "microphone intégré"];
 
-      if (process.env.NODE_ENV === "development") {
-        console.log("[ECO] Devices audio:", audioInputs.map((d) => d.label), "| Retenus:", realMics.map((d) => d.label));
-      }
+      // 1. Chercher un vrai micro physique identifié par mot-clé
+      // 2. Sinon : premier device qui n'est pas blacklisté
+      // 3. Dernier recours : dernier device de la liste
+      const preferredMic =
+        audioInputs.find((d) => preferredKeywords.some((k) => d.label.toLowerCase().includes(k))) ||
+        audioInputs.find((d) => !blacklist.some((b) => d.label.toLowerCase().includes(b))) ||
+        audioInputs[audioInputs.length - 1];
+
+      console.log("[ECO] Device sélectionné:", preferredMic.label, preferredMic.deviceId);
+
+      // Mettre le device préféré en tête, les autres en fallback
+      const sortedDevices = [
+        preferredMic,
+        ...audioInputs.filter((d) => d.deviceId !== preferredMic.deviceId),
+      ];
 
       // Trouver le meilleur device via test de signal (500ms)
       let fallbackStream: MediaStream | null = null;
