@@ -2,7 +2,6 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { getOrCreateUserWithQuotaSeconds, getAvailableSeconds, formatSecondsToMMSS } from "@/lib/usage";
 import { PLANS } from "@/lib/billingConfig";
-import { getStripeOrNull } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
@@ -22,28 +21,14 @@ export async function GET() {
       select: { commitmentEndAt: true, billingMode: true, stripeSubscriptionId: true, subscriptionStatus: true, bonusSeconds: true },
     });
 
-    // Déterminer le type d'abonnement depuis Stripe
+    // Déterminer le type d'abonnement depuis la DB (billingMode mis à jour par webhook Stripe)
+    // Evite un appel Stripe API à chaque requête
     let subscriptionType: "monthly" | "annual" | null = null;
     if (fullUser?.stripeSubscriptionId) {
-      try {
-        const stripe = getStripeOrNull();
-        if (stripe) {
-          const subscription = await stripe.subscriptions.retrieve(fullUser.stripeSubscriptionId);
-          const interval = subscription.items.data[0]?.price?.recurring?.interval;
-          if (interval === "month") {
-            subscriptionType = "monthly";
-          } else if (interval === "year") {
-            subscriptionType = "annual";
-          }
-        }
-      } catch (error) {
-        console.error("[billing/me] Erreur récupération subscription Stripe:", error);
-        // Fallback: utiliser billingMode si disponible
-        if (fullUser?.billingMode === "monthly") {
-          subscriptionType = "monthly";
-        } else if (fullUser?.billingMode === "yearly_upfront" || fullUser?.billingMode === "annual_commit_monthly") {
-          subscriptionType = "annual";
-        }
+      if (fullUser?.billingMode === "monthly") {
+        subscriptionType = "monthly";
+      } else if (fullUser?.billingMode === "yearly_upfront" || fullUser?.billingMode === "annual_commit_monthly") {
+        subscriptionType = "annual";
       }
     }
 
@@ -107,6 +92,11 @@ export async function GET() {
       stripeSubscriptionId: fullUser?.stripeSubscriptionId ?? null,
       isCommit,
       paymentBlocked: subscriptionBlocked ?? false,
+    }, {
+      headers: {
+        // Cache privé 30s côté navigateur — évite les appels simultanés multi-composants
+        "Cache-Control": "private, max-age=30, stale-while-revalidate=60",
+      },
     });
   } catch (error) {
     const err = error as { message?: string; stack?: string };
