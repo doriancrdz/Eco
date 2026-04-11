@@ -67,7 +67,7 @@ export default function CGVPage() {
           <p>
             Une facture ou un reçu est disponible dans votre espace compte ou par email selon les modalités du
             prestataire de paiement. En cas de litige sur une facturation, contactez{" "}
-            <a href="mailto:econewapp@gmail.com" className="text-blue-600 hover:underline">econewapp@gmail.com</a>.
+            <a href="mailto:support@econewapp.com" className="text-blue-600 hover:underline">support@econewapp.com</a>.
           </p>
 
           <h2>7. Droit applicable</h2>
@@ -79,7 +79,7 @@ export default function CGVPage() {
           <h2>8. Contact</h2>
           <p>
             Pour toute question relative aux CGV :{" "}
-            <a href="mailto:econewapp@gmail.com" className="text-blue-600 hover:underline">econewapp@gmail.com</a>.
+            <a href="mailto:support@econewapp.com" className="text-blue-600 hover:underline">support@econewapp.com</a>.
           </p>
         </div>
         <p className="mt-8 text-sm text-gray-500">

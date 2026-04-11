@@ -77,16 +77,35 @@ export async function GET(req: NextRequest) {
     });
     const dbMs = Date.now() - dbStart;
 
+    // Enrichir avec les métadonnées Recording (durée, source, PDF) — 1 seule requête IN
+    const ecoIds = ecos.map((e) => e.id);
+    const recordings = ecoIds.length > 0
+      ? await prisma.recording.findMany({
+          where: { id: { in: ecoIds } },
+          select: { id: true, durationMs: true, durationSeconds: true, sourceType: true, pdfContext: true },
+        })
+      : [];
+    const recordingMap = new Map(recordings.map((r) => [r.id, r]));
+
     // Transformer pour correspondre au format attendu par le frontend
-    const formattedEcos = ecos.map((eco) => ({
-      id: eco.id,
-      title: eco.title,
-      audio_url: eco.audioUrl || "",
-      transcription_text: eco.transcriptionText || "",
-      summary_text: eco.content || null,
-      folder: eco.folderId || "",
-      created_at: eco.createdAt.toISOString(),
-    }));
+    const formattedEcos = ecos.map((eco) => {
+      const rec = recordingMap.get(eco.id);
+      const durationSeconds = rec?.durationMs != null
+        ? rec.durationMs / 1000
+        : (rec?.durationSeconds ?? null);
+      return {
+        id: eco.id,
+        title: eco.title,
+        audio_url: eco.audioUrl || "",
+        transcription_text: eco.transcriptionText || "",
+        summary_text: eco.content || null,
+        folder: eco.folderId || "",
+        created_at: eco.createdAt.toISOString(),
+        duration_seconds: durationSeconds,
+        source_type: (rec?.sourceType ?? "mic") as "mic" | "screen",
+        has_pdf_context: rec?.pdfContext != null && rec.pdfContext.length > 0,
+      };
+    });
 
     const totalMs = Date.now() - t0;
     console.log(`[api/ecos GET] ms=${totalMs} auth=${authMs} user=${userMs} db=${dbMs} count=${ecos.length}`);

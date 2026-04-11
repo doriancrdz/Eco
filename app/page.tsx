@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import Header from "@/components/Header";
 import Logo from "@/components/Logo";
-import { Sparkles, ArrowRight, Settings, ArrowLeft, Mic, LogIn } from "lucide-react";
+import { Sparkles, ArrowRight, Settings, ArrowLeft, Mic, Monitor, FileText, Loader2, LogIn } from "lucide-react";
 import { useUser, useClerk } from "@clerk/nextjs";
 import EcoView from "@/components/EcoView";
 import RecordButton from "@/components/RecordButton";
@@ -713,7 +713,7 @@ export default function Home() {
         }
 
         const durationSeconds = elapsedAtStopRef.current;
-        await processRecording(audioBlob, durationSeconds, mimeTypeUsed);
+        await processRecording(audioBlob, durationSeconds, mimeTypeUsed, mode);
         // Libérer les PDFs après traitement
         setPdfFiles([]);
 
@@ -860,7 +860,7 @@ export default function Home() {
     setShowStopConfirm(false);
   };
 
-  const processRecording = async (audioBlob: Blob, durationSeconds: number, mimeType: string = "audio/webm") => {
+  const processRecording = async (audioBlob: Blob, durationSeconds: number, mimeType: string = "audio/webm", sourceType: "mic" | "screen" = "mic") => {
     const traceId = createPipelineTraceId();
     const t0 = Date.now();
     let recordingId: string | null = null;
@@ -928,6 +928,7 @@ export default function Home() {
         traceId,
         fileId,
         r2Key,
+        sourceType,
         ...(pdfContext && { pdfContext }),
       };
       const initRes = await fetch("/api/recordings/init", {
@@ -1410,18 +1411,20 @@ export default function Home() {
                           whileTap={{ scale: 0.97 }}
                           onClick={handleStartRecording}
                           disabled={paymentBlocked}
-                          className="flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm bg-white/70 border border-white/60 backdrop-blur-md text-gray-900 shadow hover:shadow-md hover:bg-white/90 transition-all disabled:opacity-40"
+                          className="flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm bg-violet-600 border border-violet-700 text-white shadow-md hover:bg-violet-700 hover:shadow-lg transition-all disabled:opacity-40"
                         >
-                          🎙 Enregistrer
+                          <Mic className="w-4 h-4" />
+                          Enregistrer
                         </motion.button>
                         <motion.button
                           whileHover={{ scale: 1.04, y: -2 }}
                           whileTap={{ scale: 0.97 }}
                           onClick={handleStartSystemAudioRecording}
                           disabled={paymentBlocked}
-                          className="flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm bg-white/70 border border-white/60 backdrop-blur-md text-gray-900 shadow hover:shadow-md hover:bg-white/90 transition-all disabled:opacity-40"
+                          className="flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm bg-white/70 border border-gray-300 backdrop-blur-md text-gray-700 shadow hover:shadow-md hover:bg-white/90 transition-all disabled:opacity-40"
                         >
-                          🖥 Capturer l&apos;audio
+                          <Monitor className="w-4 h-4" />
+                          Capturer l&apos;audio
                         </motion.button>
                       </motion.div>
 
@@ -1442,16 +1445,17 @@ export default function Home() {
                           <button
                             onClick={() => pdfInputRef.current?.click()}
                             disabled={isPdfExtracting}
-                            className="text-sm text-gray-400 hover:text-gray-600 transition-colors flex items-center gap-1 disabled:opacity-50"
+                            className="text-sm text-violet-500 hover:text-violet-700 transition-colors flex items-center gap-1 disabled:opacity-50"
                           >
                             {isPdfExtracting ? (
                               <>
-                                <span className="animate-spin inline-block">⏳</span>
+                                <Loader2 className="w-4 h-4 animate-spin" />
                                 Lecture du PDF en cours...
                               </>
                             ) : (
                               <>
-                                📄 Ajouter un PDF de contexte
+                                <FileText className="w-4 h-4" />
+                                Ajouter un PDF de contexte
                                 <span className="text-gray-300 text-xs ml-1">(optionnel)</span>
                               </>
                             )}
@@ -1466,8 +1470,9 @@ export default function Home() {
                         {/* Liste des PDFs + badge */}
                         {pdfFiles.length > 0 && (
                           <div className="flex flex-col items-center gap-1 mt-1">
-                            <span className="text-xs font-semibold text-gray-500">
-                              📄 PDF de contexte ajouté
+                            <span className="text-xs font-semibold text-violet-600 flex items-center gap-1">
+                              <FileText className="w-3.5 h-3.5" />
+                              PDF de contexte ajouté
                             </span>
                             {pdfFiles.map((pdf, i) => (
                               <div key={i} className="flex items-center gap-2 text-xs text-gray-500 bg-white/60 border border-white/50 rounded-full px-3 py-1">

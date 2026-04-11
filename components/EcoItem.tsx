@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { MoreHorizontal, FolderPlus, Archive } from "lucide-react";
+import { MoreHorizontal, FolderPlus, Archive, Mic, Monitor, FileText } from "lucide-react";
 import { motion } from "framer-motion";
 import { Eco, Folder as FolderType } from "@/types";
 import DropdownMenu from "./ui/DropdownMenu";
@@ -344,13 +344,50 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
               {eco.title}
             </span>
           )}
-          <span className="text-xs text-gray-400">
-            {new Date(eco.created_at).toLocaleDateString("fr-FR", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            })}
-          </span>
+          <div className="flex items-center gap-1 text-xs text-gray-400 flex-wrap">
+            <span>
+              {new Date(eco.created_at).toLocaleDateString("fr-FR", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              })}
+            </span>
+            {eco.duration_seconds != null && eco.duration_seconds > 0 && (
+              <>
+                <span className="text-gray-300">·</span>
+                <span>{Math.max(1, Math.round(eco.duration_seconds / 60))} min</span>
+              </>
+            )}
+            {eco.source_type === "screen" ? (
+              <>
+                <span className="text-gray-300">·</span>
+                <Monitor className="w-3 h-3 shrink-0" />
+              </>
+            ) : (
+              <>
+                <span className="text-gray-300">·</span>
+                <Mic className="w-3 h-3 shrink-0" />
+              </>
+            )}
+            {eco.summary_text && (() => {
+              try {
+                const parsed = JSON.parse(eco.summary_text);
+                const words = parsed?.resume?.trim().split(/\s+/).filter(Boolean).length ?? 0;
+                return words > 0 ? (
+                  <>
+                    <span className="text-gray-300">·</span>
+                    <span>{words} mots</span>
+                  </>
+                ) : null;
+              } catch { return null; }
+            })()}
+            {eco.has_pdf_context && (
+              <>
+                <span className="text-gray-300">·</span>
+                <FileText className="w-3 h-3 shrink-0 text-violet-500" />
+              </>
+            )}
+          </div>
         </div>
         <div
           className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"

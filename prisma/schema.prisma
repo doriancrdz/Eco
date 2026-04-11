@@ -76,6 +76,7 @@ model Recording {
   fileId            String?
   r2Key             String?
   pdfContext        String?     @db.Text
+  sourceType        String?     @default("mic")
   user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   usageEvents       UsageEvent?
 

@@ -11,8 +11,20 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "ECO - Dictaphone IA",
-  description: "Transformez votre voix en connaissance structurée",
+  title: "ECO — Listen. Learn. Succeed.",
+  description: "Transforme tes cours audio en résumé, quiz et points clés en 30 secondes.",
+  openGraph: {
+    title: "ECO — Listen. Learn. Succeed.",
+    description: "Transforme tes cours audio en résumé, quiz et points clés en 30 secondes.",
+    url: "https://econewapp.com",
+    siteName: "ECO",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ECO — Listen. Learn. Succeed.",
+    description: "Transforme tes cours audio en résumé, quiz et points clés en 30 secondes.",
+  },
 };
 
 export default function RootLayout({

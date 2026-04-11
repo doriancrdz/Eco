@@ -13,7 +13,9 @@ export interface Eco {
   summary_text: string | null; // Peut être null si résumé pas encore généré
   folder: string;
   created_at: string;
-  duration_seconds?: number | null; // Durée de l'enregistrement en secondes
+  duration_seconds?: number | null;
+  source_type?: "mic" | "screen" | null;
+  has_pdf_context?: boolean;
   quiz?: QuizQuestion[] | null;
 }
 

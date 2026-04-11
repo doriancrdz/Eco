@@ -31,7 +31,7 @@ export default function ConfidentialitePage() {
           <h2>1. Responsable du traitement</h2>
           <p>
             Le responsable du traitement est ECO, siège social : 21 rue de la fédération, 75015 Paris, France. Contact :{" "}
-            <a href="mailto:econewapp@gmail.com" className="text-blue-600 hover:underline">econewapp@gmail.com</a>.
+            <a href="mailto:support@econewapp.com" className="text-blue-600 hover:underline">support@econewapp.com</a>.
           </p>
 
           <h2>2. Données collectées</h2>
@@ -78,7 +78,7 @@ export default function ConfidentialitePage() {
             Vous disposez d&apos;un droit d&apos;accès, de rectification, d&apos;effacement, de limitation du
             traitement, de portabilité et d&apos;opposition, ainsi que du droit de définir des directives
             relatives au sort de vos données après votre décès. Pour les exercer :{" "}
-            <a href="mailto:econewapp@gmail.com" className="text-blue-600 hover:underline">econewapp@gmail.com</a>.
+            <a href="mailto:support@econewapp.com" className="text-blue-600 hover:underline">support@econewapp.com</a>.
             Vous avez le droit d&apos;introduire une réclamation auprès de la CNIL (cnil.fr).
           </p>
 
@@ -105,7 +105,7 @@ export default function ConfidentialitePage() {
           <h2>10. Contact</h2>
           <p>
             Pour toute question :{" "}
-            <a href="mailto:econewapp@gmail.com" className="text-blue-600 hover:underline">econewapp@gmail.com</a>.
+            <a href="mailto:support@econewapp.com" className="text-blue-600 hover:underline">support@econewapp.com</a>.
           </p>
         </div>
         <p className="mt-8 text-sm text-gray-500">

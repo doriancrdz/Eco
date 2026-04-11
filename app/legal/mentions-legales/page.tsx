@@ -43,7 +43,7 @@ export default function MentionsLegalesPage() {
 
           <h2>3. Contact</h2>
           <p>
-            Pour toute demande : <a href="mailto:econewapp@gmail.com" className="text-blue-600 hover:underline">econewapp@gmail.com</a>.
+            Pour toute demande : <a href="mailto:support@econewapp.com" className="text-blue-600 hover:underline">support@econewapp.com</a>.
           </p>
 
           <h2>4. Hébergement</h2>

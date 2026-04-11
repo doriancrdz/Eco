@@ -56,13 +56,14 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     const traceId = req.headers.get("x-eco-trace") ?? (body && typeof body === "object" && "traceId" in body ? (body as { traceId?: string }).traceId : null);
-    const { durationSeconds: ds, mimeType, audioUrl, fileId, r2Key, pdfContext } = body as {
+    const { durationSeconds: ds, mimeType, audioUrl, fileId, r2Key, pdfContext, sourceType } = body as {
       durationSeconds?: unknown;
       mimeType?: string;
       audioUrl?: string;
       fileId?: string;
       r2Key?: string;
       pdfContext?: string;
+      sourceType?: string;
     };
     const durationSeconds = parseFloat(ds as string);
 
@@ -124,6 +125,7 @@ export async function POST(req: NextRequest) {
         fileId: typeof fileId === "string" ? fileId : null,
         r2Key: typeof r2Key === "string" ? r2Key : null,
         pdfContext: typeof pdfContext === "string" && pdfContext.trim() ? pdfContext.trim() : null,
+        sourceType: sourceType === "screen" ? "screen" : "mic",
       },
     });
     timings.dbCreate = performance.now() - dbStart;

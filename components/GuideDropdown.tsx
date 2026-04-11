@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { BookOpen, Mic, FileText, FolderTree, Sparkles, X } from "lucide-react";
+import { BookOpen, Mic, FileText, FolderTree, Sparkles, X, BarChart2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 export default function GuideDropdown() {
@@ -46,7 +46,7 @@ export default function GuideDropdown() {
             <div className="sticky top-0 bg-gradient-to-r from-blue-50 to-purple-50 px-6 py-4 border-b border-gray-200 flex items-center justify-between rounded-t-2xl">
             <div className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-purple-600 shrink-0" />
-              <h3 className="font-bold text-lg text-gray-900">🎯 Comment utiliser ECO</h3>
+              <h3 className="font-bold text-lg text-gray-900">Comment utiliser ECO</h3>
             </div>
             <button
               type="button"
@@ -107,7 +107,7 @@ export default function GuideDropdown() {
             </div>
 
             <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-4 border border-blue-100">
-              <h4 className="font-semibold text-gray-900 mb-2">📊 Limites par plan</h4>
+              <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-1.5"><BarChart2 className="w-4 h-4 text-violet-600" />Limites par plan</h4>
               <div className="space-y-1 text-sm text-gray-700">
                 <div className="flex justify-between">
                   <span>Free :</span>
@@ -132,7 +132,7 @@ export default function GuideDropdown() {
                   router.push("/pricing");
                   setIsOpen(false);
                 }}
-                className="mt-3 w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white text-sm font-medium py-2 rounded-lg hover:shadow-lg transition-all"
+                className="mt-3 w-full bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium py-2 rounded-lg hover:shadow-lg transition-all"
               >
                 Voir tous les plans
               </button>

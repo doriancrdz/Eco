@@ -566,6 +566,44 @@ ${truncated}`;
       });
     }
 
+    /**
+     * Dérive un titre lisible depuis le JSON résumé.
+     * 1. Prend le "titre" généré par GPT si non générique
+     * 2. Fallback : 6 premiers mots significatifs de l'introduction
+     * 3. Nettoyage : guillemets supprimés, max 60 chars, coupe au dernier mot entier
+     */
+    function deriveSmartTitle(titre: string, resume: string): string {
+      const MAX = 60;
+      const GENERIC = new Set(["résumé", "résumé du cours", "resume", "summary", ""]);
+      const STOPWORDS = new Set(["le","la","les","de","du","des","un","une","et","en","à","au","aux","l","d","ce","se","sa","son","ses","mon","ton","ma","ta","je","tu","il","elle","on","nous","vous","ils","elles","qui","que","quoi","dont","où","par","pour","sur","sous","dans","avec","sans","mais","ou","car","ni","or","donc"]);
+
+      // 1. Nettoyer le titre IA
+      let candidate = titre
+        .replace(/["""''«»‹›`]/g, "")
+        .trim();
+
+      // 2. Si générique ou vide → extraire depuis l'introduction
+      if (GENERIC.has(candidate.toLowerCase())) {
+        const introMatch = resume.match(/Introduction:\n([\s\S]*?)(?:\n\n|\n\s*\n|$)/);
+        const introText = introMatch ? introMatch[1].trim() : resume.substring(0, 200);
+
+        const words = introText.split(/\s+/);
+        const significant = words
+          .map(w => w.replace(/[.,;:!?«»"""''\-–—()\[\]]/g, "").trim())
+          .filter(w => w.length > 2 && !STOPWORDS.has(w.toLowerCase()));
+
+        candidate = significant.slice(0, 6).join(" ");
+      }
+
+      if (!candidate) return "Résumé";
+
+      // 3. Tronquer à MAX chars sur un mot entier
+      if (candidate.length <= MAX) return candidate;
+      const cut = candidate.slice(0, MAX);
+      const lastSpace = cut.lastIndexOf(" ");
+      return lastSpace > 10 ? cut.slice(0, lastSpace) : cut;
+    }
+
     try {
       // Nettoyer le contenu (l'IA peut renvoyer du markdown autour du JSON)
       let rawContent = summaryContent.trim();
@@ -695,6 +733,12 @@ ${truncated}`;
       console.log("[summary] generated", { hasJson: !!summaryJson, size: summaryJson?.length ?? 0, ts: Date.now() });
     }
 
+    // Extraire un titre intelligent depuis le résumé IA
+    const smartTitle = deriveSmartTitle(summary.titre, summary.resume);
+    if (process.env.NODE_ENV === "development") {
+      console.log("[summary] smartTitle", { raw: summary.titre, derived: smartTitle });
+    }
+
     const dbUpdateStart = performance.now();
     await prisma.recording.update({
       where: { id: recordingId },
@@ -717,12 +761,12 @@ ${truncated}`;
       create: {
         id: recordingId,
         userId: user.id,
-        title: summary.titre,
+        title: smartTitle,
         content: contentStr,
         transcriptionText: recording.transcriptionText,
       },
       update: {
-        title: summary.titre,
+        title: smartTitle,
         content: contentStr,
       },
       select: { id: true, content: true, title: true },

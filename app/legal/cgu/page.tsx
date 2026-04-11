@@ -33,7 +33,7 @@ export default function CGUPage() {
           <h2>2. Éditeur du Service</h2>
           <p>
             Le Service est édité par ECO, dont le siège social est situé au 21 rue de la fédération, 75015 Paris, France.
-            Contact : <a href="mailto:econewapp@gmail.com" className="text-blue-600 hover:underline">econewapp@gmail.com</a>.
+            Contact : <a href="mailto:support@econewapp.com" className="text-blue-600 hover:underline">support@econewapp.com</a>.
           </p>
 
           <h2>3. Description du Service</h2>
@@ -106,7 +106,7 @@ export default function CGUPage() {
           <h2>12. Contact</h2>
           <p>
             Pour toute question relative aux CGU :{" "}
-            <a href="mailto:econewapp@gmail.com" className="text-blue-600 hover:underline">econewapp@gmail.com</a>.
+            <a href="mailto:support@econewapp.com" className="text-blue-600 hover:underline">support@econewapp.com</a>.
           </p>
         </div>
         <p className="mt-8 text-sm text-gray-500">
