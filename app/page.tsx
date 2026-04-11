@@ -1400,9 +1400,9 @@ export default function Home() {
                         initial={{ opacity: 0, y: 4 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1, duration: 0.4, ease: "easeOut" }}
-                        className="text-3xl md:text-5xl font-extrabold tracking-tight text-gray-900 mt-8"
+                        className="text-2xl font-medium text-slate-500 mt-4"
                       >
-                        Nouveau ECO
+                        Bonjour {user?.firstName ? user.firstName : "!"}
                       </motion.h1>
                       <motion.div
                         initial={{ opacity: 0, y: 4 }}
@@ -1415,9 +1415,9 @@ export default function Home() {
                           whileTap={{ scale: 0.97 }}
                           onClick={handleStartRecording}
                           disabled={paymentBlocked}
-                          className="flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm bg-violet-600 border border-violet-700 text-white shadow-md hover:bg-violet-700 hover:shadow-lg transition-all disabled:opacity-40"
+                          className="flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm bg-white/60 backdrop-blur-md border border-violet-300 text-violet-600 shadow-sm hover:bg-white/80 hover:border-violet-400 transition-all disabled:opacity-40"
                         >
-                          <Mic className="w-4 h-4" />
+                          <Mic className="w-4 h-4 text-violet-500" />
                           Enregistrer
                         </motion.button>
                         <motion.button
@@ -1425,9 +1425,9 @@ export default function Home() {
                           whileTap={{ scale: 0.97 }}
                           onClick={handleStartSystemAudioRecording}
                           disabled={paymentBlocked}
-                          className="flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm bg-white/70 border border-gray-300 backdrop-blur-md text-gray-700 shadow hover:shadow-md hover:bg-white/90 transition-all disabled:opacity-40"
+                          className="flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm bg-white/40 backdrop-blur-md border border-gray-300 text-gray-600 shadow-sm hover:bg-white/60 hover:border-gray-400 transition-all disabled:opacity-40"
                         >
-                          <Monitor className="w-4 h-4" />
+                          <Monitor className="w-4 h-4 text-gray-500" />
                           Capturer l&apos;audio
                         </motion.button>
                       </motion.div>
