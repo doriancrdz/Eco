@@ -1415,9 +1415,9 @@ export default function Home() {
                           whileTap={{ scale: 0.97 }}
                           onClick={handleStartRecording}
                           disabled={paymentBlocked}
-                          className="flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm bg-gradient-to-r from-teal-400 via-blue-400 to-violet-400 text-white shadow-sm hover:opacity-90 transition-all disabled:opacity-40"
+                          className="flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm bg-gradient-to-r from-[#99f6e4] via-[#7dd3fc] to-[#a5b4fc] text-gray-900 shadow-sm hover:opacity-90 transition-all disabled:opacity-40"
                         >
-                          <Mic className="w-4 h-4 text-white" />
+                          <Mic className="w-4 h-4 text-gray-900" />
                           Enregistrer
                         </motion.button>
                         <motion.button
