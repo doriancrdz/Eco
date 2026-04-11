@@ -1400,9 +1400,9 @@ export default function Home() {
                         initial={{ opacity: 0, y: 4 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1, duration: 0.4, ease: "easeOut" }}
-                        className="text-2xl font-medium text-slate-500 mt-4"
+                        className="text-2xl font-medium text-slate-700 mt-4"
                       >
-                        Bonjour {user?.firstName ? user.firstName : "!"}
+                        Bonjour, {user?.firstName ? `${user.firstName}.` : "!"}
                       </motion.h1>
                       <motion.div
                         initial={{ opacity: 0, y: 4 }}
@@ -1415,9 +1415,9 @@ export default function Home() {
                           whileTap={{ scale: 0.97 }}
                           onClick={handleStartRecording}
                           disabled={paymentBlocked}
-                          className="flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm bg-white/60 backdrop-blur-md border border-violet-300 text-violet-600 shadow-sm hover:bg-white/80 hover:border-violet-400 transition-all disabled:opacity-40"
+                          className="flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm bg-gradient-to-r from-teal-400 via-blue-400 to-violet-400 text-white shadow-sm hover:opacity-90 transition-all disabled:opacity-40"
                         >
-                          <Mic className="w-4 h-4 text-violet-500" />
+                          <Mic className="w-4 h-4 text-white" />
                           Enregistrer
                         </motion.button>
                         <motion.button
