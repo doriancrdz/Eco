@@ -89,6 +89,7 @@ export default function Home() {
   const [processingStep, setProcessingStep] = useState<"uploading" | "transcribing" | "summarizing">("uploading");
   const [processingError, setProcessingError] = useState<string | null>(null);
   const [ecos, setEcos] = useState<Eco[]>([]);
+  const [isEcosLoading, setIsEcosLoading] = useState(true);
 
   const [soundLevel, setSoundLevel] = useState(1);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -123,6 +124,7 @@ export default function Home() {
     if (process.env.NODE_ENV === "development") {
       console.log("[loadEcos] Début");
     }
+    setIsEcosLoading(true);
     try {
       const res = await fetch("/api/ecos?limit=30", { cache: "no-store" });
       const t1 = performance.now();
@@ -146,6 +148,8 @@ export default function Home() {
         console.error(`[loadEcos] Exception - ${duration.toFixed(0)}ms`, error);
       }
       setEcos([]);
+    } finally {
+      setIsEcosLoading(false);
     }
   }, []);
 
@@ -1528,46 +1532,72 @@ export default function Home() {
                         <div className="flex items-center justify-between">
                           <h2 className="text-xl font-bold text-gray-800">Vos derniers ECOs</h2>
                           {ecos.length > 0 && (
-                            <motion.button
-                              whileHover={{ scale: 1.02 }}
-                              whileTap={{ scale: 0.98 }}
+                            <button
                               onClick={() => setViewAllEcos(true)}
-                              className="text-sm font-bold text-gray-600 hover:text-gray-900 transition-colors"
+                              className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
                             >
-                              VOIR TOUT
-                            </motion.button>
+                              Voir tout
+                            </button>
                           )}
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {ecos
-                            .slice(0, 6)
-                            .map((eco, index) => (
-                              <motion.button
-                                key={eco.id}
-                                initial={{ opacity: 0, y: 8 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.1 + index * 0.08 }}
-                                whileHover={{ y: -4, scale: 1.01 }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={() => handleEcoClick(eco)}
-                                className="text-left bg-white/75 backdrop-blur-2xl rounded-[2rem] border border-white/80 shadow-sm hover:shadow-xl transition-all duration-300 p-6"
+
+                        {/* Skeleton loaders pendant le chargement */}
+                        {isEcosLoading && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {[0, 1, 2].map((i) => (
+                              <div
+                                key={i}
+                                className="bg-white/60 rounded-[2rem] border border-white/70 p-6 animate-pulse"
                               >
-                                <div className="flex items-center gap-3 mb-2">
-                                  <Mic className="w-5 h-5 text-gray-600 shrink-0" />
-                                  <span className="font-bold text-gray-900 truncate">{eco.title}</span>
+                                <div className="flex items-center gap-3 mb-3">
+                                  <div className="w-5 h-5 rounded-full bg-gray-200 shrink-0" />
+                                  <div className="h-4 bg-gray-200 rounded-full flex-1" />
                                 </div>
-                                <p className="text-xs text-gray-500">
-                                  {new Date(eco.created_at).toLocaleDateString("fr-FR", {
-                                    day: "numeric",
-                                    month: "short",
-                                    year: "numeric",
-                                  })}
-                                </p>
-                              </motion.button>
+                                <div className="h-3 bg-gray-100 rounded-full w-24" />
+                              </div>
                             ))}
-                        </div>
-                        {ecos.length === 0 && (
-                          <p className="text-gray-500 text-sm py-8 text-center">Aucun Eco pour l&apos;instant</p>
+                          </div>
+                        )}
+
+                        {/* Liste des ECOs */}
+                        {!isEcosLoading && ecos.length > 0 && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {ecos
+                              .slice(0, 6)
+                              .map((eco, index) => (
+                                <motion.button
+                                  key={eco.id}
+                                  initial={{ opacity: 0, y: 8 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  transition={{ delay: 0.1 + index * 0.08 }}
+                                  whileHover={{ y: -4, scale: 1.01 }}
+                                  whileTap={{ scale: 0.98 }}
+                                  onClick={() => handleEcoClick(eco)}
+                                  className="text-left bg-white/75 backdrop-blur-2xl rounded-[2rem] border border-white/80 shadow-sm hover:shadow-xl transition-all duration-300 p-6"
+                                >
+                                  <div className="flex items-center gap-3 mb-2">
+                                    <Mic className="w-5 h-5 text-gray-600 shrink-0" />
+                                    <span className="font-bold text-gray-900 truncate">{eco.title}</span>
+                                  </div>
+                                  <p className="text-xs text-gray-500">
+                                    {new Date(eco.created_at).toLocaleDateString("fr-FR", {
+                                      day: "numeric",
+                                      month: "short",
+                                      year: "numeric",
+                                    })}
+                                  </p>
+                                </motion.button>
+                              ))}
+                          </div>
+                        )}
+
+                        {/* Empty state */}
+                        {!isEcosLoading && ecos.length === 0 && (
+                          <div className="flex flex-col items-center justify-center py-16 gap-3">
+                            <Mic className="w-12 h-12 text-gray-200" />
+                            <p className="text-gray-700 font-medium text-base">Ton premier ECO t&apos;attend</p>
+                            <p className="text-gray-400 text-sm">Lance un enregistrement pour commencer</p>
+                          </div>
                         )}
                       </motion.div>
                     </motion.div>
