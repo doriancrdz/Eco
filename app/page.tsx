@@ -102,6 +102,7 @@ export default function Home() {
   const [pdfFiles, setPdfFiles] = useState<Array<{ name: string; text: string }>>([]);
   const [isPdfExtracting, setIsPdfExtracting] = useState(false);
   const [pdfError, setPdfError] = useState<string | null>(null);
+  const [showPdfPopover, setShowPdfPopover] = useState(false);
   const pdfInputRef = useRef<HTMLInputElement>(null);
 
   // Empêcher la fermeture accidentelle pendant l'enregistrement
@@ -1444,26 +1445,70 @@ export default function Home() {
                           onChange={(e) => handlePdfSelect(e.target.files)}
                         />
 
-                        {/* Lien discret */}
+                        {/* Lien discret + popover */}
                         {pdfFiles.length < 1 && (
-                          <button
-                            onClick={() => pdfInputRef.current?.click()}
-                            disabled={isPdfExtracting}
-                            className="text-sm text-violet-500 hover:text-violet-700 transition-colors flex items-center gap-1 disabled:opacity-50"
-                          >
-                            {isPdfExtracting ? (
+                          <div className="relative">
+                            <button
+                              onClick={() => !isPdfExtracting && setShowPdfPopover(true)}
+                              disabled={isPdfExtracting}
+                              className="text-sm text-violet-500 hover:text-violet-700 transition-colors flex items-center gap-1 disabled:opacity-50"
+                            >
+                              {isPdfExtracting ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  Lecture du PDF en cours...
+                                </>
+                              ) : (
+                                <>
+                                  <FileText className="w-4 h-4" />
+                                  Ajouter un PDF de contexte
+                                  <span className="text-gray-300 text-xs ml-1">(optionnel)</span>
+                                </>
+                              )}
+                            </button>
+
+                            {/* Popover explicatif */}
+                            {showPdfPopover && (
                               <>
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                Lecture du PDF en cours...
-                              </>
-                            ) : (
-                              <>
-                                <FileText className="w-4 h-4" />
-                                Ajouter un PDF de contexte
-                                <span className="text-gray-300 text-xs ml-1">(optionnel)</span>
+                                {/* Overlay pour fermer au clic extérieur */}
+                                <div
+                                  className="fixed inset-0 z-40"
+                                  onClick={() => setShowPdfPopover(false)}
+                                />
+                                <motion.div
+                                  initial={{ opacity: 0, y: 6 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, y: 6 }}
+                                  transition={{ duration: 0.18, ease: "easeOut" }}
+                                  className="absolute z-50 left-1/2 -translate-x-1/2 mt-3 w-[300px] sm:w-[320px] bg-white rounded-2xl shadow-xl border border-gray-100 p-5 flex flex-col gap-4"
+                                >
+                                  <div>
+                                    <p className="font-semibold text-gray-800 text-sm mb-2">📄 PDF de contexte</p>
+                                    <p className="text-xs text-gray-500 leading-relaxed">
+                                      Ajoute un document de cours avant d&apos;enregistrer. L&apos;IA s&apos;appuiera dessus pour mieux comprendre le vocabulaire et les notions de ton cours — le résumé, les points clés et le quiz seront plus précis et adaptés à ton contenu.
+                                    </p>
+                                  </div>
+                                  <div className="flex flex-col gap-2">
+                                    <button
+                                      onClick={() => {
+                                        setShowPdfPopover(false);
+                                        pdfInputRef.current?.click();
+                                      }}
+                                      className="w-full py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-[#99f6e4] via-[#7dd3fc] to-[#a5b4fc] text-gray-900 hover:opacity-90 transition-all"
+                                    >
+                                      Ajouter un PDF
+                                    </button>
+                                    <button
+                                      onClick={() => setShowPdfPopover(false)}
+                                      className="text-xs text-gray-400 hover:text-gray-600 transition-colors text-center py-1"
+                                    >
+                                      Annuler
+                                    </button>
+                                  </div>
+                                </motion.div>
                               </>
                             )}
-                          </button>
+                          </div>
                         )}
 
                         {/* Erreur extraction */}
