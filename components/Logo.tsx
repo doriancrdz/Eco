@@ -142,7 +142,7 @@ export default function Logo({
         }
       >
         <Image
-          src="/logo-eco.svg"
+          src="/logo-eco.png"
           alt="ECO"
           width={size}
           height={size}

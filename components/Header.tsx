@@ -47,7 +47,7 @@ export default function Header({
           className="p-0 bg-transparent border-0 rounded-none hover:opacity-90 transition-opacity shrink-0 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/30 focus-visible:ring-offset-2"
           aria-label="Retour à l'accueil"
         >
-          <Image src="/logo-eco.svg" alt="" width={40} height={40} unoptimized className="bg-transparent block h-10 w-10 object-contain select-none pointer-events-none" />
+          <Image src="/logo-eco.png" alt="" width={40} height={40} unoptimized className="bg-transparent block h-10 w-10 object-contain select-none pointer-events-none" />
         </motion.button>
         {onToggleSidebar && (
           <motion.button
@@ -99,7 +99,7 @@ export default function Header({
         className="hidden md:flex absolute left-1/2 -translate-x-1/2 items-center gap-2 bg-transparent p-0 border-0 z-[25] cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/30 focus-visible:ring-offset-2 min-w-[100px] justify-center"
         aria-label="Retour à l'accueil"
       >
-        <Image src="/logo-eco.svg" alt="" width={32} height={32} unoptimized className="w-8 h-8 bg-transparent block object-contain select-none pointer-events-none" />
+        <Image src="/logo-eco.png" alt="" width={32} height={32} unoptimized className="w-8 h-8 bg-transparent block object-contain select-none pointer-events-none" />
         <span className="text-lg font-bold text-gray-900 dark:text-white pointer-events-none">ECO</span>
       </button>
 

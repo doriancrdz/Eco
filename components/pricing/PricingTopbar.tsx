@@ -24,13 +24,13 @@ export default function PricingTopbar() {
         {/* Logo + ECO centré - position absolue */}
         <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
           <Image
-            src="/logo-eco.svg"
+            src="/logo-eco.png"
             alt="ECO"
             width={32}
             height={32}
             className="w-8 h-8"
             priority
-            unoptimized
+            quality={90}
           />
           <span className="text-lg font-bold text-gray-900">ECO</span>
         </div>
