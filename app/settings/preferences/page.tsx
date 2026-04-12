@@ -237,7 +237,7 @@ export default function PreferencesPage() {
                     <div className="flex-1">
                       <label className="text-sm font-medium text-gray-800 block">Langue parlée</label>
                       <p className="text-xs text-gray-500 mt-1">
-                        La langue dans laquelle vous parlez lors de vos enregistrements ECO. Utilisée pour optimiser la transcription.
+                        La langue dans laquelle tu parles lors de tes enregistrements ECO. Utilisée pour optimiser la transcription.
                       </p>
                     </div>
                     <div className="ml-4">
@@ -263,7 +263,7 @@ export default function PreferencesPage() {
                     <div className="flex-1">
                       <h3 className="text-sm font-medium text-gray-800">ECOs archivés</h3>
                       <p className="text-xs text-gray-500 mt-1">
-                        Consultez et gérez vos ECOs archivés.
+                        Consulte et gère tes ECOs archivés.
                       </p>
                     </div>
                     <button
@@ -279,7 +279,7 @@ export default function PreferencesPage() {
                     <div className="flex-1">
                       <h3 className="text-sm font-medium text-gray-800">Archiver tous les ECOs</h3>
                       <p className="text-xs text-gray-500 mt-1">
-                        Déplacer tous vos ECOs vers les archives. Cette action est réversible.
+                        Déplacer tous tes ECOs vers les archives. Cette action est réversible.
                       </p>
                     </div>
                     <button
@@ -295,7 +295,7 @@ export default function PreferencesPage() {
                     <div className="flex-1">
                       <h3 className="text-sm font-medium text-gray-800">Supprimer tous les ECOs</h3>
                       <p className="text-xs text-gray-500 mt-1">
-                        Supprimer définitivement tous vos ECOs. Cette action est irréversible.
+                        Supprimer définitivement tous tes ECOs. Cette action est irréversible.
                       </p>
                     </div>
                     <button
@@ -357,7 +357,7 @@ export default function PreferencesPage() {
                   </div>
                   {plan === "free" ? (
                     <div className="pt-4">
-                      <p className="text-gray-600 mb-4">Vous utilisez le plan gratuit</p>
+                      <p className="text-gray-600 mb-4">Tu es sur le plan gratuit</p>
                       <motion.button
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
@@ -370,7 +370,7 @@ export default function PreferencesPage() {
                   ) : (
                     <div className="pt-4">
                       <p className="text-gray-600">
-                        Vous êtes sur le plan {planName}
+                        Tu es sur le plan {planName}
                       </p>
                     </div>
                   )}
@@ -452,7 +452,7 @@ export default function PreferencesPage() {
               <div className="bg-white/80 backdrop-blur-xl rounded-3xl border border-white/40 shadow-2xl p-8 max-w-md w-full mx-4">
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Archiver tous les ECOs ?</h3>
                 <p className="text-gray-600 text-sm mb-6">
-                  Cette action archivera tous vos ECOs. Vous pourrez les restaurer depuis la section ECOs archivés.
+                  Cette action archivera tous tes ECOs. Tu pourras les restaurer depuis la section ECOs archivés.
                 </p>
                 <div className="flex gap-4">
                   <button
@@ -498,9 +498,9 @@ export default function PreferencesPage() {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="bg-white/80 backdrop-blur-xl rounded-3xl border border-white/40 shadow-2xl p-8 max-w-md w-full mx-4">
-                <h3 className="text-xl font-bold text-red-600 mb-2">Supprimer définitivement tous vos ECOs ?</h3>
+                <h3 className="text-xl font-bold text-red-600 mb-2">Supprimer définitivement tous tes ECOs ?</h3>
                 <p className="text-gray-600 text-sm mb-4">
-                  Cette action est irréversible. Tous vos ECOs seront supprimés définitivement. Tapez SUPPRIMER pour confirmer.
+                  Cette action est irréversible. Tous tes ECOs seront supprimés définitivement. Tape SUPPRIMER pour confirmer.
                 </p>
                 <input
                   type="text"

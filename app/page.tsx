@@ -713,7 +713,7 @@ export default function Home() {
             streamRef.current.getTracks().forEach((t) => t.stop());
             streamRef.current = null;
           }
-          alert(`Enregistrement trop volumineux (${sizeMB} MB). Limite : 60 min. Veuillez réessayer.`);
+          alert(`Enregistrement trop volumineux (${sizeMB} MB). Limite : 60 min. Merci de réessayer.`);
           return;
         }
 
@@ -776,12 +776,12 @@ export default function Home() {
       setIsFocusMode(false);
       setIsRecording(false);
       const errMsg = error instanceof Error && error.message === "MICRO_NOT_DETECTED"
-        ? "Micro non détecté. Vérifiez vos permissions Chrome dans Préférences Système → Confidentialité → Microphone."
+        ? "Micro non détecté. Vérifie tes permissions Chrome dans Préférences Système → Confidentialité → Microphone."
         : error instanceof Error && error.message === "SCREEN_AUDIO_NONE"
         ? "Aucun audio système capté. Dans la popup Chrome, cochez 'Partager l'audio système' avant de valider."
         : (error instanceof Error && (error.name === "NotAllowedError" || error.name === "AbortError"))
         ? null // User cancelled the picker — no alert needed
-        : "Impossible d'accéder au microphone. Veuillez autoriser l'accès.";
+        : "Impossible d'accéder au microphone. Autorise l'accès dans les paramètres.";
       if (errMsg) alert(errMsg);
     }
   };
@@ -1154,7 +1154,7 @@ export default function Home() {
         err?.status === 429 ||
         (err?.message != null && (err.message.includes("429") || err.message.includes("Trop d")));
       if (isRateLimit) {
-        alert("Vous avez atteint la limite de requêtes. Veuillez patienter quelques minutes.");
+        alert("Tu as atteint la limite de requêtes. Merci de patienter quelques minutes.");
       } else {
         const errorMessage =
           error instanceof Error ? error.message : "Une erreur est survenue lors du traitement.";
@@ -1401,7 +1401,7 @@ export default function Home() {
                         initial={{ opacity: 0, y: 4 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1, duration: 0.4, ease: "easeOut" }}
-                        className="text-2xl font-medium text-slate-700 mt-4"
+                        className="text-2xl font-medium text-gray-700 mt-4"
                       >
                         Bonjour, {user?.firstName ? `${user.firstName}.` : "!"}
                       </motion.h1>
@@ -1451,7 +1451,7 @@ export default function Home() {
                             <button
                               onClick={() => !isPdfExtracting && setShowPdfPopover(true)}
                               disabled={isPdfExtracting}
-                              className="text-sm text-violet-500 hover:text-violet-700 transition-colors flex items-center gap-1 disabled:opacity-50"
+                              className="text-sm text-gray-600 hover:text-gray-800 transition-colors flex items-center gap-1 disabled:opacity-50"
                             >
                               {isPdfExtracting ? (
                                 <>
@@ -1519,7 +1519,7 @@ export default function Home() {
                         {/* Liste des PDFs + badge */}
                         {pdfFiles.length > 0 && (
                           <div className="flex flex-col items-center gap-1 mt-1">
-                            <span className="text-xs font-semibold text-violet-600 flex items-center gap-1">
+                            <span className="text-xs font-semibold text-gray-600 flex items-center gap-1">
                               <FileText className="w-3.5 h-3.5" />
                               PDF de contexte ajouté
                             </span>
@@ -1575,7 +1575,7 @@ export default function Home() {
                         className="mt-16 w-full max-w-4xl space-y-4"
                       >
                         <div className="flex items-center justify-between">
-                          <h2 className="text-xl font-bold text-gray-800">Vos derniers ECOs</h2>
+                          <h2 className="text-xl font-bold text-gray-800">Tes derniers ECOs</h2>
                           {ecos.length > 0 && (
                             <button
                               onClick={() => setViewAllEcos(true)}
@@ -1609,30 +1609,57 @@ export default function Home() {
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                             {ecos
                               .slice(0, 6)
-                              .map((eco, index) => (
-                                <motion.button
-                                  key={eco.id}
-                                  initial={{ opacity: 0, y: 8 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  transition={{ delay: 0.1 + index * 0.08 }}
-                                  whileHover={{ y: -4, scale: 1.01 }}
-                                  whileTap={{ scale: 0.98 }}
-                                  onClick={() => handleEcoClick(eco)}
-                                  className="text-left bg-white/75 backdrop-blur-2xl rounded-[2rem] border border-white/80 shadow-sm hover:shadow-xl transition-all duration-300 p-6"
-                                >
-                                  <div className="flex items-center gap-3 mb-2">
-                                    <Mic className="w-5 h-5 text-gray-600 shrink-0" />
-                                    <span className="font-bold text-gray-900 truncate">{eco.title}</span>
-                                  </div>
-                                  <p className="text-xs text-gray-500">
-                                    {new Date(eco.created_at).toLocaleDateString("fr-FR", {
-                                      day: "numeric",
-                                      month: "short",
-                                      year: "numeric",
-                                    })}
-                                  </p>
-                                </motion.button>
-                              ))}
+                              .map((eco, index) => {
+                                const SourceIcon = eco.source_type === "screen" ? Monitor : Mic;
+                                const wordCount = (() => {
+                                  if (!eco.summary_text) return 0;
+                                  try { const p = JSON.parse(eco.summary_text); return p?.resume?.trim().split(/\s+/).filter(Boolean).length ?? 0; } catch { return 0; }
+                                })();
+                                return (
+                                  <motion.button
+                                    key={eco.id}
+                                    initial={{ opacity: 0, y: 8 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: 0.1 + index * 0.08 }}
+                                    whileHover={{ y: -4, scale: 1.01 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => handleEcoClick(eco)}
+                                    className="text-left bg-white/75 backdrop-blur-2xl rounded-[2rem] border border-white/80 shadow-sm hover:shadow-xl transition-all duration-300 p-6"
+                                  >
+                                    <div className="flex items-center gap-3 mb-2">
+                                      <SourceIcon className="w-5 h-5 text-gray-600 shrink-0" />
+                                      <span className="font-bold text-gray-900 truncate">{eco.title}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 text-xs text-gray-500 flex-wrap">
+                                      <span>
+                                        {new Date(eco.created_at).toLocaleDateString("fr-FR", {
+                                          day: "numeric",
+                                          month: "short",
+                                          year: "numeric",
+                                        })}
+                                      </span>
+                                      {eco.duration_seconds != null && eco.duration_seconds > 0 && (
+                                        <>
+                                          <span className="text-gray-300">·</span>
+                                          <span>{Math.max(1, Math.round(eco.duration_seconds / 60))} min</span>
+                                        </>
+                                      )}
+                                      {wordCount > 0 && (
+                                        <>
+                                          <span className="text-gray-300">·</span>
+                                          <span>{wordCount} mots</span>
+                                        </>
+                                      )}
+                                      {eco.has_pdf_context && (
+                                        <>
+                                          <span className="text-gray-300">·</span>
+                                          <FileText className="w-3 h-3 shrink-0" />
+                                        </>
+                                      )}
+                                    </div>
+                                  </motion.button>
+                                );
+                              })}
                           </div>
                         )}
 
@@ -1666,30 +1693,57 @@ export default function Home() {
                         <span className="font-bold">Retour</span>
                       </motion.button>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {ecos.map((eco, index) => (
-                          <motion.button
-                            key={eco.id}
-                            initial={{ opacity: 0, y: 8 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.08 }}
-                            whileHover={{ y: -4, scale: 1.01 }}
-                            whileTap={{ scale: 0.98 }}
-                            onClick={() => handleEcoClick(eco)}
-                            className="text-left bg-white/75 backdrop-blur-2xl rounded-[2rem] border border-white/80 shadow-sm hover:shadow-xl transition-all duration-300 p-6"
-                          >
-                            <div className="flex items-center gap-3 mb-2">
-                              <Mic className="w-5 h-5 text-gray-600 shrink-0" />
-                              <span className="font-bold text-gray-900 truncate">{eco.title}</span>
-                            </div>
-                            <p className="text-xs text-gray-500">
-                              {new Date(eco.created_at).toLocaleDateString("fr-FR", {
-                                day: "numeric",
-                                month: "short",
-                                year: "numeric",
-                              })}
-                            </p>
-                          </motion.button>
-                        ))}
+                        {ecos.map((eco, index) => {
+                          const SourceIcon = eco.source_type === "screen" ? Monitor : Mic;
+                          const wordCount = (() => {
+                            if (!eco.summary_text) return 0;
+                            try { const p = JSON.parse(eco.summary_text); return p?.resume?.trim().split(/\s+/).filter(Boolean).length ?? 0; } catch { return 0; }
+                          })();
+                          return (
+                            <motion.button
+                              key={eco.id}
+                              initial={{ opacity: 0, y: 8 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              transition={{ delay: index * 0.08 }}
+                              whileHover={{ y: -4, scale: 1.01 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => handleEcoClick(eco)}
+                              className="text-left bg-white/75 backdrop-blur-2xl rounded-[2rem] border border-white/80 shadow-sm hover:shadow-xl transition-all duration-300 p-6"
+                            >
+                              <div className="flex items-center gap-3 mb-2">
+                                <SourceIcon className="w-5 h-5 text-gray-600 shrink-0" />
+                                <span className="font-bold text-gray-900 truncate">{eco.title}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 text-xs text-gray-500 flex-wrap">
+                                <span>
+                                  {new Date(eco.created_at).toLocaleDateString("fr-FR", {
+                                    day: "numeric",
+                                    month: "short",
+                                    year: "numeric",
+                                  })}
+                                </span>
+                                {eco.duration_seconds != null && eco.duration_seconds > 0 && (
+                                  <>
+                                    <span className="text-gray-300">·</span>
+                                    <span>{Math.max(1, Math.round(eco.duration_seconds / 60))} min</span>
+                                  </>
+                                )}
+                                {wordCount > 0 && (
+                                  <>
+                                    <span className="text-gray-300">·</span>
+                                    <span>{wordCount} mots</span>
+                                  </>
+                                )}
+                                {eco.has_pdf_context && (
+                                  <>
+                                    <span className="text-gray-300">·</span>
+                                    <FileText className="w-3 h-3 shrink-0" />
+                                  </>
+                                )}
+                              </div>
+                            </motion.button>
+                          );
+                        })}
                       </div>
                     </motion.div>
                   )}
@@ -1825,8 +1879,8 @@ export default function Home() {
                               const isActive = i === currentIdx;
                               return (
                                 <span key={step} className="flex items-center gap-3">
-                                  <span className={`w-2.5 h-2.5 rounded-full transition-all duration-500 ${isDone ? "bg-emerald-400" : isActive ? "bg-gray-800 animate-pulse" : "bg-gray-200"}`} />
-                                  {i < 2 && <span className={`w-8 h-px block transition-all duration-500 ${isDone ? "bg-emerald-400" : "bg-gray-200"}`} />}
+                                  <span className={`w-2.5 h-2.5 rounded-full transition-all duration-500 ${isDone ? "bg-gray-400" : isActive ? "bg-gray-800 animate-pulse" : "bg-gray-200"}`} />
+                                  {i < 2 && <span className={`w-8 h-px block transition-all duration-500 ${isDone ? "bg-gray-400" : "bg-gray-200"}`} />}
                                 </span>
                               );
                             })}
@@ -1903,7 +1957,7 @@ export default function Home() {
                 Connexion requise
               </h3>
               <p className="text-center text-gray-600 mb-6">
-                Vous devez être connecté pour lancer un enregistrement.
+                Tu dois être connecté pour lancer un enregistrement.
                 Créez un compte gratuitement en quelques secondes !
               </p>
               <div className="flex flex-col gap-3">

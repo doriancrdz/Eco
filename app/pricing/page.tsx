@@ -155,11 +155,11 @@ export default function PricingPage() {
       const message =
         err instanceof Error
           ? err.message
-          : "Une erreur est survenue. Veuillez réessayer.";
+          : "Une erreur est survenue. Merci de réessayer.";
       
       if (message.includes("PRICE_ID") || message.includes("Stripe")) {
         setError(
-          "Configuration de paiement en cours. Veuillez contacter le support ou réessayer plus tard."
+          "Configuration de paiement en cours. Contacte le support ou réessaie plus tard."
         );
       } else {
         setError(message);
@@ -184,7 +184,7 @@ export default function PricingPage() {
         setSelectedPlanForModal(planKey);
         setAnnualModalOpen(true);
       } catch (error) {
-        setError("Impossible d'ouvrir le modal de sélection. Veuillez réessayer.");
+        setError("Impossible d'ouvrir le modal de sélection. Merci de réessayer.");
       }
       return;
     }
@@ -235,11 +235,11 @@ export default function PricingPage() {
       const message =
         err instanceof Error
           ? err.message
-          : "Une erreur est survenue. Veuillez réessayer.";
+          : "Une erreur est survenue. Merci de réessayer.";
       
       if (message.includes("PRICE_ID") || message.includes("Stripe")) {
         setError(
-          "Configuration de paiement en cours. Veuillez contacter le support ou réessayer plus tard."
+          "Configuration de paiement en cours. Contacte le support ou réessaie plus tard."
         );
       } else {
         setError(message);
@@ -266,10 +266,10 @@ export default function PricingPage() {
         {/* Header */}
         <div className="pt-12 pb-12 px-4 text-center">
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold text-gray-900 mb-6 tracking-tight">
-            Choisissez votre plan
+            Choisis ton plan
           </h1>
           <p className="text-lg md:text-xl lg:text-2xl text-gray-600 max-w-2xl mx-auto leading-relaxed mb-8">
-            Transformez votre voix en connaissance structurée. Plans flexibles pour tous vos besoins.
+            Transforme ta voix en connaissance structurée. Plans flexibles pour tous tes besoins.
           </p>
 
           {/* Chips */}

@@ -197,7 +197,7 @@ export default function SettingsPage() {
             Paramètres
           </h1>
           <p className="text-gray-600">
-            Gérez votre abonnement et vos quotas
+            Gère ton abonnement et tes quotas
           </p>
         </motion.div>
 
@@ -220,7 +220,7 @@ export default function SettingsPage() {
             className="mb-6 p-4 bg-red-50 border border-red-200 text-red-800 rounded-xl text-sm font-medium flex items-center gap-2"
           >
             <AlertCircle className="w-5 h-5 flex-shrink-0" />
-            Paiement échoué — accès suspendu. Mettez à jour votre moyen de paiement pour réactiver l&apos;accès.
+            Paiement échoué — accès suspendu. Mets à jour ton moyen de paiement pour réactiver l&apos;accès.
           </motion.div>
         )}
 
@@ -410,7 +410,7 @@ export default function SettingsPage() {
               </p>
             </div>
             <div>
-              <p className="text-sm text-gray-500 mb-2">Vous êtes sur le plan</p>
+              <p className="text-sm text-gray-500 mb-2">Tu es sur le plan</p>
               <span className="inline-block px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-bold">
                 {billingData?.planName || "Free"}
               </span>
@@ -467,11 +467,11 @@ export default function SettingsPage() {
             >
               <div className="bg-white rounded-3xl p-8 shadow-2xl border border-white/40">
                 <h3 id="cancel-confirm-title" className="text-xl font-bold text-gray-900 mb-4">
-                  Résilier votre abonnement ?
+                  Résilier ton abonnement ?
                 </h3>
                 <p className="text-gray-600 mb-6">
-                  Votre abonnement sera annulé à la fin de la période en cours. 
-                  Vous ne serez pas débité le mois prochain.
+                  Ton abonnement sera annulé à la fin de la période en cours.
+                  Tu ne seras pas débité le mois prochain.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-3">
                   <motion.button
@@ -524,7 +524,7 @@ export default function SettingsPage() {
                 Supprimer mon compte
               </h3>
               <p className="text-gray-600 mb-6">
-                ⚠️ Cette action est <strong>irréversible</strong>. Toutes vos données (enregistrements, résumés, abonnement) seront définitivement supprimées.
+                ⚠️ Cette action est <strong>irréversible</strong>. Toutes tes données (enregistrements, résumés, abonnement) seront définitivement supprimées.
               </p>
               <div className="flex flex-col sm:flex-row gap-3">
                 <button

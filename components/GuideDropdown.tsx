@@ -67,8 +67,8 @@ export default function GuideDropdown() {
                 <div>
                   <h4 className="font-semibold text-gray-900 mb-1">1. Enregistrer un audio</h4>
                   <p className="text-sm text-gray-600">
-                    Cliquez sur le micro pour commencer. Parlez clairement (cours, conférence, vidéo YouTube). Cliquez sur
-                    &quot;Terminer&quot; quand vous avez fini.
+                    Clique sur le micro pour commencer. Parle clairement (cours, conférence, vidéo YouTube). Clique sur
+                    &quot;Terminer&quot; quand tu as fini.
                   </p>
                 </div>
               </div>
@@ -80,7 +80,7 @@ export default function GuideDropdown() {
                   <FileText className="w-4 h-4 text-purple-600" />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-gray-900 mb-1">2. Obtenir votre résumé</h4>
+                  <h4 className="font-semibold text-gray-900 mb-1">2. Obtenir ton résumé</h4>
                   <ul className="text-sm text-gray-600 space-y-1">
                     <li>• Transcription automatique en 1-2 minutes</li>
                     <li>• Résumé structuré (intro/dév/conclu)</li>
@@ -97,10 +97,10 @@ export default function GuideDropdown() {
                   <FolderTree className="w-4 h-4 text-green-600" />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-gray-900 mb-1">3. Organiser vos ECOs</h4>
+                  <h4 className="font-semibold text-gray-900 mb-1">3. Organiser tes ECOs</h4>
                   <p className="text-sm text-gray-600">
-                    Créez des dossiers pour classer vos enregistrements. Recherchez par titre ou contenu. Archivez ou
-                    supprimez ce dont vous n&apos;avez plus besoin.
+                    Crée des dossiers pour classer tes enregistrements. Recherche par titre ou contenu. Archive ou
+                    supprime ce dont tu n&apos;as plus besoin.
                   </p>
                 </div>
               </div>

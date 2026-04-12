@@ -52,11 +52,6 @@ export default function PlanBadge() {
   const totalMinutes = (data?.minutesPerMonth ?? 0) + (data?.extraMinutesMonth ?? 0);
   const percentage = totalMinutes > 0 ? Math.min(100, (minutesLeft / totalMinutes) * 100) : 0;
 
-  const progressFill =
-    percentage > 50 ? "bg-emerald-500" :
-    percentage > 20 ? "bg-amber-500" :
-    "bg-red-500";
-
   const planLabel =
     plan === "free" ? "Free" :
     plan === "student" ? "Student" :
@@ -118,7 +113,7 @@ export default function PlanBadge() {
       {/* Barre de progression — desktop uniquement */}
       <div className="hidden sm:block absolute bottom-0 left-0 right-0 h-1.5 bg-black/10">
         <div
-          className={`h-full ${progressFill} opacity-75 transition-[width] duration-500`}
+          className="h-full bg-gradient-to-r from-[#99f6e4] via-[#7dd3fc] to-[#a5b4fc] opacity-75 transition-[width] duration-500"
           style={{ width: `${percentage}%` }}
         />
       </div>
