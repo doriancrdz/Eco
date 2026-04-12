@@ -47,10 +47,10 @@ export default function RootLayout({
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link rel="preload" href="/logo-eco.png" as="image" />
+        <link rel="preload" href="/logo-eco.svg" as="image" type="image/svg+xml" />
       </head>
       <body className={`${inter.className} aura-gradient`}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <ClerkProvider>
             {children}
             <Footer />

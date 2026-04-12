@@ -165,7 +165,7 @@ export default function Sidebar({
                   aria-label="Retour à l'accueil"
                 >
                   <div className="w-5 h-5 relative shrink-0 bg-transparent border-0 pointer-events-none">
-                    <Image src="/logo-eco.png" alt="" width={20} height={20} className="bg-transparent block object-contain pointer-events-none" />
+                    <Image src="/logo-eco.svg" alt="" width={20} height={20} unoptimized className="bg-transparent block object-contain pointer-events-none" />
                   </div>
                   <span className="font-bold text-gray-900 pointer-events-none">ECO</span>
                 </button>

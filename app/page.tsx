@@ -1401,7 +1401,7 @@ export default function Home() {
                         initial={{ opacity: 0, y: 4 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1, duration: 0.4, ease: "easeOut" }}
-                        className="text-2xl font-medium text-gray-700 dark:text-gray-100 mt-4"
+                        className="text-2xl font-medium text-gray-700 dark:text-gray-300 mt-4"
                       >
                         Bonjour, {user?.firstName ? `${user.firstName}.` : "!"}
                       </motion.h1>

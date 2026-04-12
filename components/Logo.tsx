@@ -142,12 +142,12 @@ export default function Logo({
         }
       >
         <Image
-          src="/logo-eco.png"
+          src="/logo-eco.svg"
           alt="ECO"
           width={size}
           height={size}
           priority={size >= 200}
-          quality={90}
+          unoptimized
           className="bg-transparent block w-full h-full object-contain select-none"
         />
       </motion.div>
