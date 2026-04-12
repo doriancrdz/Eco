@@ -321,7 +321,7 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
         whileHover={{ x: 2 }}
         whileTap={{ scale: 0.98 }}
         className={`group relative w-full text-left px-4 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${
-          isSelected ? "bg-white/25" : "hover:bg-white/20"
+          isSelected ? "bg-white/25 dark:bg-white/10" : "hover:bg-white/20 dark:hover:bg-white/10"
         }`}
       >
         <div
@@ -340,11 +340,11 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
-            <span className="font-medium text-sm text-gray-800 truncate">
+            <span className="font-medium text-sm text-gray-800 dark:text-gray-100 truncate">
               {eco.title}
             </span>
           )}
-          <div className="flex items-center gap-1 text-xs text-gray-400 flex-wrap">
+          <div className="flex items-center gap-1 text-xs text-gray-400 dark:text-gray-500 flex-wrap">
             <span>
               {new Date(eco.created_at).toLocaleDateString("fr-FR", {
                 day: "numeric",

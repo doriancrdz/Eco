@@ -415,7 +415,7 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
   // Tab 1: Résumé structuré (default)
   const summaryContent = (
     <div className="prose prose-base max-w-none">
-      <div className="text-gray-700 leading-relaxed space-y-4">
+      <div className="text-gray-700 dark:text-gray-300 leading-relaxed space-y-4">
         {isGenerating ? (
           <div className="space-y-4 animate-pulse">
             <div className="h-6 bg-white/10 rounded-lg w-3/4 backdrop-blur-sm" />
@@ -431,7 +431,7 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
           </div>
         ) : summary && summary.titre && summary.resume ? (
           <>
-            <h3 className="text-xl font-semibold mt-0 mb-4 text-gray-900">{summary.titre}</h3>
+            <h3 className="text-xl font-semibold mt-0 mb-4 text-gray-900 dark:text-white">{summary.titre}</h3>
             <div className="prose prose-sm max-w-none">
               {renderResume(summary.resume)}
             </div>
@@ -581,7 +581,7 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
 
           {quizData.map((question, idx) => (
             <div key={idx} className="p-5 rounded-xl bg-white/5 border border-white/10">
-              <p className="font-medium text-gray-900 mb-4 leading-relaxed">
+              <p className="font-medium text-gray-900 dark:text-gray-100 mb-4 leading-relaxed">
                 {idx + 1}. {question.question}
               </p>
 
@@ -645,7 +645,7 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
             <button
               type="button"
               onClick={() => setQuizSubmitted(true)}
-              className="w-full px-6 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 active:scale-[0.98] transition-all shadow-lg"
+              className="w-full px-6 py-3 bg-emerald-600 dark:bg-gradient-to-r dark:from-[#99f6e4] dark:via-[#7dd3fc] dark:to-[#a5b4fc] text-white dark:text-gray-900 rounded-xl font-medium hover:bg-emerald-700 dark:hover:opacity-90 active:scale-[0.98] transition-all shadow-lg"
             >
               Valider le quiz
             </button>
@@ -733,15 +733,15 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
           <div className="absolute -inset-4 bg-gradient-to-r from-aura-emerald/20 via-aura-blue/20 to-aura-sand/20 rounded-3xl blur-2xl opacity-60 -z-10" />
           
           {/* Glass card header */}
-          <div className="relative bg-white/8 backdrop-blur-xl rounded-2xl border border-white/15 shadow-2xl p-8 md:p-10">
+          <div className="relative bg-white/8 dark:bg-[#1A1D2E]/60 backdrop-blur-xl rounded-2xl border border-white/15 dark:border-gray-700/50 shadow-2xl p-8 md:p-10">
             <button
               type="button"
               onClick={() => { window.location.href = "/"; }}
-              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 mb-4 transition-colors"
+              className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 mb-4 transition-colors"
             >
               ← Retour à l&apos;accueil
             </button>
-            <h1 className="text-2xl md:text-4xl lg:text-5xl font-semibold text-gray-900 mb-2 tracking-[-0.02em]">
+            <h1 className="text-2xl md:text-4xl lg:text-5xl font-semibold text-gray-900 dark:text-white mb-2 tracking-[-0.02em]">
               {eco.title}
             </h1>
             <p className="text-gray-400 text-sm opacity-70">
@@ -771,7 +771,7 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
           {/* Aura subtile derrière les tabs */}
           <div className="absolute -inset-2 bg-gradient-to-br from-aura-emerald/10 via-aura-blue/10 to-aura-sand/10 rounded-2xl blur-xl opacity-50 -z-10" />
           
-          <div className="relative bg-white/8 backdrop-blur-xl rounded-2xl border border-white/15 shadow-2xl overflow-hidden">
+          <div className="relative bg-white/8 dark:bg-[#1A1D2E]/60 backdrop-blur-xl rounded-2xl border border-white/15 dark:border-gray-700/50 shadow-2xl overflow-hidden">
             <Tabs tabs={tabs} defaultTab="summary" />
           </div>
         </motion.div>

@@ -1377,7 +1377,7 @@ export default function Home() {
                         <motion.div
                           initial={{ opacity: 0, y: 8 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className="mb-4 px-4 py:3 rounded-xl bg-red-50 border border-red-200 text-red-800 text-center text-sm font-medium max-w-md"
+                          className="mb-4 px-4 py:3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/50 text-red-800 dark:text-red-300 text-center text-sm font-medium max-w-md"
                         >
                           Paiement échoué — accès suspendu
                         </motion.div>
@@ -1401,7 +1401,7 @@ export default function Home() {
                         initial={{ opacity: 0, y: 4 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1, duration: 0.4, ease: "easeOut" }}
-                        className="text-2xl font-medium text-gray-700 mt-4"
+                        className="text-2xl font-medium text-gray-700 dark:text-gray-100 mt-4"
                       >
                         Bonjour, {user?.firstName ? `${user.firstName}.` : "!"}
                       </motion.h1>
@@ -1426,7 +1426,7 @@ export default function Home() {
                           whileTap={{ scale: 0.97 }}
                           onClick={handleStartSystemAudioRecording}
                           disabled={paymentBlocked}
-                          className="flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm bg-white/40 backdrop-blur-md border border-gray-300 text-gray-600 shadow-sm hover:bg-white/60 hover:border-gray-400 transition-all disabled:opacity-40"
+                          className="flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm bg-white/40 dark:bg-white/10 backdrop-blur-md border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 shadow-sm hover:bg-white/60 dark:hover:bg-white/15 hover:border-gray-400 transition-all disabled:opacity-40"
                         >
                           <Monitor className="w-4 h-4 text-gray-500" />
                           Capturer l&apos;audio
@@ -1451,7 +1451,7 @@ export default function Home() {
                             <button
                               onClick={() => !isPdfExtracting && setShowPdfPopover(true)}
                               disabled={isPdfExtracting}
-                              className="text-sm text-gray-600 hover:text-gray-800 transition-colors flex items-center gap-1 disabled:opacity-50"
+                              className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors flex items-center gap-1 disabled:opacity-50"
                             >
                               {isPdfExtracting ? (
                                 <>
@@ -1480,11 +1480,11 @@ export default function Home() {
                                   animate={{ opacity: 1, y: 0 }}
                                   exit={{ opacity: 0, y: 6 }}
                                   transition={{ duration: 0.18, ease: "easeOut" }}
-                                  className="absolute z-50 left-1/2 -translate-x-1/2 mt-3 w-[300px] sm:w-[320px] bg-white rounded-2xl shadow-xl border border-gray-100 p-5 flex flex-col gap-4"
+                                  className="absolute z-50 left-1/2 -translate-x-1/2 mt-3 w-[300px] sm:w-[320px] bg-white dark:bg-[#1A1D2E] rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700/50 p-5 flex flex-col gap-4"
                                 >
                                   <div>
-                                    <p className="font-semibold text-gray-800 text-sm mb-2">📄 PDF de contexte</p>
-                                    <p className="text-xs text-gray-500 leading-relaxed">
+                                    <p className="font-semibold text-gray-800 dark:text-gray-100 text-sm mb-2">📄 PDF de contexte</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
                                       Ajoute un document de cours avant d&apos;enregistrer. L&apos;IA s&apos;appuiera dessus pour mieux comprendre le vocabulaire et les notions de ton cours — le résumé, les points clés et le quiz seront plus précis et adaptés à ton contenu.
                                     </p>
                                   </div>
@@ -1575,7 +1575,7 @@ export default function Home() {
                         className="mt-16 w-full max-w-4xl space-y-4"
                       >
                         <div className="flex items-center justify-between">
-                          <h2 className="text-xl font-bold text-gray-800">Tes derniers ECOs</h2>
+                          <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100">Tes derniers ECOs</h2>
                           {ecos.length > 0 && (
                             <button
                               onClick={() => setViewAllEcos(true)}
@@ -1592,7 +1592,7 @@ export default function Home() {
                             {[0, 1, 2].map((i) => (
                               <div
                                 key={i}
-                                className="bg-white/60 rounded-[2rem] border border-white/70 p-6 animate-pulse"
+                                className="bg-white/60 dark:bg-[#1A1D2E]/80 rounded-[2rem] border border-white/70 dark:border-gray-700/50 p-6 animate-pulse"
                               >
                                 <div className="flex items-center gap-3 mb-3">
                                   <div className="w-5 h-5 rounded-full bg-gray-200 shrink-0" />
@@ -1624,13 +1624,13 @@ export default function Home() {
                                     whileHover={{ y: -4, scale: 1.01 }}
                                     whileTap={{ scale: 0.98 }}
                                     onClick={() => handleEcoClick(eco)}
-                                    className="text-left bg-white/75 backdrop-blur-2xl rounded-[2rem] border border-white/80 shadow-sm hover:shadow-xl transition-all duration-300 p-6"
+                                    className="text-left bg-white/75 dark:bg-[#1A1D2E] backdrop-blur-2xl rounded-[2rem] border border-white/80 dark:border-gray-700/50 shadow-sm hover:shadow-xl transition-all duration-300 p-6"
                                   >
                                     <div className="flex items-center gap-3 mb-2">
-                                      <SourceIcon className="w-5 h-5 text-gray-600 shrink-0" />
-                                      <span className="font-bold text-gray-900 truncate">{eco.title}</span>
+                                      <SourceIcon className="w-5 h-5 text-gray-600 dark:text-gray-400 shrink-0" />
+                                      <span className="font-bold text-gray-900 dark:text-white truncate">{eco.title}</span>
                                     </div>
-                                    <div className="flex items-center gap-1.5 text-xs text-gray-500 flex-wrap">
+                                    <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
                                       <span>
                                         {new Date(eco.created_at).toLocaleDateString("fr-FR", {
                                           day: "numeric",
@@ -1667,8 +1667,8 @@ export default function Home() {
                         {!isEcosLoading && ecos.length === 0 && (
                           <div className="flex flex-col items-center justify-center py-16 gap-3">
                             <Mic className="w-12 h-12 text-gray-200" />
-                            <p className="text-gray-700 font-medium text-base">Ton premier ECO t&apos;attend</p>
-                            <p className="text-gray-400 text-sm">Lance un enregistrement pour commencer</p>
+                            <p className="text-gray-700 dark:text-gray-300 font-medium text-base">Ton premier ECO t&apos;attend</p>
+                            <p className="text-gray-400 dark:text-gray-500 text-sm">Lance un enregistrement pour commencer</p>
                           </div>
                         )}
                       </motion.div>
@@ -1711,10 +1711,10 @@ export default function Home() {
                               className="text-left bg-white/75 backdrop-blur-2xl rounded-[2rem] border border-white/80 shadow-sm hover:shadow-xl transition-all duration-300 p-6"
                             >
                               <div className="flex items-center gap-3 mb-2">
-                                <SourceIcon className="w-5 h-5 text-gray-600 shrink-0" />
-                                <span className="font-bold text-gray-900 truncate">{eco.title}</span>
+                                <SourceIcon className="w-5 h-5 text-gray-600 dark:text-gray-400 shrink-0" />
+                                <span className="font-bold text-gray-900 dark:text-white truncate">{eco.title}</span>
                               </div>
-                              <div className="flex items-center gap-1.5 text-xs text-gray-500 flex-wrap">
+                              <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 flex-wrap">
                                 <span>
                                   {new Date(eco.created_at).toLocaleDateString("fr-FR", {
                                     day: "numeric",
