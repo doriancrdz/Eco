@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import Header from "@/components/Header";
 import Logo from "@/components/Logo";
-import { Sparkles, ArrowRight, Settings, ArrowLeft, Mic, Monitor, FileText, Loader2, LogIn } from "lucide-react";
+import { Sparkles, ArrowRight, Settings, ArrowLeft, Mic, Monitor, FileText, Loader2, LogIn, Search, X } from "lucide-react";
 import { useUser, useClerk } from "@clerk/nextjs";
 import EcoView from "@/components/EcoView";
 import RecordButton from "@/components/RecordButton";
@@ -97,6 +97,15 @@ export default function Home() {
   const vizAnimFrameRef = useRef<number | null>(null);
   const vizSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
+
+  // Recherche
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedQuery(searchQuery), 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
 
   // PDF context
   const [pdfFiles, setPdfFiles] = useState<Array<{ name: string; text: string }>>([]);
@@ -1293,6 +1302,51 @@ export default function Home() {
     );
   }
 
+  // ── Recherche ────────────────────────────────────────────────────
+  const normalize = (s: string) =>
+    s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  const filteredEcos = debouncedQuery.trim()
+    ? ecos.filter((eco) => {
+        const q = normalize(debouncedQuery);
+        if (normalize(eco.title).includes(q)) return true;
+        if (eco.transcription_text && normalize(eco.transcription_text).includes(q)) return true;
+        if (eco.summary_text) {
+          try {
+            const p = JSON.parse(eco.summary_text);
+            if (normalize(p?.titre ?? "").includes(q)) return true;
+            if (normalize(p?.resume ?? "").includes(q)) return true;
+            if (Array.isArray(p?.points_cles) && normalize(p.points_cles.join(" ")).includes(q)) return true;
+          } catch {
+            if (normalize(eco.summary_text).includes(q)) return true;
+          }
+        }
+        return false;
+      })
+    : ecos;
+
+  const isSearchActive = debouncedQuery.trim().length > 0;
+
+  // Surligner le terme dans le titre (insensible à la casse)
+  function HighlightTitle({ text, query }: { text: string; query: string }) {
+    if (!query.trim()) return <>{text}</>;
+    const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(`(${escaped})`, "gi");
+    const parts = text.split(regex);
+    return (
+      <>
+        {parts.map((part, i) =>
+          part.toLowerCase() === query.toLowerCase() ? (
+            <mark key={i} className="bg-yellow-200/90 text-gray-900 rounded px-0.5 not-italic">{part}</mark>
+          ) : (
+            <span key={i}>{part}</span>
+          )
+        )}
+      </>
+    );
+  }
+  // ─────────────────────────────────────────────────────────────────
+
   return (
     <div className="min-h-screen text-gray-900 flex relative overflow-hidden">
       {/* Background gradient */}
@@ -1576,7 +1630,7 @@ export default function Home() {
                       >
                         <div className="flex items-center justify-between">
                           <h2 className="text-xl font-bold text-gray-800">Tes derniers ECOs</h2>
-                          {ecos.length > 0 && (
+                          {ecos.length > 0 && !isSearchActive && (
                             <button
                               onClick={() => setViewAllEcos(true)}
                               className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
@@ -1585,6 +1639,28 @@ export default function Home() {
                             </button>
                           )}
                         </div>
+
+                        {/* Barre de recherche */}
+                        {ecos.length > 0 && (
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                            <input
+                              type="text"
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              placeholder="Rechercher dans tes ECOs..."
+                              className="w-full pl-9 pr-8 py-2.5 text-sm bg-white/60 backdrop-blur-md border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-400 transition-all text-gray-800 placeholder-gray-400"
+                            />
+                            {searchQuery && (
+                              <button
+                                onClick={() => setSearchQuery("")}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        )}
 
                         {/* Skeleton loaders pendant le chargement */}
                         {isEcosLoading && (
@@ -1605,10 +1681,9 @@ export default function Home() {
                         )}
 
                         {/* Liste des ECOs */}
-                        {!isEcosLoading && ecos.length > 0 && (
+                        {!isEcosLoading && ecos.length > 0 && filteredEcos.length > 0 && (
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {ecos
-                              .slice(0, 6)
+                            {(isSearchActive ? filteredEcos : filteredEcos.slice(0, 6))
                               .map((eco, index) => {
                                 const SourceIcon = eco.source_type === "screen" ? Monitor : Mic;
                                 const wordCount = (() => {
@@ -1620,7 +1695,7 @@ export default function Home() {
                                     key={eco.id}
                                     initial={{ opacity: 0, y: 8 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: 0.1 + index * 0.08 }}
+                                    transition={{ delay: 0.05 + index * 0.05 }}
                                     whileHover={{ y: -4, scale: 1.01 }}
                                     whileTap={{ scale: 0.98 }}
                                     onClick={() => handleEcoClick(eco)}
@@ -1628,7 +1703,9 @@ export default function Home() {
                                   >
                                     <div className="flex items-center gap-3 mb-2">
                                       <SourceIcon className="w-5 h-5 text-gray-600 shrink-0" />
-                                      <span className="font-bold text-gray-900 truncate">{eco.title}</span>
+                                      <span className="font-bold text-gray-900 truncate">
+                                        <HighlightTitle text={eco.title} query={debouncedQuery} />
+                                      </span>
                                     </div>
                                     <div className="flex items-center gap-1.5 text-xs text-gray-500 flex-wrap">
                                       <span>
@@ -1663,7 +1740,16 @@ export default function Home() {
                           </div>
                         )}
 
-                        {/* Empty state */}
+                        {/* Aucun résultat de recherche */}
+                        {!isEcosLoading && isSearchActive && filteredEcos.length === 0 && (
+                          <div className="flex flex-col items-center justify-center py-16 gap-3">
+                            <Search className="w-10 h-10 text-gray-200" />
+                            <p className="text-gray-600 font-medium text-sm">Aucun ECO trouvé pour &quot;{debouncedQuery}&quot;</p>
+                            <button onClick={() => setSearchQuery("")} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Effacer la recherche</button>
+                          </div>
+                        )}
+
+                        {/* Empty state (aucun ECO) */}
                         {!isEcosLoading && ecos.length === 0 && (
                           <div className="flex flex-col items-center justify-center py-16 gap-3">
                             <Mic className="w-12 h-12 text-gray-200" />
@@ -1683,68 +1769,98 @@ export default function Home() {
                       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
                       className="p-4 md:p-8"
                     >
-                      <motion.button
-                        whileHover={{ x: -4 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => goHome("sidebar")}
-                        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
-                      >
-                        <ArrowLeft className="w-5 h-5" />
-                        <span className="font-bold">Retour</span>
-                      </motion.button>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {ecos.map((eco, index) => {
-                          const SourceIcon = eco.source_type === "screen" ? Monitor : Mic;
-                          const wordCount = (() => {
-                            if (!eco.summary_text) return 0;
-                            try { const p = JSON.parse(eco.summary_text); return p?.resume?.trim().split(/\s+/).filter(Boolean).length ?? 0; } catch { return 0; }
-                          })();
-                          return (
-                            <motion.button
-                              key={eco.id}
-                              initial={{ opacity: 0, y: 8 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: index * 0.08 }}
-                              whileHover={{ y: -4, scale: 1.01 }}
-                              whileTap={{ scale: 0.98 }}
-                              onClick={() => handleEcoClick(eco)}
-                              className="text-left bg-white/75 backdrop-blur-2xl rounded-[2rem] border border-white/80 shadow-sm hover:shadow-xl transition-all duration-300 p-6"
+                      <div className="flex items-center gap-4 mb-6">
+                        <motion.button
+                          whileHover={{ x: -4 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => goHome("sidebar")}
+                          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 shrink-0"
+                        >
+                          <ArrowLeft className="w-5 h-5" />
+                          <span className="font-bold">Retour</span>
+                        </motion.button>
+                        <div className="relative flex-1">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                          <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="Rechercher dans tes ECOs..."
+                            className="w-full pl-9 pr-8 py-2.5 text-sm bg-white/60 backdrop-blur-md border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-400 transition-all text-gray-800 placeholder-gray-400"
+                          />
+                          {searchQuery && (
+                            <button
+                              onClick={() => setSearchQuery("")}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                             >
-                              <div className="flex items-center gap-3 mb-2">
-                                <SourceIcon className="w-5 h-5 text-gray-600 shrink-0" />
-                                <span className="font-bold text-gray-900 truncate">{eco.title}</span>
-                              </div>
-                              <div className="flex items-center gap-1.5 text-xs text-gray-500 flex-wrap">
-                                <span>
-                                  {new Date(eco.created_at).toLocaleDateString("fr-FR", {
-                                    day: "numeric",
-                                    month: "short",
-                                    year: "numeric",
-                                  })}
-                                </span>
-                                {eco.duration_seconds != null && eco.duration_seconds > 0 && (
-                                  <>
-                                    <span className="text-gray-300">·</span>
-                                    <span>{Math.max(1, Math.round(eco.duration_seconds / 60))} min</span>
-                                  </>
-                                )}
-                                {wordCount > 0 && (
-                                  <>
-                                    <span className="text-gray-300">·</span>
-                                    <span>{wordCount} mots</span>
-                                  </>
-                                )}
-                                {eco.has_pdf_context && (
-                                  <>
-                                    <span className="text-gray-300">·</span>
-                                    <FileText className="w-3 h-3 shrink-0" />
-                                  </>
-                                )}
-                              </div>
-                            </motion.button>
-                          );
-                        })}
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
+                      {filteredEcos.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                          {filteredEcos.map((eco, index) => {
+                            const SourceIcon = eco.source_type === "screen" ? Monitor : Mic;
+                            const wordCount = (() => {
+                              if (!eco.summary_text) return 0;
+                              try { const p = JSON.parse(eco.summary_text); return p?.resume?.trim().split(/\s+/).filter(Boolean).length ?? 0; } catch { return 0; }
+                            })();
+                            return (
+                              <motion.button
+                                key={eco.id}
+                                initial={{ opacity: 0, y: 8 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.05 }}
+                                whileHover={{ y: -4, scale: 1.01 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={() => handleEcoClick(eco)}
+                                className="text-left bg-white/75 backdrop-blur-2xl rounded-[2rem] border border-white/80 shadow-sm hover:shadow-xl transition-all duration-300 p-6"
+                              >
+                                <div className="flex items-center gap-3 mb-2">
+                                  <SourceIcon className="w-5 h-5 text-gray-600 shrink-0" />
+                                  <span className="font-bold text-gray-900 truncate">
+                                    <HighlightTitle text={eco.title} query={debouncedQuery} />
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1.5 text-xs text-gray-500 flex-wrap">
+                                  <span>
+                                    {new Date(eco.created_at).toLocaleDateString("fr-FR", {
+                                      day: "numeric",
+                                      month: "short",
+                                      year: "numeric",
+                                    })}
+                                  </span>
+                                  {eco.duration_seconds != null && eco.duration_seconds > 0 && (
+                                    <>
+                                      <span className="text-gray-300">·</span>
+                                      <span>{Math.max(1, Math.round(eco.duration_seconds / 60))} min</span>
+                                    </>
+                                  )}
+                                  {wordCount > 0 && (
+                                    <>
+                                      <span className="text-gray-300">·</span>
+                                      <span>{wordCount} mots</span>
+                                    </>
+                                  )}
+                                  {eco.has_pdf_context && (
+                                    <>
+                                      <span className="text-gray-300">·</span>
+                                      <FileText className="w-3 h-3 shrink-0" />
+                                    </>
+                                  )}
+                                </div>
+                              </motion.button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-16 gap-3">
+                          <Search className="w-10 h-10 text-gray-200" />
+                          <p className="text-gray-600 font-medium text-sm">Aucun ECO trouvé pour &quot;{debouncedQuery}&quot;</p>
+                          <button onClick={() => setSearchQuery("")} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Effacer la recherche</button>
+                        </div>
+                      )}
                     </motion.div>
                   )}
                   {selectedEco && !isFocusMode && !viewAllEcos && !isProcessing && (
