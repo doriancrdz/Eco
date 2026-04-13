@@ -8,7 +8,6 @@ import { useRouter } from "next/navigation";
 import PlanBadge from "./PlanBadge";
 import GuideDropdown from "./GuideDropdown";
 import UserAvatar from "./UserAvatar";
-import ThemeToggle from "./ThemeToggle";
 
 interface HeaderProps {
   onGoHome: (from?: "back" | "logo" | "sidebar") => void;
@@ -33,7 +32,7 @@ export default function Header({
   const router = useRouter();
 
   return (
-    <header className="h-[72px] px-4 flex items-center justify-between relative bg-white/10 dark:bg-[#0F1117]/80 backdrop-blur-sm border-b border-white/10 dark:border-white/5 sticky top-0 z-20">
+    <header className="h-[72px] px-4 flex items-center justify-between relative bg-white/10 backdrop-blur-sm border-b border-white/10 sticky top-0 z-20">
       {/* Left: logo ECO seul (sans texte) + toggle + guide */}
       <div className="flex items-center gap-2 min-w-[44px] shrink-0">
         <motion.button
@@ -57,11 +56,10 @@ export default function Header({
             className="p-2 rounded-xl hover:bg-white/20 transition-all"
             aria-label="Ouvrir / fermer le menu"
           >
-            <PanelLeft className="w-5 h-5 text-gray-800 dark:text-gray-200" />
+            <PanelLeft className="w-5 h-5 text-gray-800" />
           </motion.button>
         )}
         <GuideDropdown />
-        <ThemeToggle />
         {isDetailView && (
           <>
             <motion.button
@@ -72,7 +70,7 @@ export default function Header({
               className="p-2 rounded-xl hover:bg-white/20 transition-colors shrink-0"
               aria-label="Retour"
             >
-              <ArrowLeft className="w-5 h-5 text-gray-800 dark:text-gray-200" />
+              <ArrowLeft className="w-5 h-5 text-gray-800" />
             </motion.button>
             {onShare && (
               <motion.button
@@ -82,7 +80,7 @@ export default function Header({
                 className="p-2 rounded-xl hover:bg-white/20 transition-colors"
                 aria-label="Partager"
               >
-                <Share2 className="w-5 h-5 text-gray-800 dark:text-gray-200" />
+                <Share2 className="w-5 h-5 text-gray-800" />
               </motion.button>
             )}
           </>
@@ -100,7 +98,7 @@ export default function Header({
         aria-label="Retour à l'accueil"
       >
         <Image src="/logo-eco.png" alt="" width={32} height={32} unoptimized className="w-8 h-8 bg-transparent block object-contain select-none pointer-events-none" />
-        <span className="text-lg font-bold text-gray-900 dark:text-white pointer-events-none">ECO</span>
+        <span className="text-lg font-bold text-gray-900 pointer-events-none">ECO</span>
       </button>
 
       {/* Right: PlanBadge + avatar ou bouton Connexion */}

@@ -99,7 +99,7 @@ export default function Sidebar({
         transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       >
         <div
-          className="w-[280px] max-w-[85vw] h-full flex flex-col bg-white dark:bg-[#1A1D2E] lg:bg-white/10 dark:lg:bg-[#1A1D2E]/80 backdrop-blur-xl border-r border-gray-200 dark:border-gray-700/50 lg:border-white/20 relative"
+          className="w-[280px] max-w-[85vw] h-full flex flex-col bg-white lg:bg-white/10 backdrop-blur-xl border-r border-gray-200 lg:border-white/20 relative"
           style={{ minWidth: 280 }}
         >
           <AnimatePresence mode="wait">
@@ -177,7 +177,7 @@ export default function Sidebar({
                       whileHover={{ x: 2 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => { onNavigateHome("sidebar"); onClose?.(); }}
-                      className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 lg:hover:bg-white/20 transition-all cursor-pointer"
+                      className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 lg:hover:bg-white/20 transition-all cursor-pointer"
                     >
                       <Home className="w-4 h-4 shrink-0" />
                       Accueil
@@ -188,7 +188,7 @@ export default function Sidebar({
                       whileHover={{ x: 2 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => { onNavigatePricing(); onClose?.(); }}
-                      className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 lg:hover:bg-white/20 transition-all cursor-pointer"
+                      className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 lg:hover:bg-white/20 transition-all cursor-pointer"
                     >
                       <CreditCard className="w-4 h-4 shrink-0" />
                       Abonnement
@@ -199,7 +199,7 @@ export default function Sidebar({
                       whileHover={{ x: 2 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => { onNavigateSettings(); onClose?.(); }}
-                      className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 lg:hover:bg-white/20 transition-all cursor-pointer"
+                      className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 lg:hover:bg-white/20 transition-all cursor-pointer"
                     >
                       <Settings className="w-4 h-4 shrink-0" />
                       Paramètres

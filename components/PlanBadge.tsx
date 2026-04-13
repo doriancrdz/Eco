@@ -91,7 +91,7 @@ export default function PlanBadge() {
         cursor-pointer transition-all hover:scale-105
         ${isPaid
           ? "bg-gradient-to-r from-[#99f6e4] via-[#7dd3fc] to-[#a5b4fc] text-gray-900 shadow-lg hover:shadow-xl"
-          : "bg-white/60 dark:bg-white/10 backdrop-blur-md border border-white/40 dark:border-white/10 text-gray-700 dark:text-gray-300 hover:bg-white/80 dark:hover:bg-white/15"
+          : "bg-white/60 backdrop-blur-md border border-white/40 text-gray-700 hover:bg-white/80"
         }
       `}
     >

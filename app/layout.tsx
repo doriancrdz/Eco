@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
-import { ThemeProvider } from "next-themes";
 import Footer from "@/components/Footer";
 import "./globals.css";
 
@@ -43,19 +42,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="fr" suppressHydrationWarning>
+    <html lang="fr">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preload" href="/logo-eco.png" as="image" />
       </head>
       <body className={`${inter.className} aura-gradient`}>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           <ClerkProvider>
             {children}
             <Footer />
           </ClerkProvider>
-        </ThemeProvider>
       </body>
     </html>
   );
