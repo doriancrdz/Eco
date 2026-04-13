@@ -48,10 +48,11 @@ export default function EcoHistory({
     return () => window.removeEventListener("eco-updated", handleEcoUpdated);
   }, [loadEcos]);
 
+  const normalize = (s: string) =>
+    s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
   const filtered = search.trim()
-    ? ecos.filter((e) =>
-        e.title.toLowerCase().includes(search.trim().toLowerCase())
-      )
+    ? ecos.filter((e) => normalize(e.title).includes(normalize(search.trim())))
     : ecos;
 
   return (

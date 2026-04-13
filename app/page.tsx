@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import Header from "@/components/Header";
 import Logo from "@/components/Logo";
 import { Sparkles, ArrowRight, Settings, ArrowLeft, Mic, Monitor, FileText, Loader2, LogIn, Search, X } from "lucide-react";
+import EcoCardMenu from "@/components/EcoCardMenu";
 import { useUser, useClerk } from "@clerk/nextjs";
 import EcoView from "@/components/EcoView";
 import RecordButton from "@/components/RecordButton";
@@ -1691,50 +1692,55 @@ export default function Home() {
                                   try { const p = JSON.parse(eco.summary_text); return p?.resume?.trim().split(/\s+/).filter(Boolean).length ?? 0; } catch { return 0; }
                                 })();
                                 return (
-                                  <motion.button
+                                  <motion.div
                                     key={eco.id}
                                     initial={{ opacity: 0, y: 8 }}
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: 0.05 + index * 0.05 }}
                                     whileHover={{ y: -4, scale: 1.01 }}
                                     whileTap={{ scale: 0.98 }}
-                                    onClick={() => handleEcoClick(eco)}
-                                    className="text-left bg-white/75 backdrop-blur-2xl rounded-[2rem] border border-white/80 shadow-sm hover:shadow-xl transition-all duration-300 p-6"
+                                    className="group relative text-left bg-white/75 backdrop-blur-2xl rounded-[2rem] border border-white/80 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer"
                                   >
-                                    <div className="flex items-center gap-3 mb-2">
-                                      <SourceIcon className="w-5 h-5 text-gray-600 shrink-0" />
-                                      <span className="font-bold text-gray-900 truncate">
-                                        <HighlightTitle text={eco.title} query={debouncedQuery} />
-                                      </span>
+                                    <div
+                                      className="p-6"
+                                      onClick={() => handleEcoClick(eco)}
+                                    >
+                                      <div className="flex items-center gap-3 mb-2 pr-6">
+                                        <SourceIcon className="w-5 h-5 text-gray-600 shrink-0" />
+                                        <span className="font-bold text-gray-900 truncate">
+                                          <HighlightTitle text={eco.title} query={debouncedQuery} />
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-1.5 text-xs text-gray-500 flex-wrap">
+                                        <span>
+                                          {new Date(eco.created_at).toLocaleDateString("fr-FR", {
+                                            day: "numeric",
+                                            month: "short",
+                                            year: "numeric",
+                                          })}
+                                        </span>
+                                        {eco.duration_seconds != null && eco.duration_seconds > 0 && (
+                                          <>
+                                            <span className="text-gray-300">·</span>
+                                            <span>{Math.max(1, Math.round(eco.duration_seconds / 60))} min</span>
+                                          </>
+                                        )}
+                                        {wordCount > 0 && (
+                                          <>
+                                            <span className="text-gray-300">·</span>
+                                            <span>{wordCount} mots</span>
+                                          </>
+                                        )}
+                                        {eco.has_pdf_context && (
+                                          <>
+                                            <span className="text-gray-300">·</span>
+                                            <FileText className="w-3 h-3 shrink-0" />
+                                          </>
+                                        )}
+                                      </div>
                                     </div>
-                                    <div className="flex items-center gap-1.5 text-xs text-gray-500 flex-wrap">
-                                      <span>
-                                        {new Date(eco.created_at).toLocaleDateString("fr-FR", {
-                                          day: "numeric",
-                                          month: "short",
-                                          year: "numeric",
-                                        })}
-                                      </span>
-                                      {eco.duration_seconds != null && eco.duration_seconds > 0 && (
-                                        <>
-                                          <span className="text-gray-300">·</span>
-                                          <span>{Math.max(1, Math.round(eco.duration_seconds / 60))} min</span>
-                                        </>
-                                      )}
-                                      {wordCount > 0 && (
-                                        <>
-                                          <span className="text-gray-300">·</span>
-                                          <span>{wordCount} mots</span>
-                                        </>
-                                      )}
-                                      {eco.has_pdf_context && (
-                                        <>
-                                          <span className="text-gray-300">·</span>
-                                          <FileText className="w-3 h-3 shrink-0" />
-                                        </>
-                                      )}
-                                    </div>
-                                  </motion.button>
+                                    <EcoCardMenu eco={eco} onUpdate={loadEcos} onDelete={loadEcos} />
+                                  </motion.div>
                                 );
                               })}
                           </div>
@@ -1807,50 +1813,55 @@ export default function Home() {
                               try { const p = JSON.parse(eco.summary_text); return p?.resume?.trim().split(/\s+/).filter(Boolean).length ?? 0; } catch { return 0; }
                             })();
                             return (
-                              <motion.button
+                              <motion.div
                                 key={eco.id}
                                 initial={{ opacity: 0, y: 8 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: index * 0.05 }}
                                 whileHover={{ y: -4, scale: 1.01 }}
                                 whileTap={{ scale: 0.98 }}
-                                onClick={() => handleEcoClick(eco)}
-                                className="text-left bg-white/75 backdrop-blur-2xl rounded-[2rem] border border-white/80 shadow-sm hover:shadow-xl transition-all duration-300 p-6"
+                                className="group relative text-left bg-white/75 backdrop-blur-2xl rounded-[2rem] border border-white/80 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer"
                               >
-                                <div className="flex items-center gap-3 mb-2">
-                                  <SourceIcon className="w-5 h-5 text-gray-600 shrink-0" />
-                                  <span className="font-bold text-gray-900 truncate">
-                                    <HighlightTitle text={eco.title} query={debouncedQuery} />
-                                  </span>
+                                <div
+                                  className="p-6"
+                                  onClick={() => handleEcoClick(eco)}
+                                >
+                                  <div className="flex items-center gap-3 mb-2 pr-6">
+                                    <SourceIcon className="w-5 h-5 text-gray-600 shrink-0" />
+                                    <span className="font-bold text-gray-900 truncate">
+                                      <HighlightTitle text={eco.title} query={debouncedQuery} />
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 text-xs text-gray-500 flex-wrap">
+                                    <span>
+                                      {new Date(eco.created_at).toLocaleDateString("fr-FR", {
+                                        day: "numeric",
+                                        month: "short",
+                                        year: "numeric",
+                                      })}
+                                    </span>
+                                    {eco.duration_seconds != null && eco.duration_seconds > 0 && (
+                                      <>
+                                        <span className="text-gray-300">·</span>
+                                        <span>{Math.max(1, Math.round(eco.duration_seconds / 60))} min</span>
+                                      </>
+                                    )}
+                                    {wordCount > 0 && (
+                                      <>
+                                        <span className="text-gray-300">·</span>
+                                        <span>{wordCount} mots</span>
+                                      </>
+                                    )}
+                                    {eco.has_pdf_context && (
+                                      <>
+                                        <span className="text-gray-300">·</span>
+                                        <FileText className="w-3 h-3 shrink-0" />
+                                      </>
+                                    )}
+                                  </div>
                                 </div>
-                                <div className="flex items-center gap-1.5 text-xs text-gray-500 flex-wrap">
-                                  <span>
-                                    {new Date(eco.created_at).toLocaleDateString("fr-FR", {
-                                      day: "numeric",
-                                      month: "short",
-                                      year: "numeric",
-                                    })}
-                                  </span>
-                                  {eco.duration_seconds != null && eco.duration_seconds > 0 && (
-                                    <>
-                                      <span className="text-gray-300">·</span>
-                                      <span>{Math.max(1, Math.round(eco.duration_seconds / 60))} min</span>
-                                    </>
-                                  )}
-                                  {wordCount > 0 && (
-                                    <>
-                                      <span className="text-gray-300">·</span>
-                                      <span>{wordCount} mots</span>
-                                    </>
-                                  )}
-                                  {eco.has_pdf_context && (
-                                    <>
-                                      <span className="text-gray-300">·</span>
-                                      <FileText className="w-3 h-3 shrink-0" />
-                                    </>
-                                  )}
-                                </div>
-                              </motion.button>
+                                <EcoCardMenu eco={eco} onUpdate={loadEcos} onDelete={loadEcos} />
+                              </motion.div>
                             );
                           })}
                         </div>
