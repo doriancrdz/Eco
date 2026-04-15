@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { Folder as FolderType } from "@/types";
 import DropdownMenu from "./ui/DropdownMenu";
 import Dialog from "./ui/Dialog";
+import { toast } from "sonner";
 
 interface FolderItemProps {
   folder: FolderType;
@@ -57,10 +58,12 @@ export default function FolderItem({
       window.dispatchEvent(new Event("folders-updated"));
       onUpdate?.();
       setIsRenaming(false);
+      toast.success("Dossier renommé");
     } catch (error) {
       console.error("Erreur lors du renommage:", error);
       setRenameValue(folder.name);
       setIsRenaming(false);
+      toast.error("Erreur lors du renommage.");
     }
   };
 
@@ -90,7 +93,7 @@ export default function FolderItem({
       setShowDeleteDialog(false);
     } catch (error) {
       console.error("Erreur lors de la suppression:", error);
-      alert(error instanceof Error ? error.message : "Erreur lors de la suppression du dossier.");
+      toast.error(error instanceof Error ? error.message : "Erreur lors de la suppression du dossier.");
     } finally {
       setIsDeleting(false);
     }
@@ -171,14 +174,14 @@ export default function FolderItem({
           <button
             onClick={() => setShowDeleteDialog(false)}
             disabled={isDeleting}
-            className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-white/20 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-white/40 disabled:opacity-50"
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-gray-200 disabled:opacity-50"
           >
             Annuler
           </button>
           <button
             onClick={handleDelete}
             disabled={isDeleting}
-            className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-red-500/50 disabled:opacity-50"
+            className="px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-red-400 disabled:opacity-50"
           >
             {isDeleting ? "Suppression..." : "Supprimer"}
           </button>

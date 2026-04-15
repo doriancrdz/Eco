@@ -43,19 +43,19 @@ export default function Dialog({ open, onOpenChange, title, description, childre
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50"
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100]"
             onClick={() => onOpenChange(false)}
             aria-hidden="true"
           />
           {/* Dialog */}
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div
               ref={dialogRef}
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.2 }}
-              className="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl shadow-glass max-w-md w-full p-6"
+              className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-start justify-between mb-4">
@@ -67,7 +67,7 @@ export default function Dialog({ open, onOpenChange, title, description, childre
                 </div>
                 <button
                   onClick={() => onOpenChange(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-white/40 rounded-lg p-1"
+                  className="text-gray-400 hover:text-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-200 rounded-lg p-1"
                   aria-label="Fermer"
                 >
                   <X className="w-5 h-5" />

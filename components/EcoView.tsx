@@ -8,6 +8,7 @@ import { generateSummary } from "@/lib/transcription";
 import type { Summary } from "@/lib/transcription";
 import Tabs from "@/components/ui/Tabs";
 import { toast } from "sonner";
+import ReactMarkdown from "react-markdown";
 
 const POLL_INTERVAL_MS = 8000;
 // Jitter 0-800ms pour éviter le thundering herd si plusieurs users en simultané
@@ -51,65 +52,74 @@ function RelancerButton({ ecoId, onSuccess }: { ecoId: string; onSuccess?: () =>
 
 function renderResume(resume: string) {
   const sectionHeaders = ["Introduction:", "Contenu:", "Conclusion:"];
-  const hasStructure = sectionHeaders.some((h) => resume.includes(h));
+  const isLegacyFormat = sectionHeaders.some((h) => resume.includes(h));
 
-  if (!hasStructure) {
-    return <p className="whitespace-pre-wrap text-gray-700 leading-relaxed">{resume}</p>;
-  }
+  if (isLegacyFormat) {
+    // Ancien format : rendu manuel bloc par bloc (rétrocompat)
+    const blocks = resume.split(/\n{2,}/);
+    const nodes: React.ReactNode[] = [];
+    let key = 0;
 
-  // Split on 2+ consecutive newlines to get logical blocks
-  const blocks = resume.split(/\n{2,}/);
-  const nodes: React.ReactNode[] = [];
-  let key = 0;
+    for (const block of blocks) {
+      const trimmed = block.trim();
+      if (!trimmed) continue;
+      const lines = trimmed.split("\n");
+      const firstLine = lines[0].trim();
 
-  for (const block of blocks) {
-    const trimmed = block.trim();
-    if (!trimmed) continue;
-    const lines = trimmed.split("\n");
-    const firstLine = lines[0].trim();
-
-    if (sectionHeaders.includes(firstLine)) {
-      // Section header — styled separately
-      nodes.push(
-        <p
-          key={key++}
-          className={`font-semibold text-gray-900 mb-2 ${nodes.length > 0 ? "mt-5" : "mt-0"}`}
-        >
-          {firstLine}
-        </p>
-      );
-      // Content immediately after the header (same block, after the first line)
-      const rest = lines.slice(1).map((l) => l.trim()).filter(Boolean).join(" ");
-      if (rest) {
+      if (sectionHeaders.includes(firstLine)) {
         nodes.push(
-          <p key={key++} className="text-gray-700 leading-relaxed">
-            {rest}
+          <p key={key++} className={`font-semibold text-gray-900 mb-2 ${nodes.length > 0 ? "mt-5" : "mt-0"}`}>
+            {firstLine}
+          </p>
+        );
+        const rest = lines.slice(1).map((l) => l.trim()).filter(Boolean).join(" ");
+        if (rest) {
+          nodes.push(<p key={key++} className="text-gray-700 leading-relaxed">{rest}</p>);
+        }
+      } else if (/^\d+\.\s/.test(firstLine)) {
+        nodes.push(
+          <div key={key++} className="mb-2">
+            <span className="font-medium text-gray-800">{firstLine}</span>
+            {lines.length > 1 && (
+              <p className="text-gray-700 leading-relaxed mt-0.5">
+                {lines.slice(1).map((l) => l.trim()).filter(Boolean).join(" ")}
+              </p>
+            )}
+          </div>
+        );
+      } else {
+        nodes.push(
+          <p key={key++} className="text-gray-700 leading-relaxed mb-1">
+            {lines.map((l) => l.trim()).filter(Boolean).join(" ")}
           </p>
         );
       }
-    } else if (/^\d+\.\s/.test(firstLine)) {
-      // Numbered list item (liste type)
-      nodes.push(
-        <div key={key++} className="mb-2">
-          <span className="font-medium text-gray-800">{firstLine}</span>
-          {lines.length > 1 && (
-            <p className="text-gray-700 leading-relaxed mt-0.5">
-              {lines.slice(1).map((l) => l.trim()).filter(Boolean).join(" ")}
-            </p>
-          )}
-        </div>
-      );
-    } else {
-      // Regular paragraph
-      nodes.push(
-        <p key={key++} className="text-gray-700 leading-relaxed mb-1">
-          {lines.map((l) => l.trim()).filter(Boolean).join(" ")}
-        </p>
-      );
     }
+    return <div>{nodes}</div>;
   }
 
-  return <div>{nodes}</div>;
+  // Nouveau format : markdown avec **titres** en gras → react-markdown
+  return (
+    <ReactMarkdown
+      components={{
+        p: ({ children }) => (
+          <p className="text-gray-700 leading-relaxed mb-4">{children}</p>
+        ),
+        strong: ({ children }) => (
+          <strong className="font-semibold text-gray-900">{children}</strong>
+        ),
+        ul: ({ children }) => (
+          <ul className="list-disc ml-6 space-y-2 text-gray-700 mb-4">{children}</ul>
+        ),
+        ol: ({ children }) => (
+          <ol className="list-decimal ml-6 space-y-2 text-gray-700 mb-4">{children}</ol>
+        ),
+        li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+      }}
+    >
+      {resume}
+    </ReactMarkdown>
+  );
 }
 
 function CopyButton({ text }: { text: string }) {
