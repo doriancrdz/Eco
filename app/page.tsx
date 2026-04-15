@@ -17,6 +17,7 @@ import { createPipelineTraceId, uploadAndComplete, completeAndTranscribeFromR2 }
 import { extractTextFromPdf, buildPdfContextBlock } from "@/lib/pdfExtractor";
 import { MAX_RECORDING_DURATION_MINUTES } from "@/lib/billingConfig";
 import { motion, AnimatePresence } from "framer-motion";
+import { toast } from "sonner";
 
 // Compteur d'appels API — dev uniquement
 if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
@@ -702,7 +703,7 @@ export default function Home() {
             streamRef.current.getTracks().forEach((t) => t.stop());
             streamRef.current = null;
           }
-          alert("Erreur: aucune donnée audio enregistrée. Réessayez.");
+          toast.error("Aucune donnée audio enregistrée. Réessayez.");
           return;
         }
 
@@ -723,7 +724,7 @@ export default function Home() {
             streamRef.current.getTracks().forEach((t) => t.stop());
             streamRef.current = null;
           }
-          alert(`Enregistrement trop volumineux (${sizeMB} MB). Limite : 60 min. Merci de réessayer.`);
+          toast.error(`Enregistrement trop volumineux (${sizeMB} MB). Limite : 60 min.`);
           return;
         }
 
@@ -792,7 +793,7 @@ export default function Home() {
         : (error instanceof Error && (error.name === "NotAllowedError" || error.name === "AbortError"))
         ? null // User cancelled the picker — no alert needed
         : "Impossible d'accéder au microphone. Autorise l'accès dans les paramètres.";
-      if (errMsg) alert(errMsg);
+      if (errMsg) toast.error(errMsg);
     }
   };
 
@@ -833,7 +834,7 @@ export default function Home() {
     
     // Vérifier la limite AVANT de continuer
     if (durationMinutes > MAX_RECORDING_DURATION_MINUTES) {
-      alert(`Enregistrement trop long (${durationMinutes.toFixed(2)} min). La limite est de ${MAX_RECORDING_DURATION_MINUTES} minutes.`);
+      toast.error(`Enregistrement trop long (${durationMinutes.toFixed(2)} min). La limite est de ${MAX_RECORDING_DURATION_MINUTES} min.`);
       setIsRecording(false);
       setIsProcessing(false);
       setIsFocusMode(false);
@@ -1072,6 +1073,7 @@ export default function Home() {
 
               window.dispatchEvent(new Event("eco-updated"));
               setIsProcessing(false);
+              toast.success("ECO sauvegardé !");
               resolve();
             } else if (status === "ERROR") {
               clearInterval(interval);
@@ -1082,6 +1084,7 @@ export default function Home() {
                 console.error("[pollRecordingStatus] ERROR", { recordingId, message });
               }
               setProcessingError(message);
+              toast.error("Erreur de transcription — réessaie.");
               reject(new Error(message));
             } else if (status === "TRANSCRIBED") {
               setProcessingStep("summarizing");
@@ -1142,7 +1145,7 @@ export default function Home() {
         });
         if (failedStep) {
           console.error("[PIPELINE] point de rupture:", failedStep.step, "status:", failedStep.status, failedStep.json);
-          alert(`Pipeline failed at step: ${failedStep.step} (status ${failedStep.status}). See console.`);
+          toast.error(`Pipeline failed at step: ${failedStep.step} (status ${failedStep.status}). See console.`);
         }
         if (recordingId) {
           try {
@@ -1164,11 +1167,11 @@ export default function Home() {
         err?.status === 429 ||
         (err?.message != null && (err.message.includes("429") || err.message.includes("Trop d")));
       if (isRateLimit) {
-        alert("Tu as atteint la limite de requêtes. Merci de patienter quelques minutes.");
+        toast.error("Tu as atteint la limite de requêtes. Merci de patienter quelques minutes.");
       } else {
         const errorMessage =
           error instanceof Error ? error.message : "Une erreur est survenue lors du traitement.";
-        alert(errorMessage);
+        toast.error(errorMessage);
       }
     }
   };
@@ -1390,11 +1393,11 @@ export default function Home() {
                     });
                   } catch {
                     await navigator.clipboard.writeText(url);
-                    alert("Lien copié !");
+                    toast.success("Lien copié !");
                   }
                 } else {
                   await navigator.clipboard.writeText(url);
-                  alert("Lien copié !");
+                  toast.success("Lien copié !");
                 }
               } : undefined}
               onAvatarClick={isSignedIn ? () => setShowProfile(true) : undefined}

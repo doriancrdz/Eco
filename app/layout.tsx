@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
+import { Toaster } from "sonner";
 import Footer from "@/components/Footer";
 import "./globals.css";
 
@@ -52,6 +53,17 @@ export default function RootLayout({
           <ClerkProvider>
             {children}
             <Footer />
+            <Toaster
+              position="bottom-right"
+              richColors
+              closeButton
+              duration={4000}
+              toastOptions={{
+                classNames: {
+                  toast: "rounded-2xl shadow-xl",
+                },
+              }}
+            />
           </ClerkProvider>
       </body>
     </html>

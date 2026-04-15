@@ -5,6 +5,7 @@ import { MoreHorizontal, FolderPlus } from "lucide-react";
 import { Eco, Folder as FolderType } from "@/types";
 import DropdownMenu from "./ui/DropdownMenu";
 import Dialog from "./ui/Dialog";
+import { toast } from "sonner";
 
 interface EcoCardMenuProps {
   eco: Eco;
@@ -72,7 +73,10 @@ export default function EcoCardMenu({ eco, onUpdate, onDelete }: EcoCardMenuProp
       if (!response.ok) throw new Error("Erreur lors du renommage");
       window.dispatchEvent(new Event("eco-updated"));
       onUpdate();
-    } catch { /* ignore */ }
+      toast.success("ECO renommé");
+    } catch {
+      toast.error("Erreur lors du renommage.");
+    }
     setIsRenaming(false);
   };
 
@@ -86,8 +90,10 @@ export default function EcoCardMenu({ eco, onUpdate, onDelete }: EcoCardMenuProp
       if (!response.ok) throw new Error("Erreur lors du déplacement");
       window.dispatchEvent(new Event("eco-updated"));
       onUpdate();
+      const folderName = folderId ? folders.find((f) => f.id === folderId)?.name : null;
+      toast.success(folderName ? `Déplacé vers ${folderName}` : "Retiré du dossier");
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Erreur lors du déplacement de l'ECO.");
+      toast.error(error instanceof Error ? error.message : "Erreur lors du déplacement de l'ECO.");
     }
   };
 
@@ -114,8 +120,9 @@ export default function EcoCardMenu({ eco, onUpdate, onDelete }: EcoCardMenuProp
       setIsCreatingFolder(false);
       setNewFolderName("");
       onUpdate();
+      toast.success("Dossier créé");
     } catch {
-      alert("Erreur lors de la création du dossier.");
+      toast.error("Erreur lors de la création du dossier.");
     } finally {
       setIsCreating(false);
     }
@@ -129,8 +136,9 @@ export default function EcoCardMenu({ eco, onUpdate, onDelete }: EcoCardMenuProp
       window.dispatchEvent(new Event("eco-updated"));
       onDelete();
       setShowDeleteDialog(false);
+      toast.success("ECO supprimé");
     } catch {
-      alert("Erreur lors de la suppression de l'ECO.");
+      toast.error("Erreur lors de la suppression de l'ECO.");
     } finally {
       setIsDeleting(false);
     }

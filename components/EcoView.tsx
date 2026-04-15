@@ -7,6 +7,7 @@ import { RefreshCw, Copy, Check } from "lucide-react";
 import { generateSummary } from "@/lib/transcription";
 import type { Summary } from "@/lib/transcription";
 import Tabs from "@/components/ui/Tabs";
+import { toast } from "sonner";
 
 const POLL_INTERVAL_MS = 8000;
 // Jitter 0-800ms pour éviter le thundering herd si plusieurs users en simultané
@@ -116,6 +117,7 @@ function CopyButton({ text }: { text: string }) {
   const handleCopy = async () => {
     await navigator.clipboard.writeText(text);
     setCopied(true);
+    toast.success("Transcription copiée");
     setTimeout(() => setCopied(false), 2000);
   };
   return (
