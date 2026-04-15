@@ -431,7 +431,6 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
           </div>
         ) : summary && summary.titre && summary.resume ? (
           <>
-            <h3 className="text-xl font-semibold mt-0 mb-4 text-gray-900">{summary.titre}</h3>
             <div className="prose prose-sm max-w-none">
               {renderResume(summary.resume)}
             </div>
@@ -620,9 +619,17 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
                   })}
                 </div>
               ) : (
-                <div>
+                <div className="space-y-3">
+                  <textarea
+                    value={quizAnswers[idx] ?? ""}
+                    onChange={(e) => setQuizAnswers((prev) => ({ ...prev, [idx]: e.target.value }))}
+                    placeholder="Écris ta réponse ici..."
+                    rows={4}
+                    className="w-full p-4 rounded-xl bg-white/60 backdrop-blur-sm border border-gray-200 text-gray-800 text-sm leading-relaxed placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent resize-y min-h-[120px] transition-all"
+                  />
                   {revealedOpen.has(idx) ? (
                     <div className="p-4 bg-white/5 rounded-lg border border-white/15 text-gray-700 text-sm leading-relaxed">
+                      <p className="text-xs font-medium text-gray-500 mb-2">Réponse modèle</p>
                       {question.answer}
                     </div>
                   ) : (
@@ -631,7 +638,7 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
                       onClick={() =>
                         setRevealedOpen((prev) => new Set([...prev, idx]))
                       }
-                      className="px-4 py-2.5 text-sm bg-white/10 border border-white/20 rounded-lg text-gray-700 hover:bg-white/15 hover:border-white/30 transition-all"
+                      className="px-4 py-2.5 text-sm bg-white/5 border border-white/15 rounded-lg text-gray-500 hover:bg-white/10 hover:border-white/25 transition-all"
                     >
                       Voir la réponse modèle
                     </button>

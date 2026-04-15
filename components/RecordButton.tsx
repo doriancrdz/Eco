@@ -20,6 +20,7 @@ export default function RecordButton({
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.97 }}
         onClick={onStop}
+        aria-label="Arrêter l'enregistrement"
         className="relative w-16 h-16 rounded-2xl flex items-center justify-center text-white font-medium z-10 bg-white/25 backdrop-blur-xl border border-white/40 shadow-[0_0_20px_rgba(244,114,182,0.2),inset_0_1px_0_rgba(255,255,255,0.25)] hover:bg-white/35 hover:border-white/50 transition-all bg-gradient-to-br from-rose-300/80 via-pink-400/70 to-violet-500/70"
       >
         <Square className="w-7 h-7" />

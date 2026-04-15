@@ -114,9 +114,12 @@ export default function FocusMode({
               </motion.div>
             </div>
             <div className="text-center mb-6 lg:mb-8">
-              <p className="text-xs lg:text-sm text-gray-500 mt-1 lg:mt-2">
-                Enregistrement en cours...
-              </p>
+              <div className="flex items-center justify-center gap-2">
+                <span className={`w-2.5 h-2.5 rounded-full ${isPaused ? "bg-gray-400" : "bg-red-500 animate-pulse"}`} />
+                <span className={`font-bold text-sm ${isPaused ? "text-gray-500" : "text-red-500"}`}>
+                  {isPaused ? "EN PAUSE" : "REC"}
+                </span>
+              </div>
             </div>
             <div className="flex items-center justify-center gap-3 lg:gap-4 mb-6 lg:mb-8">
               {onTogglePause && (
@@ -124,6 +127,7 @@ export default function FocusMode({
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.97 }}
                   onClick={onTogglePause}
+                  aria-label={isPaused ? "Reprendre l'enregistrement" : "Mettre l'enregistrement en pause"}
                   className="w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex items-center justify-center text-white font-medium bg-white/25 backdrop-blur-xl border border-white/40 shadow-[0_0_20px_rgba(34,211,238,0.2),inset_0_1px_0_rgba(255,255,255,0.3)] hover:bg-white/35 hover:border-white/50 transition-all bg-gradient-to-br from-cyan-500/80 via-violet-500/70 to-violet-600/80"
                 >
                   {isPaused ? <Play className="w-5 h-5 lg:w-6 lg:h-6" /> : <Pause className="w-5 h-5 lg:w-6 lg:h-6" />}
