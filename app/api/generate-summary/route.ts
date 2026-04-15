@@ -244,25 +244,20 @@ export async function POST(req: NextRequest) {
     });
     }
 
-    const systemPrompt = `Tu es un expert en synthèse de contenu audio.
+    const systemPrompt = `Tu es un expert en synthèse de contenu audio, spécialisé dans la prise de notes académiques.
 
 ═══════════════════════════════════════════════════════════════
 STRUCTURE JSON OBLIGATOIRE (IMMUABLE)
 ═══════════════════════════════════════════════════════════════
 
 {
-  "titre": "Titre du contenu",
-  "introduction": "1-3 phrases de contexte (OBLIGATOIRE)",
-  "contenu": {
-    "type": "liste" OU "narratif",
-    "sections": [
-      {
-        "titre": "Titre (obligatoire SI type=liste, vide SI type=narratif)",
-        "texte": "Contenu de la section (2-4 phrases minimum)"
-      }
-    ]
-  },
-  "conclusion": "1-3 phrases de synthèse (OBLIGATOIRE)",
+  "titre": "Titre descriptif du cours",
+  "sections": [
+    {
+      "titre": "Titre thématique descriptif de cette section",
+      "texte": "Contenu de la section en prose fluide OU en liste à puces si le contenu s'y prête"
+    }
+  ],
   "pointsCles": ["Point 1", "Point 2", ...],
   "notions": [
     {
@@ -273,168 +268,134 @@ STRUCTURE JSON OBLIGATOIRE (IMMUABLE)
 }
 
 ═══════════════════════════════════════════════════════════════
-RÈGLE 1 - DÉTECTION DU TYPE DE CONTENU
+RÈGLE 1 — TITRES DE SECTIONS (CRITIQUE)
 ═══════════════════════════════════════════════════════════════
 
-Lis la transcription et identifie le TYPE :
+Les titres de sections DOIVENT être descriptifs et thématiques, tirés du contenu réel du cours.
 
-TYPE "liste" → SI la transcription contient :
-- Top X (ex: "Top 5 des...", "Les 3 meilleurs...", "10 stratégies...")
-- Énumération explicite (ex: "premièrement", "deuxièmement", "enfin")
-- Liste de conseils/étapes/méthodes
+BONS titres (à imiter) :
+- "La crise financière de 1787"
+- "Les mécanismes de la photosynthèse"
+- "Calcul de la VAN et du TRI"
+- "Relations complexes autour de Kitty"
+- "Les trois théories de la motivation"
+- "Impact de la mondialisation sur l'emploi"
 
-TYPE "narratif" → Pour tout le reste :
-- Histoire personnelle
+MAUVAIS titres (INTERDITS — aucune exception) :
+- "Introduction", "Développement", "Conclusion"
+- "Partie 1", "Partie 2", "Contexte"
+- "Contenu principal", "Synthèse", "Pour résumer"
+- "Vue d'ensemble", "Présentation du sujet"
+- Tout titre générique qui ne décrit pas le contenu réel
+
+INTERDICTION FORMELLE : les mots "Introduction", "Contenu", "Conclusion", "Développement", "Partie", "Synthèse" sont INTERDITS dans les titres de sections.
+
+═══════════════════════════════════════════════════════════════
+RÈGLE 2 — NOMBRE DE SECTIONS
+═══════════════════════════════════════════════════════════════
+
+Le nombre de sections doit s'adapter au volume du contenu :
+- Cours court (< 500 mots de transcription) : 2-3 sections
+- Cours moyen (500-2000 mots) : 3-5 sections
+- Cours long (> 2000 mots) : 4-8 sections
+- Jamais moins de 2 sections, jamais plus de 8 sections
+
+Chaque section couvre un thème distinct et cohérent du cours.
+
+═══════════════════════════════════════════════════════════════
+RÈGLE 3 — FORMAT DU TEXTE DE CHAQUE SECTION
+═══════════════════════════════════════════════════════════════
+
+Choisir le format selon la nature du contenu de la section :
+
+FORMAT LISTE (puces "-") → si la section contient :
+- Une énumération d'éléments distincts
+- Des étapes séquentielles
+- Des exemples ou types à lister
+- Un top-X ou classement
+
+FORMAT PROSE → pour tout le reste :
 - Explication d'un concept
-- Récit, témoignage, expérience
-- Description
+- Démonstration, raisonnement
+- Récit, témoignage, analyse
+
+Exemple FORMAT LISTE :
+"texte": "- Marketing de contenu : créer des articles de blog pour attirer des clients organiquement\n- Réseaux sociaux : utiliser Instagram et TikTok pour toucher une audience jeune\n- Email marketing : fidéliser les clients avec des newsletters personnalisées"
+
+Exemple FORMAT PROSE :
+"texte": "La photosynthèse est le processus par lequel les plantes convertissent la lumière solaire en énergie chimique. Ce mécanisme se déroule dans les chloroplastes et produit du glucose à partir de CO₂ et d'eau."
 
 ═══════════════════════════════════════════════════════════════
-RÈGLE 2 - STRUCTURE DU CONTENU
+RÈGLE 4 — LONGUEUR ET EXHAUSTIVITÉ
 ═══════════════════════════════════════════════════════════════
 
-TYPE "liste" :
-{
-  "contenu": {
-    "type": "liste",
-    "sections": [
-      {"titre": "Marketing de contenu", "texte": "Le marketing de contenu..."},
-      {"titre": "Réseaux sociaux", "texte": "Les plateformes..."},
-      {"titre": "Email marketing", "texte": "L'email marketing..."}
-    ]
-  }
-}
-→ Chaque section a un TITRE descriptif + TEXTE développé
-
-TYPE "narratif" :
-{
-  "contenu": {
-    "type": "narratif",
-    "sections": [
-      {"titre": "", "texte": "Dorian se présente comme..."},
-      {"titre": "", "texte": "Sa vie étudiante se déroule bien..."},
-      {"titre": "", "texte": "Il développe l'application Echo..."}
-    ]
-  }
-}
-→ Chaque section a UNIQUEMENT du TEXTE (titre vide)
-→ Minimum 2-3 paragraphes distincts
-
-═══════════════════════════════════════════════════════════════
-RÈGLE 3 - LONGUEUR ET EXHAUSTIVITÉ
-═══════════════════════════════════════════════════════════════
-
-- Longueur cible : ${targetSummaryWords} mots (±10%)
+- Longueur cible totale (toutes sections réunies) : ${targetSummaryWords} mots (±10%)
+- Répartir les mots proportionnellement entre les sections selon leur importance
 - TOUS les éléments de la transcription DOIVENT être présents
-- Plus l'audio est long → plus le résumé est long (proportionnel)
-- Ratio : exactement 15% de la longueur de la transcription
-- Ordre chronologique OBLIGATOIRE : respecter l'ordre dans lequel les idées apparaissent dans l'audio
-- Zéro point important oublié : le résumé doit couvrir l'intégralité de l'audio
-- Si top-X ou liste : développer chaque élément dans l'ordre (2-3 lignes minimum par élément)
+- Ordre chronologique / logique strict, comme dans le cours original
+- Zéro point important oublié
+- Plus l'audio est long → plus le résumé est détaillé (proportionnel)
 
 ═══════════════════════════════════════════════════════════════
-RÈGLE 4 - NOTIONS
+RÈGLE 5 — NOTIONS
 ═══════════════════════════════════════════════════════════════
 
-Générer ${targetNotions} notion(s) maximum avec terme + définition.
+Générer ${targetNotions} notion(s) avec terme + définition.
 
 Exemples de notions à extraire :
-- Noms propres (EDHEC, Echo, Anna)
-- Concepts techniques (ROI, marketing de contenu)
-- Acronymes (IA, SaaS, API)
-- Termes spécifiques au sujet
+- Noms propres (EDHEC, ChatGPT, Anna)
+- Concepts techniques (ROI, photosynthèse, VAN)
+- Acronymes (IA, SaaS, TRI)
+- Termes spécifiques au domaine
 
 Format obligatoire :
 {
-  "terme": "EDHEC Business School",
-  "definition": "École de commerce située à Nice où l'étudiant poursuit ses études."
+  "terme": "VAN (Valeur Actuelle Nette)",
+  "definition": "Indicateur financier mesurant la valeur présente des flux futurs d'un investissement, actualisés au coût du capital."
 }
 
 ═══════════════════════════════════════════════════════════════
-RÈGLE 5 - POINTS CLÉS
+RÈGLE 6 — POINTS CLÉS
 ═══════════════════════════════════════════════════════════════
 
-Les points clés sont DIRECTEMENT tirés du contenu du résumé structuré, dans le MÊME ordre chronologique.
+Générer ${targetPointsCles} point(s) clé(s) dans l'ordre chronologique du cours.
 
-RÈGLE ABSOLUE selon le type :
-- TYPE "liste" : autant de points clés que de sections dans "contenu.sections" (ex: top-5 → 5 points clés dans l'ordre)
-- TYPE "narratif" : ${targetPointsCles} point(s) clé(s) dans l'ordre chronologique
-
-Chaque point clé = une idée importante développée en 1-2 lignes complètes (pas une phrase fragmentée).
-Exemple : "Le marketing de contenu génère du trafic organique durable en créant des articles de blog qui attirent naturellement les clients."
-
-Ne pas résumer en une phrase trop courte — développer chaque idée en 1-2 lignes.
+Chaque point clé = une idée importante développée en 1-2 lignes complètes (pas une phrase trop courte).
+Exemple : "Le marketing de contenu génère du trafic organique durable en créant des articles de blog qui attirent naturellement les clients sans dépenser en publicité."
 
 ═══════════════════════════════════════════════════════════════
-EXEMPLE COMPLET TYPE "liste"
+EXEMPLE COMPLET
 ═══════════════════════════════════════════════════════════════
 
 {
-  "titre": "Les 5 stratégies marketing essentielles",
-  "introduction": "Cette présentation expose les cinq stratégies marketing fondamentales pour développer son entreprise et maximiser sa visibilité digitale en 2026.",
-  "contenu": {
-    "type": "liste",
-    "sections": [
-      {
-        "titre": "Marketing de contenu",
-        "texte": "Le marketing de contenu consiste à créer des articles de blog de qualité pour attirer des clients. Cette approche génère du trafic organique durable."
-      },
-      {
-        "titre": "Réseaux sociaux",
-        "texte": "Les plateformes comme Instagram et TikTok permettent de toucher une audience jeune. La régularité et l'authenticité sont essentielles."
-      }
-    ]
-  },
-  "conclusion": "Ces cinq stratégies forment un écosystème complet pour développer sa présence digitale et accélérer sa croissance.",
-  "pointsCles": [
-    "Le marketing de contenu génère du trafic organique",
-    "Les réseaux sociaux créent une communauté engagée"
-  ],
-  "notions": [
+  "titre": "Les stratégies marketing digitales en 2026",
+  "sections": [
     {
-      "terme": "ROI",
-      "definition": "Retour sur investissement, indicateur mesurant la rentabilité d'une action marketing."
-    }
-  ]
-}
-
-═══════════════════════════════════════════════════════════════
-EXEMPLE COMPLET TYPE "narratif"
-═══════════════════════════════════════════════════════════════
-
-{
-  "titre": "Présentation de Dorian Crédose",
-  "introduction": "Dorian Crédose, étudiant à l'EDHEC Business School à Nice, partage son expérience académique et ses projets entrepreneuriaux.",
-  "contenu": {
-    "type": "narratif",
-    "sections": [
-      {
-        "titre": "",
-        "texte": "Dorian se présente comme un étudiant de 18 ans dont l'anniversaire approche le 9 mars. Il étudie à l'EDHEC Business School à Nice où tout se passe bien."
-      },
-      {
-        "titre": "",
-        "texte": "Il a emménagé avec sa copine Anna et pratique le football dans le club de l'école. Ses examens se sont bien déroulés."
-      },
-      {
-        "titre": "",
-        "texte": "Dorian développe plusieurs projets d'entreprise, dont l'application Echo qui permet de générer des résumés d'enregistrements audio avec transcription et points clés."
-      }
-    ]
-  },
-  "conclusion": "Dorian Crédose combine études, sport et entrepreneuriat, illustrant un parcours dynamique à l'EDHEC.",
-  "pointsCles": [
-    "Étudiant de 18 ans à l'EDHEC Business School",
-    "Développe l'application Echo pour résumés audio"
-  ],
-  "notions": [
-    {
-      "terme": "EDHEC Business School",
-      "definition": "École de commerce située à Nice où Dorian poursuit ses études supérieures."
+      "titre": "Marketing de contenu et SEO",
+      "texte": "Le marketing de contenu consiste à créer des articles, vidéos et podcasts pour attirer naturellement des clients. Cette approche génère du trafic organique durable sans dépenser en publicité payante. Le SEO amplifie cette stratégie en optimisant la visibilité sur Google."
     },
     {
-      "terme": "Echo",
-      "definition": "Application développée par Dorian permettant de créer des résumés d'enregistrements audio avec transcription automatique."
+      "titre": "Les plateformes sociales à privilégier",
+      "texte": "- Instagram : idéal pour les marques visuelles et le lifestyle, audience 18-35 ans\n- TikTok : format vidéo court, fort potentiel viral, audience très jeune\n- LinkedIn : B2B uniquement, contenu professionnel et thought leadership\n- YouTube : contenu long format, meilleure rétention et référencement"
+    },
+    {
+      "titre": "Mesure de performance et ROI",
+      "texte": "Chaque campagne doit être évaluée selon des KPIs précis : taux de conversion, coût d'acquisition client (CAC) et retour sur investissement (ROI). L'analyse des données permet d'optimiser les budgets en temps réel et de concentrer les ressources sur les canaux les plus rentables."
+    }
+  ],
+  "pointsCles": [
+    "Le marketing de contenu génère du trafic organique durable en créant des ressources qui attirent naturellement les prospects sur le long terme.",
+    "Les réseaux sociaux doivent être choisis selon l'audience cible et le type de contenu produit, pas selon leur popularité générale.",
+    "La mesure systématique du ROI permet de réallouer les budgets vers les canaux les plus performants et d'éliminer les dépenses inefficaces."
+  ],
+  "notions": [
+    {
+      "terme": "SEO (Search Engine Optimization)",
+      "definition": "Ensemble des techniques visant à améliorer le positionnement d'un site web dans les résultats des moteurs de recherche comme Google."
+    },
+    {
+      "terme": "ROI (Return On Investment)",
+      "definition": "Indicateur mesurant la rentabilité d'un investissement en comparant les gains générés au coût engagé."
     }
   ]
 }
@@ -444,16 +405,14 @@ CHECKLIST FINALE
 ═══════════════════════════════════════════════════════════════
 
 Avant de renvoyer le JSON, vérifie :
-✓ "introduction" est remplie (1-3 phrases)
-✓ "contenu.type" est soit "liste" soit "narratif"
-✓ "contenu.sections" contient minimum 2 sections
-✓ SI type="liste" → chaque section a un titre
-✓ SI type="narratif" → titre vide, juste texte
-✓ "conclusion" est remplie (1-3 phrases)
-✓ ${targetPointsCles} points clés générés
+✓ Chaque titre de section est descriptif et thématique (zéro "Introduction", "Conclusion", etc.)
+✓ Nombre de sections entre 2 et 8, adapté au volume du cours
+✓ Texte en prose ou en liste selon la nature du contenu de chaque section
+✓ ${targetPointsCles} points clés générés dans l'ordre chronologique
 ✓ ${targetNotions} notions avec terme ET définition
-✓ Longueur totale ≈ ${targetSummaryWords} mots (±10%) — soit 15% de la transcription
+✓ Longueur totale ≈ ${targetSummaryWords} mots (±10%)
 ✓ TOUS les éléments de la transcription présents
+✓ Ordre chronologique / logique respecté
 
 ═══════════════════════════════════════════════════════════════
 
@@ -513,12 +472,30 @@ ${truncated}`;
 
     let summary: { titre: string; resume: string; pointsCles: string[]; notions: Array<{ terme: string; definition: string }> | string[] };
 
-    // Transforme le JSON structuré (introduction/contenu/conclusion) en markdown avec structure obligatoire
+    // Transforme le JSON structuré en markdown.
+    // Nouveau format (sections thématiques) → titres en **gras**, séparés par 2 sauts de ligne.
+    // Ancien format (introduction/contenu/conclusion) → conservé tel quel pour rétrocompatibilité.
     function structuredJsonToMarkdown(data: {
+      // Nouveau format
+      sections?: Array<{ titre?: string; texte?: string }>;
+      // Ancien format
       introduction?: string;
       contenu?: { type?: string; sections?: Array<{ titre?: string; texte?: string }> };
       conclusion?: string;
     }): string {
+      // NOUVEAU FORMAT : sections thématiques avec titres en gras
+      if (data.sections && Array.isArray(data.sections)) {
+        const parts: string[] = [];
+        for (const section of data.sections) {
+          const titre = (section.titre ?? "").trim();
+          const texte = (section.texte ?? "").trim();
+          if (!texte) continue;
+          parts.push(titre ? `**${titre}**\n${texte}` : texte);
+        }
+        return parts.join("\n\n\n");
+      }
+
+      // ANCIEN FORMAT : introduction + contenu + conclusion (rétrocompatibilité)
       const intro = (data.introduction ?? "").trim();
       const concl = (data.conclusion ?? "").trim();
       const sections = data.contenu?.sections ?? [];
@@ -612,6 +589,7 @@ ${truncated}`;
 
       const parsed = JSON.parse(rawContent) as {
         titre?: string;
+        sections?: Array<{ titre?: string; texte?: string }>;
         introduction?: string;
         contenu?: { type?: string; sections?: Array<{ titre?: string; texte?: string }> };
         conclusion?: string;
@@ -622,8 +600,18 @@ ${truncated}`;
         keyPoints?: string[];
       };
 
-      // Format nouveau : introduction + contenu + conclusion (structure JSON forcée)
-      if (
+      // NOUVEAU FORMAT : sections thématiques (titres descriptifs, sans Introduction/Contenu/Conclusion)
+      if (parsed.sections && Array.isArray(parsed.sections)) {
+        const resumeMarkdown = structuredJsonToMarkdown(parsed);
+        const notionsNorm = normalizeNotions(parsed.notions);
+        summary = {
+          titre: typeof parsed.titre === "string" ? parsed.titre : "Résumé",
+          resume: resumeMarkdown,
+          pointsCles: Array.isArray(parsed.pointsCles) ? parsed.pointsCles : [],
+          notions: notionsNorm,
+        };
+      } else if (
+      // Ancien format : introduction + contenu + conclusion (structure JSON forcée)
         parsed.introduction != null &&
         parsed.contenu != null &&
         Array.isArray(parsed.contenu.sections) &&
@@ -712,19 +700,32 @@ ${truncated}`;
       };
     }
 
-    // Validation structure — log Vercel si une section manque
+    // Validation structure — log Vercel si le résumé est invalide
     {
-      const hasIntro = summary.resume.includes("Introduction:");
-      const hasContenu = summary.resume.includes("Contenu:");
-      const hasConclusion = summary.resume.includes("Conclusion:");
-      if (!hasIntro || !hasContenu || !hasConclusion) {
-        console.error("[ECO] STRUCTURE MANQUANTE dans le résumé", {
-          recordingId,
-          hasIntro,
-          hasContenu,
-          hasConclusion,
-          resumeSnippet: summary.resume.substring(0, 300),
-        });
+      const isLegacyFormat = summary.resume.includes("Introduction:");
+      if (isLegacyFormat) {
+        // Ancien format : vérifier les trois sections obligatoires
+        const hasIntro = true; // déjà confirmé ci-dessus
+        const hasContenu = summary.resume.includes("Contenu:");
+        const hasConclusion = summary.resume.includes("Conclusion:");
+        if (!hasContenu || !hasConclusion) {
+          console.warn("[ECO] STRUCTURE MANQUANTE (ancien format)", {
+            recordingId,
+            hasContenu,
+            hasConclusion,
+            resumeSnippet: summary.resume.substring(0, 300),
+          });
+        }
+      } else {
+        // Nouveau format sections[] : vérifier qu'il y a au moins 2 sections en gras
+        const boldCount = (summary.resume.match(/\*\*[^*]+\*\*/g) ?? []).length;
+        if (!summary.resume.trim() || boldCount < 2) {
+          console.warn("[ECO] STRUCTURE INSUFFISANTE (nouveau format)", {
+            recordingId,
+            boldSectionsFound: boldCount,
+            resumeSnippet: summary.resume.substring(0, 300),
+          });
+        }
       }
     }
 
