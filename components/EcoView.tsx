@@ -9,6 +9,7 @@ import type { Summary } from "@/lib/transcription";
 import Tabs from "@/components/ui/Tabs";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
+import remarkBreaks from "remark-breaks";
 
 const POLL_INTERVAL_MS = 8000;
 // Jitter 0-800ms pour éviter le thundering herd si plusieurs users en simultané
@@ -101,6 +102,7 @@ function renderResume(resume: string) {
   // Nouveau format : markdown avec **titres** en gras → react-markdown
   return (
     <ReactMarkdown
+      remarkPlugins={[remarkBreaks]}
       components={{
         p: ({ children }) => (
           <p className="text-gray-700 leading-relaxed mb-4">{children}</p>

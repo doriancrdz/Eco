@@ -490,7 +490,7 @@ ${truncated}`;
           const titre = (section.titre ?? "").trim();
           const texte = (section.texte ?? "").trim();
           if (!texte) continue;
-          parts.push(titre ? `**${titre}**\n${texte}` : texte);
+          parts.push(titre ? `**${titre}**\n\n${texte}` : texte);
         }
         return parts.join("\n\n\n");
       }
