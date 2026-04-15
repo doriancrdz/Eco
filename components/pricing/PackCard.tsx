@@ -36,7 +36,7 @@ function PackCard({
         </div>
         <div className="text-right ml-4">
           <div className="text-3xl font-bold text-gray-900">{price}€</div>
-          <div className="text-xs text-gray-500 font-medium">one-time</div>
+          <div className="text-xs text-gray-500 font-medium">paiement unique</div>
         </div>
       </div>
 

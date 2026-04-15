@@ -82,8 +82,8 @@ export interface PackConfig {
 
 export const PACKS: PackConfig[] = [
   { name: "Pack +800 min", minutes: 800, price: 15 },
-  { name: "Pack +2000 min", minutes: 2000, price: 49 },
-  { name: "Pack +6000 min", minutes: 6000, price: 149 },
+  { name: "Pack +2000 min", minutes: 2000, price: 35 },
+  { name: "Pack +6000 min", minutes: 6000, price: 89 },
 ];
 
 /**

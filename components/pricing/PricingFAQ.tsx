@@ -8,12 +8,12 @@ const faqs = [
   {
     question: "Les minutes sont-elles cumulables d'un mois sur l'autre ?",
     answer:
-      "Les minutes incluses dans votre plan se réinitialisent 1 mois après la date de souscription (pas le 1er du mois). Par exemple, si vous vous abonnez le 15 février, vos minutes se réinitialisent le 15 mars. Les packs de minutes supplémentaires que vous achetez sont permanents : ils s'ajoutent à votre compteur et ne se réinitialisent jamais. Vous pouvez les utiliser quand vous le souhaitez, sans limite de temps.",
+      "Les minutes incluses dans ton plan se réinitialisent 1 mois après la date de souscription (pas le 1er du mois). Par exemple, si tu t'abonnes le 15 février, tes minutes se réinitialisent le 15 mars. Les packs de minutes supplémentaires que tu achètes sont permanents : ils s'ajoutent à ton compteur et ne se réinitialisent jamais. Tu peux les utiliser quand tu le souhaites, sans limite de temps.",
   },
   {
     question: "Puis-je acheter des packs même avec le plan Free ?",
     answer:
-      "Oui, absolument ! Les packs de minutes sont disponibles pour tous les utilisateurs, y compris ceux sur le plan Free. C'est idéal si vous avez besoin de quelques minutes supplémentaires ponctuellement.",
+      "Oui, absolument ! Les packs de minutes sont disponibles pour tous les utilisateurs, y compris ceux sur le plan Free. C'est idéal si tu as besoin de quelques minutes supplémentaires ponctuellement.",
   },
   {
     question: "Y a-t-il une limite de durée par enregistrement ?",
@@ -23,12 +23,12 @@ const faqs = [
   {
     question: "Puis-je changer de plan à tout moment ?",
     answer:
-      "Oui, vous pouvez mettre à jour votre plan à tout moment depuis la page Paramètres. Le changement prend effet immédiatement et les minutes de votre nouveau plan sont disponibles dès la mise à jour.",
+      "Oui, tu peux mettre à jour ton plan à tout moment depuis la page Paramètres. Le changement prend effet immédiatement et les minutes de ton nouveau plan sont disponibles dès la mise à jour.",
   },
   {
     question: "Les données sont-elles sécurisées ?",
     answer:
-      "Oui, tous vos enregistrements et transcriptions sont stockés localement dans votre navigateur. Nous ne conservons aucune donnée sur nos serveurs. Votre vie privée est notre priorité.",
+      "Oui, tous tes enregistrements et transcriptions sont stockés localement dans ton navigateur. Nous ne conservons aucune donnée sur nos serveurs. Ta vie privée est notre priorité.",
   },
 ];
 

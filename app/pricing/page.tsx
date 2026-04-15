@@ -278,7 +278,7 @@ export default function PricingPage() {
               { icon: FileText, label: "Résumé structuré" },
               { icon: List, label: "Points clés / notions importantes" },
               { icon: Mic, label: "Transcription réelle" },
-              { icon: Percent, label: "Économisez 17% en payant annuellement" },
+              { icon: Percent, label: "Économise 17% en payant annuellement" },
             ].map((chip, idx) => {
               const Icon = chip.icon;
               return (
@@ -371,7 +371,7 @@ export default function PricingPage() {
               Packs de minutes supplémentaires
             </h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Achetez un pack pour bénéficier de minutes supplémentaires.
+              Achète un pack pour bénéficier de minutes supplémentaires.
             </p>
           </div>
 

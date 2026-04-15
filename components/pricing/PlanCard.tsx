@@ -69,7 +69,7 @@ function PlanCard({
           <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-20">
             <div className="px-4 py-1.5 bg-gradient-to-r from-aura-emerald via-aura-blue to-aura-sand text-gray-900 text-xs font-bold rounded-full shadow-lg flex items-center gap-1.5">
               <Sparkles className="w-3 h-3" />
-              Most Popular
+              Le plus populaire
             </div>
           </div>
         </>
@@ -127,13 +127,11 @@ function PlanCard({
                 <>
                   <div className="flex items-baseline gap-2">
                     <span className="text-5xl font-bold text-gray-900">
-                      {isFree ? "Gratuit" : `${displayPrice}€`}
+                      {`${displayPrice}€`}
                     </span>
-                    {!isFree && (
-                      <span className="text-gray-500 text-base">
-                        /mois
-                      </span>
-                    )}
+                    <span className="text-gray-500 text-base">
+                      /mois
+                    </span>
                   </div>
                   {/* Placeholder invisible pour Free en mode annuel pour réserver l'espace */}
                   {isYearly && isFree && (

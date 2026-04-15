@@ -14,13 +14,6 @@ const comparisonData = [
     business: "6000 min",
   },
   {
-    label: "Packs",
-    free: "✅ Disponibles",
-    student: "✅ Disponibles",
-    pro: "✅ Disponibles",
-    business: "✅ Disponibles",
-  },
-  {
     label: "Support",
     free: "Communauté",
     student: "Email",
