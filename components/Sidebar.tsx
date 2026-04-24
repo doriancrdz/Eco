@@ -177,7 +177,7 @@ export default function Sidebar({
                       whileHover={{ x: 2 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => { onNavigateHome("sidebar"); onClose?.(); }}
-                      className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 lg:hover:bg-white/20 transition-all cursor-pointer"
+                      className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 lg:hover:bg-white/30 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-pointer"
                     >
                       <Home className="w-4 h-4 shrink-0" />
                       Accueil
@@ -188,7 +188,7 @@ export default function Sidebar({
                       whileHover={{ x: 2 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => { onNavigatePricing(); onClose?.(); }}
-                      className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 lg:hover:bg-white/20 transition-all cursor-pointer"
+                      className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 lg:hover:bg-white/30 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-pointer"
                     >
                       <CreditCard className="w-4 h-4 shrink-0" />
                       Abonnement
@@ -199,13 +199,16 @@ export default function Sidebar({
                       whileHover={{ x: 2 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => { onNavigateSettings(); onClose?.(); }}
-                      className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 lg:hover:bg-white/20 transition-all cursor-pointer"
+                      className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 lg:hover:bg-white/30 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-pointer"
                     >
                       <Settings className="w-4 h-4 shrink-0" />
                       Paramètres
                     </motion.button>
                   )}
                 </div>
+
+                {/* Séparateur nav / contenu */}
+                <div className="border-b border-white/10 mx-4" />
 
                 {/* Zone scrollable : dossiers + ECOs */}
                 <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
@@ -225,7 +228,7 @@ export default function Sidebar({
 
                 {/* Bottom: avatar, name, Déconnexion (desktop uniquement) */}
                 {isSignedIn && (
-                  <div className="hidden lg:flex flex-col border-t border-white/20 pt-4 pb-4 shrink-0">
+                  <div className="hidden lg:flex flex-col border-t border-white/10 pt-4 pb-4 shrink-0">
                     {onOpenProfile && (
                       <motion.button
                         whileHover={{ x: 2 }}

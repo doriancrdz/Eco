@@ -57,8 +57,8 @@ export default function EcoHistory({
 
   return (
     <div className="mt-6 flex flex-col min-h-0">
-      <p className="text-xs font-black uppercase tracking-widest text-gray-400 px-4 mb-2">
-        Vos ECOs
+      <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 px-4 mb-2">
+        Mes ECOs
       </p>
       <input
         type="text"

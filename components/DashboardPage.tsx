@@ -1455,26 +1455,34 @@ export default function DashboardPage() {
                         />
                       </motion.div>
 
-                      <motion.h1
-                        initial={{ opacity: 0, y: 4 }}
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1, duration: 0.4, ease: "easeOut" }}
-                        className="text-2xl font-medium text-gray-700 mt-4"
+                        transition={{ delay: 0.1, duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
+                        className="mt-4"
                       >
-                        Bonjour, {user?.firstName ? `${user.firstName}.` : "!"}
-                      </motion.h1>
+                        <h1 className="text-2xl font-bold tracking-[-0.05em] text-gray-900">
+                          Bonjour,{" "}
+                          {user?.firstName
+                            ? <><span className="italic">{user.firstName}</span>.</>
+                            : "!"}
+                        </h1>
+                        <p className="text-gray-500 text-base font-normal mt-1.5">
+                          Prêt à enregistrer un nouveau cours ?
+                        </p>
+                      </motion.div>
                       <motion.div
                         initial={{ opacity: 0, y: 4 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.15, duration: 0.4, ease: "easeOut" }}
-                        className="flex flex-col sm:flex-row gap-3 mt-4"
+                        className="flex flex-col sm:flex-row gap-3 mt-8"
                       >
                         <motion.button
                           whileHover={{ scale: 1.04, y: -2 }}
                           whileTap={{ scale: 0.97 }}
                           onClick={handleStartRecording}
                           disabled={paymentBlocked}
-                          className="flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm bg-gradient-to-r from-[#99f6e4] via-[#7dd3fc] to-[#a5b4fc] text-gray-900 shadow-sm hover:opacity-90 transition-all disabled:opacity-40"
+                          className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm bg-gradient-to-r from-[#99f6e4] via-[#7dd3fc] to-[#a5b4fc] text-gray-900 shadow-sm hover:opacity-90 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] disabled:opacity-40"
                         >
                           <Mic className="w-4 h-4 text-gray-900" />
                           Enregistrer
@@ -1484,7 +1492,7 @@ export default function DashboardPage() {
                           whileTap={{ scale: 0.97 }}
                           onClick={handleStartSystemAudioRecording}
                           disabled={paymentBlocked}
-                          className="flex items-center gap-2 px-6 py-3 rounded-full font-semibold text-sm bg-white/40 backdrop-blur-md border border-gray-300 text-gray-600 shadow-sm hover:bg-white/60 hover:border-gray-400 transition-all disabled:opacity-40"
+                          className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm bg-white/40 backdrop-blur-md border border-gray-200/60 text-gray-600 shadow-sm hover:bg-white/60 hover:border-teal-300 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] disabled:opacity-40"
                         >
                           <Monitor className="w-4 h-4 text-gray-500" />
                           Capturer l&apos;audio
@@ -1509,7 +1517,7 @@ export default function DashboardPage() {
                             <button
                               onClick={() => !isPdfExtracting && setShowPdfPopover(true)}
                               disabled={isPdfExtracting}
-                              className="text-sm text-gray-600 hover:text-gray-800 transition-colors flex items-center gap-1 disabled:opacity-50"
+                              className="text-sm text-gray-400 hover:text-gray-600 transition-colors duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] flex items-center gap-1 disabled:opacity-50"
                             >
                               {isPdfExtracting ? (
                                 <>
@@ -1520,7 +1528,6 @@ export default function DashboardPage() {
                                 <>
                                   <FileText className="w-4 h-4" />
                                   Ajouter un PDF de contexte
-                                  <span className="text-gray-300 text-xs ml-1">(optionnel)</span>
                                 </>
                               )}
                             </button>
@@ -1633,7 +1640,7 @@ export default function DashboardPage() {
                         className="mt-16 w-full max-w-4xl space-y-4"
                       >
                         <div className="flex items-center justify-between">
-                          <h2 className="text-xl font-bold text-gray-800">Tes derniers ECOs</h2>
+                          <h2 className="text-xl font-medium tracking-[-0.03em] text-gray-800">Tes derniers <em>ECOs</em></h2>
                           {ecos.length > 0 && !isSearchActive && (
                             <button
                               onClick={() => setViewAllEcos(true)}
@@ -1686,7 +1693,7 @@ export default function DashboardPage() {
 
                         {/* Liste des ECOs */}
                         {!isEcosLoading && ecos.length > 0 && filteredEcos.length > 0 && (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                             {(isSearchActive ? filteredEcos : filteredEcos.slice(0, 6))
                               .map((eco, index) => {
                                 const SourceIcon = eco.source_type === "screen" ? Monitor : Mic;
@@ -1697,19 +1704,26 @@ export default function DashboardPage() {
                                 return (
                                   <motion.div
                                     key={eco.id}
-                                    initial={{ opacity: 0, y: 8 }}
+                                    initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: 0.05 + index * 0.05 }}
+                                    transition={{ delay: index * 0.1, duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
                                     whileHover={{ y: -4, scale: 1.01 }}
                                     whileTap={{ scale: 0.98 }}
-                                    className="group relative text-left bg-white/75 backdrop-blur-2xl rounded-[2rem] border border-white/80 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer"
+                                    className="group relative text-left bg-white/75 backdrop-blur-2xl rounded-[2rem] border border-white/80 shadow-sm hover:shadow-xl transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-pointer"
                                   >
+                                    {/* Corner brackets */}
+                                    <span className="absolute top-3 left-3 w-2 h-2 border-l-2 border-t-2 border-gray-300/40 rounded-tl-sm pointer-events-none" />
+                                    <span className="absolute top-3 right-10 w-2 h-2 border-r-2 border-t-2 border-gray-300/40 rounded-tr-sm pointer-events-none" />
+                                    <span className="absolute bottom-3 left-3 w-2 h-2 border-l-2 border-b-2 border-gray-300/40 rounded-bl-sm pointer-events-none" />
+                                    <span className="absolute bottom-3 right-3 w-2 h-2 border-r-2 border-b-2 border-gray-300/40 rounded-br-sm pointer-events-none" />
                                     <div
                                       className="p-6"
                                       onClick={() => handleEcoClick(eco)}
                                     >
                                       <div className="flex items-center gap-3 mb-2 pr-6">
-                                        <SourceIcon className="w-5 h-5 text-gray-600 shrink-0" />
+                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-100 to-blue-100 flex items-center justify-center shrink-0">
+                                          <SourceIcon className="w-4 h-4 text-teal-600 shrink-0" />
+                                        </div>
                                         <span className="font-bold text-gray-900 truncate">
                                           <HighlightTitle text={eco.title} query={debouncedQuery} />
                                         </span>
