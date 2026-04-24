@@ -179,7 +179,7 @@ function Hero() {
           muted
           loop
           playsInline
-          className="w-full h-auto rounded-2xl"
+          className="w-full h-full object-cover rounded-2xl"
         />
       </div>
     </section>
