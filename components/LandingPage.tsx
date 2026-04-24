@@ -171,7 +171,7 @@ function Hero() {
       {/* Video */}
       <div
         id="demo"
-        className="anim-fade-up delay-5 w-full max-w-4xl rounded-2xl overflow-hidden shadow-2xl border border-white/60 bg-black"
+        className="anim-fade-up delay-5 w-full max-w-4xl rounded-2xl overflow-hidden shadow-2xl border border-white/60"
       >
         <video
           src="https://pub-0270797b38de40338d1b41adf0ef1dca.r2.dev/Demo%20Eco.mp4"
@@ -179,7 +179,7 @@ function Hero() {
           muted
           loop
           playsInline
-          className="w-full h-full object-cover rounded-2xl"
+          className="w-full h-auto block"
         />
       </div>
     </section>
