@@ -99,7 +99,7 @@ export default function Sidebar({
         transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       >
         <div
-          className="w-[280px] max-w-[85vw] h-full flex flex-col bg-white lg:bg-white/10 backdrop-blur-xl border-r border-gray-200 lg:border-white/20 relative"
+          className="w-[280px] max-w-[85vw] h-full flex flex-col bg-white border-r border-[#e7e6e4] relative"
           style={{ minWidth: 280 }}
         >
           <AnimatePresence mode="wait">
@@ -177,7 +177,7 @@ export default function Sidebar({
                       whileHover={{ x: 2 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => { onNavigateHome("sidebar"); onClose?.(); }}
-                      className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 lg:hover:bg-white/30 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-pointer"
+                      className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-[#131211] hover:bg-[#f6f5f4] transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-pointer"
                     >
                       <Home className="w-4 h-4 shrink-0" />
                       Accueil
@@ -188,7 +188,7 @@ export default function Sidebar({
                       whileHover={{ x: 2 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => { onNavigatePricing(); onClose?.(); }}
-                      className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 lg:hover:bg-white/30 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-pointer"
+                      className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-[#131211] hover:bg-[#f6f5f4] transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-pointer"
                     >
                       <CreditCard className="w-4 h-4 shrink-0" />
                       Abonnement
@@ -199,7 +199,7 @@ export default function Sidebar({
                       whileHover={{ x: 2 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => { onNavigateSettings(); onClose?.(); }}
-                      className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-100 lg:hover:bg-white/30 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-pointer"
+                      className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-[#131211] hover:bg-[#f6f5f4] transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-pointer"
                     >
                       <Settings className="w-4 h-4 shrink-0" />
                       Paramètres
@@ -234,7 +234,7 @@ export default function Sidebar({
                         whileHover={{ x: 2 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={() => { onOpenProfile(); onClose?.(); }}
-                        className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-gray-700 hover:bg-white/20 transition-all cursor-pointer mb-2"
+                        className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-[#131211] hover:bg-[#f6f5f4] transition-all cursor-pointer mb-2"
                       >
                         <UserAvatar size="sm" />
                         <span className="text-sm font-medium text-gray-800 truncate flex-1">
@@ -246,7 +246,7 @@ export default function Sidebar({
                       whileHover={{ x: 2 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={() => setShowLogoutConfirm(true)}
-                      className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-white/20 transition-all cursor-pointer"
+                      className="w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-[#131211] hover:bg-[#f6f5f4] transition-all cursor-pointer"
                     >
                       <LogOut className="w-4 h-4 shrink-0" />
                       Déconnexion

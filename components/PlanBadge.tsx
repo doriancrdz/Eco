@@ -64,16 +64,12 @@ export default function PlanBadge() {
   if (loading) {
     return (
       <div
-        className={`rounded-full px-4 py-2 flex items-center gap-2 h-9 animate-pulse ${
-          isPaid
-            ? "bg-gradient-to-r from-[#99f6e4] via-[#7dd3fc] to-[#a5b4fc]"
-            : "bg-white/30 backdrop-blur-md border border-white/30"
-        }`}
+        className="rounded-full px-4 py-2 flex items-center gap-2 h-9 animate-pulse bg-[#f6f5f4] border border-[#e7e6e4]"
         style={{ minWidth: 120 }}
       >
-        <div className={`w-4 h-4 rounded ${isPaid ? "bg-gray-900/20" : "bg-white/40"}`} />
-        <div className={`h-3 rounded w-8 ${isPaid ? "bg-gray-900/20" : "bg-white/40"}`} />
-        <div className={`h-3 rounded w-12 ${isPaid ? "bg-gray-900/20" : "bg-white/40"}`} />
+        <div className="w-4 h-4 rounded bg-[#e7e6e4]" />
+        <div className="h-3 rounded w-8 bg-[#e7e6e4]" />
+        <div className="h-3 rounded w-12 bg-[#e7e6e4]" />
       </div>
     );
   }
@@ -86,34 +82,27 @@ export default function PlanBadge() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       onClick={() => router.push("/settings")}
-      className={`
-        relative overflow-hidden rounded-full px-4 pt-2 pb-3 flex items-center gap-2 text-sm font-bold
-        cursor-pointer transition-all hover:scale-105
-        ${isPaid
-          ? "bg-gradient-to-r from-[#99f6e4] via-[#7dd3fc] to-[#a5b4fc] text-gray-900 shadow-lg hover:shadow-xl"
-          : "bg-white/60 backdrop-blur-md border border-white/40 text-gray-700 hover:bg-white/80"
-        }
-      `}
+      className="relative overflow-hidden rounded-full px-4 pt-2 pb-3 flex items-center gap-2 text-sm font-bold cursor-pointer transition-all hover:scale-105 bg-[#f6f5f4] border border-[#e7e6e4] text-[#131211] hover:bg-[#eeede9]"
     >
-      <Clock className={`w-4 h-4 shrink-0 ${isPaid ? "text-gray-900" : "text-gray-600"}`} />
+      <Clock className="w-4 h-4 shrink-0 text-[#8b8884]" />
 
       {/* Mobile : minutes seules */}
-      <span className={`sm:hidden ${isPaid ? "font-extrabold" : "font-bold"}`}>
+      <span className="sm:hidden font-bold">
         {minutesLeft} min
       </span>
 
       {/* Desktop : minutes / total */}
-      <span className={`hidden sm:inline ${isPaid ? "font-extrabold" : "font-bold"}`}>
+      <span className="hidden sm:inline font-bold">
         {minutesLeft} / {totalMinutes} min
       </span>
 
-      <span className={isPaid ? "text-gray-700 opacity-60" : "text-gray-400"}>|</span>
-      <span className={isPaid ? "font-extrabold" : "font-bold"}>{planLabel}</span>
+      <span className="text-[#8b8884]">|</span>
+      <span className="font-bold">{planLabel}</span>
 
       {/* Barre de progression — desktop uniquement */}
-      <div className="hidden sm:block absolute bottom-0 left-0 right-0 h-1.5 bg-black/10">
+      <div className="hidden sm:block absolute bottom-0 left-0 right-0 h-1 bg-[#e7e6e4]">
         <div
-          className="h-full bg-gradient-to-r from-[#99f6e4] via-[#7dd3fc] to-[#a5b4fc] opacity-75 transition-[width] duration-500"
+          className="h-full bg-gradient-to-r from-teal-400 via-blue-400 to-indigo-400 transition-[width] duration-500"
           style={{ width: `${percentage}%` }}
         />
       </div>

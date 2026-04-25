@@ -32,7 +32,7 @@ export default function Header({
   const router = useRouter();
 
   return (
-    <header className="h-[72px] px-4 flex items-center justify-between relative bg-white/10 backdrop-blur-sm border-b border-white/10 sticky top-0 z-20">
+    <header className="h-[72px] px-4 flex items-center justify-between relative bg-white/95 backdrop-blur-md border-b border-[#e7e6e4] sticky top-0 z-20">
       {/* Left: logo ECO seul (sans texte) + toggle + guide */}
       <div className="flex items-center gap-2 min-w-[44px] shrink-0">
         <motion.button
@@ -53,7 +53,7 @@ export default function Header({
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
             onClick={onToggleSidebar}
-            className="p-2 rounded-xl hover:bg-white/20 transition-all"
+            className="p-2 rounded-xl hover:bg-[#f6f5f4] transition-all"
             aria-label="Ouvrir / fermer le menu"
           >
             <PanelLeft className="w-5 h-5 text-gray-800" />
@@ -67,7 +67,7 @@ export default function Header({
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => onGoHome("back")}
-              className="p-2 rounded-xl hover:bg-white/20 transition-colors shrink-0"
+              className="p-2 rounded-xl hover:bg-[#f6f5f4] transition-colors shrink-0"
               aria-label="Retour"
             >
               <ArrowLeft className="w-5 h-5 text-gray-800" />
@@ -77,7 +77,7 @@ export default function Header({
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={onShare}
-                className="p-2 rounded-xl hover:bg-white/20 transition-colors"
+                className="p-2 rounded-xl hover:bg-[#f6f5f4] transition-colors"
                 aria-label="Partager"
               >
                 <Share2 className="w-5 h-5 text-gray-800" />

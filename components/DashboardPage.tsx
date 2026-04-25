@@ -1353,8 +1353,8 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen text-gray-900 flex relative overflow-hidden">
-      {/* Background gradient */}
-      <div className="fixed inset-0 aura-gradient -z-10" aria-hidden />
+      {/* Background */}
+      <div className="fixed inset-0 bg-[#fafaf9] -z-10" aria-hidden />
 
       <>
         {/* Desktop: Sidebar fixe à gauche. Mobile/Tablet: drawer */}
@@ -1461,13 +1461,13 @@ export default function DashboardPage() {
                         transition={{ delay: 0.1, duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
                         className="mt-4"
                       >
-                        <h1 className="text-2xl font-bold tracking-[-0.05em] text-gray-900">
+                        <h1 className="text-3xl font-bold tracking-[-0.04em] text-[#131211]">
                           Bonjour,{" "}
                           {user?.firstName
                             ? <><span className="italic">{user.firstName}</span>.</>
                             : "!"}
                         </h1>
-                        <p className="text-gray-500 text-base font-normal mt-1.5">
+                        <p className="text-[#8b8884] text-base font-normal mt-1.5">
                           Prêt à enregistrer un nouveau cours ?
                         </p>
                       </motion.div>
@@ -1482,9 +1482,9 @@ export default function DashboardPage() {
                           whileTap={{ scale: 0.97 }}
                           onClick={handleStartRecording}
                           disabled={paymentBlocked}
-                          className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm bg-gradient-to-r from-[#99f6e4] via-[#7dd3fc] to-[#a5b4fc] text-gray-900 shadow-sm hover:opacity-90 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] disabled:opacity-40"
+                          className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm bg-gradient-to-r from-teal-400 via-blue-400 to-indigo-400 text-white shadow-sm hover:opacity-90 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] disabled:opacity-40"
                         >
-                          <Mic className="w-4 h-4 text-gray-900" />
+                          <Mic className="w-4 h-4 text-white" />
                           Enregistrer
                         </motion.button>
                         <motion.button
@@ -1492,9 +1492,9 @@ export default function DashboardPage() {
                           whileTap={{ scale: 0.97 }}
                           onClick={handleStartSystemAudioRecording}
                           disabled={paymentBlocked}
-                          className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm bg-white/40 backdrop-blur-md border border-gray-200/60 text-gray-600 shadow-sm hover:bg-white/60 hover:border-teal-300 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] disabled:opacity-40"
+                          className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm bg-white border border-[#e7e6e4] text-[#131211] shadow-sm hover:bg-[#f6f5f4] hover:border-teal-300 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] disabled:opacity-40"
                         >
-                          <Monitor className="w-4 h-4 text-gray-500" />
+                          <Monitor className="w-4 h-4 text-[#8b8884]" />
                           Capturer l&apos;audio
                         </motion.button>
                       </motion.div>
@@ -1644,7 +1644,7 @@ export default function DashboardPage() {
                           {ecos.length > 0 && !isSearchActive && (
                             <button
                               onClick={() => setViewAllEcos(true)}
-                              className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                              className="text-sm text-[#8b8884] hover:text-[#131211] transition-colors"
                             >
                               Voir tout
                             </button>
@@ -1660,7 +1660,7 @@ export default function DashboardPage() {
                               value={searchQuery}
                               onChange={(e) => setSearchQuery(e.target.value)}
                               placeholder="Rechercher dans tes ECOs..."
-                              className="w-full pl-9 pr-8 py-2.5 text-sm bg-white/60 backdrop-blur-md border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-400 transition-all text-gray-800 placeholder-gray-400"
+                              className="w-full pl-9 pr-8 py-2.5 text-sm bg-[#f6f5f4] border border-[#e7e6e4] rounded-xl outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-300 transition-all text-[#131211] placeholder:text-[#8b8884]"
                             />
                             {searchQuery && (
                               <button
@@ -1675,11 +1675,11 @@ export default function DashboardPage() {
 
                         {/* Skeleton loaders pendant le chargement */}
                         {isEcosLoading && (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {[0, 1, 2].map((i) => (
                               <div
                                 key={i}
-                                className="bg-white/60 rounded-[2rem] border border-white/70 p-6 animate-pulse"
+                                className="bg-white rounded-2xl border border-[#e7e6e4] p-6 animate-pulse"
                               >
                                 <div className="flex items-center gap-3 mb-3">
                                   <div className="w-5 h-5 rounded-full bg-gray-200 shrink-0" />
@@ -1693,7 +1693,7 @@ export default function DashboardPage() {
 
                         {/* Liste des ECOs */}
                         {!isEcosLoading && ecos.length > 0 && filteredEcos.length > 0 && (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                             {(isSearchActive ? filteredEcos : filteredEcos.slice(0, 6))
                               .map((eco, index) => {
                                 const SourceIcon = eco.source_type === "screen" ? Monitor : Mic;
@@ -1709,13 +1709,13 @@ export default function DashboardPage() {
                                     transition={{ delay: index * 0.1, duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
                                     whileHover={{ y: -4, scale: 1.01 }}
                                     whileTap={{ scale: 0.98 }}
-                                    className="group relative text-left bg-white/75 backdrop-blur-2xl rounded-[2rem] border border-white/80 shadow-sm hover:shadow-xl transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-pointer"
+                                    className="group relative text-left bg-white border border-[#e7e6e4] rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-pointer"
                                   >
                                     {/* Corner brackets */}
-                                    <span className="absolute top-3 left-3 w-2 h-2 border-l-2 border-t-2 border-gray-300/40 rounded-tl-sm pointer-events-none" />
-                                    <span className="absolute top-3 right-10 w-2 h-2 border-r-2 border-t-2 border-gray-300/40 rounded-tr-sm pointer-events-none" />
-                                    <span className="absolute bottom-3 left-3 w-2 h-2 border-l-2 border-b-2 border-gray-300/40 rounded-bl-sm pointer-events-none" />
-                                    <span className="absolute bottom-3 right-3 w-2 h-2 border-r-2 border-b-2 border-gray-300/40 rounded-br-sm pointer-events-none" />
+                                    <span className="absolute top-3 left-3 w-2 h-2 border-l-2 border-t-2 border-[#e7e6e4] rounded-tl-sm pointer-events-none" />
+                                    <span className="absolute top-3 right-10 w-2 h-2 border-r-2 border-t-2 border-[#e7e6e4] rounded-tr-sm pointer-events-none" />
+                                    <span className="absolute bottom-3 left-3 w-2 h-2 border-l-2 border-b-2 border-[#e7e6e4] rounded-bl-sm pointer-events-none" />
+                                    <span className="absolute bottom-3 right-3 w-2 h-2 border-r-2 border-b-2 border-[#e7e6e4] rounded-br-sm pointer-events-none" />
                                     <div
                                       className="p-6"
                                       onClick={() => handleEcoClick(eco)}
@@ -1724,11 +1724,11 @@ export default function DashboardPage() {
                                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-100 to-blue-100 flex items-center justify-center shrink-0">
                                           <SourceIcon className="w-4 h-4 text-teal-600 shrink-0" />
                                         </div>
-                                        <span className="font-bold text-gray-900 truncate">
+                                        <span className="font-bold text-[#131211]">
                                           <HighlightTitle text={eco.title} query={debouncedQuery} />
                                         </span>
                                       </div>
-                                      <div className="flex items-center gap-1.5 text-xs text-gray-500 flex-wrap">
+                                      <div className="flex items-center gap-1.5 text-xs text-[#8b8884] flex-wrap">
                                         <span>
                                           {new Date(eco.created_at).toLocaleDateString("fr-FR", {
                                             day: "numeric",
