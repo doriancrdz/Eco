@@ -73,7 +73,7 @@ export default function FocusMode({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.4, ease: "easeInOut" }}
-        className="fixed inset-0 aura-gradient z-50 overflow-auto"
+        className="fixed inset-0 eco-focus-bg z-50 overflow-auto"
       >
         <div className="flex flex-col items-center w-full min-h-full px-4 pt-8 lg:pt-24 pb-8">
         {isRecording ? (
@@ -108,7 +108,7 @@ export default function FocusMode({
                 ) : (
                   <div className={isMobile ? "w-[280px] h-12" : "w-[320px] h-16"} aria-hidden />
                 )}
-                <span className="text-3xl lg:text-2xl font-normal tabular-nums text-gray-900 shrink-0 min-w-[3.5rem] md:min-w-[5rem]">
+                <span className="text-3xl lg:text-2xl font-bold tabular-nums shrink-0 min-w-[3.5rem] md:min-w-[5rem]" style={{ color: "#EDECE8", letterSpacing: "-0.03em", fontVariantNumeric: "tabular-nums" }}>
                   {formatTimer(recordingElapsedSeconds)}
                 </span>
               </motion.div>
@@ -116,7 +116,7 @@ export default function FocusMode({
             <div className="text-center mb-6 lg:mb-8">
               <div className="flex items-center justify-center gap-2">
                 <span className={`w-2.5 h-2.5 rounded-full ${isPaused ? "bg-gray-400" : "bg-red-500 animate-pulse"}`} />
-                <span className={`font-bold text-sm ${isPaused ? "text-gray-500" : "text-red-500"}`}>
+                <span className="font-bold text-xs tracking-widest" style={{ color: isPaused ? "rgba(237,236,232,0.35)" : "#EF4444", letterSpacing: "0.15em" }}>
                   {isPaused ? "EN PAUSE" : "REC"}
                 </span>
               </div>
@@ -128,7 +128,14 @@ export default function FocusMode({
                   whileTap={{ scale: 0.97 }}
                   onClick={onTogglePause}
                   aria-label={isPaused ? "Reprendre l'enregistrement" : "Mettre l'enregistrement en pause"}
-                  className="w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex items-center justify-center text-white font-medium bg-white/25 backdrop-blur-xl border border-white/40 shadow-[0_0_20px_rgba(34,211,238,0.2),inset_0_1px_0_rgba(255,255,255,0.3)] hover:bg-white/35 hover:border-white/50 transition-all bg-gradient-to-br from-cyan-500/80 via-violet-500/70 to-violet-600/80"
+                  className="w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex items-center justify-center text-white font-medium transition-all"
+                style={{
+                  background: "rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(255,255,255,0.12)",
+                  backdropFilter: "blur(12px)",
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.14)")}
+                onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
                 >
                   {isPaused ? <Play className="w-5 h-5 lg:w-6 lg:h-6" /> : <Pause className="w-5 h-5 lg:w-6 lg:h-6" />}
                 </motion.button>
@@ -160,7 +167,8 @@ export default function FocusMode({
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 0.3, ease: "easeOut" }}
-              className="text-gray-700 text-base font-medium"
+              className="text-base font-medium"
+              style={{ color: "rgba(237,236,232,0.4)" }}
             >
               Prêt à enregistrer
             </motion.p>
@@ -184,26 +192,40 @@ export default function FocusMode({
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white/90 backdrop-blur-2xl rounded-[3rem] border border-white/80 shadow-xl p-8 max-w-sm w-full"
+              className="rounded-2xl p-6 max-w-sm w-full"
+            style={{
+              background: "#141619",
+              border: "1px solid rgba(255,255,255,0.10)",
+              boxShadow: "0 32px 64px rgba(0,0,0,0.8)",
+            }}
             >
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Terminer l&apos;enregistrement ?</h3>
-              <p className="text-gray-600 text-sm mb-6">L&apos;enregistrement sera traité et généré.</p>
-              <div className="flex gap-4">
+              <h3 className="text-lg font-bold mb-1.5" style={{ color: "#EDECE8" }}>Terminer l&apos;enregistrement ?</h3>
+              <p className="text-sm mb-6" style={{ color: "rgba(237,236,232,0.5)" }}>L&apos;enregistrement sera traité et un résumé généré.</p>
+              <div className="flex gap-3">
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={onConfirmStop}
-                  className="flex-1 py-3 rounded-2xl bg-gray-900 text-white font-bold hover:bg-gray-800 transition-all"
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all"
+                  style={{
+                    background: "linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%)",
+                    color: "white",
+                  }}
                 >
-                  OUI, TERMINER
+                  Terminer
                 </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={onCancelStop}
-                  className="flex-1 py-3 rounded-2xl bg-white/60 border border-white/50 text-gray-900 font-bold hover:bg-white/90 transition-all"
+                  className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-all"
+                  style={{
+                    background: "rgba(255,255,255,0.06)",
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    color: "rgba(237,236,232,0.7)",
+                  }}
                 >
-                  CONTINUER
+                  Continuer
                 </motion.button>
               </div>
             </motion.div>

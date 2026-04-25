@@ -12,7 +12,6 @@ interface FolderListProps {
   onSelectEco?: (eco: Eco) => void;
   onClose?: () => void;
   selectedEcoId?: string | null;
-  /** Optionnel : auto-expand ce dossier (ex. quand on sélectionne un ECO dedans) */
   expandFolderId?: string | null;
 }
 
@@ -39,14 +38,8 @@ export default function FolderList({
       if (!response.ok) throw new Error("Erreur lors du chargement des dossiers");
       const data = await response.json();
       setFolders(data.folders || []);
-    } catch (error) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Erreur lors du chargement des dossiers:", error);
-      }
-      setFolders([]);
-    } finally {
-      setIsLoading(false);
-    }
+    } catch { setFolders([]); }
+    finally { setIsLoading(false); }
   }, []);
 
   const loadFolderEcos = useCallback(async (folderId: string) => {
@@ -56,32 +49,23 @@ export default function FolderList({
       if (!response.ok) throw new Error("Erreur chargement ECOs");
       const data = await response.json();
       setFolderEcos((prev) => ({ ...prev, [folderId]: data.ecos || [] }));
-    } catch (error) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Erreur chargement ECOs dossier:", error);
-      }
+    } catch {
       setFolderEcos((prev) => ({ ...prev, [folderId]: [] }));
-    } finally {
-      setLoadingFolderId(null);
-    }
+    } finally { setLoadingFolderId(null); }
   }, []);
 
   const handleToggleFolder = useCallback(
     (folderId: string) => {
       setExpandedFolderId((prev) => {
         const next = prev === folderId ? null : folderId;
-        if (next && !folderEcos[next]) {
-          loadFolderEcos(next);
-        }
+        if (next && !folderEcos[next]) loadFolderEcos(next);
         return next;
       });
     },
     [folderEcos, loadFolderEcos]
   );
 
-  const refreshFolderEcos = useCallback((folderId: string) => {
-    loadFolderEcos(folderId);
-  }, [loadFolderEcos]);
+  const refreshFolderEcos = useCallback((folderId: string) => { loadFolderEcos(folderId); }, [loadFolderEcos]);
 
   useEffect(() => {
     loadFolders();
@@ -90,7 +74,6 @@ export default function FolderList({
     return () => window.removeEventListener("folders-updated", handleFoldersUpdated);
   }, [loadFolders]);
 
-  // Auto-expand le dossier quand on sélectionne un ECO dedans
   useEffect(() => {
     if (expandFolderId) {
       setExpandedFolderId(expandFolderId);
@@ -98,12 +81,9 @@ export default function FolderList({
     }
   }, [expandFolderId, loadFolderEcos]);
 
-  // Rafraîchir les sous-listes des dossiers (accordéon) après move/update
   useEffect(() => {
     const handleEcoUpdated = () => {
-      Object.keys(folderEcosRef.current).forEach((folderId) => {
-        loadFolderEcos(folderId);
-      });
+      Object.keys(folderEcosRef.current).forEach((folderId) => loadFolderEcos(folderId));
     };
     window.addEventListener("eco-updated", handleEcoUpdated);
     return () => window.removeEventListener("eco-updated", handleEcoUpdated);
@@ -111,11 +91,7 @@ export default function FolderList({
 
   const handleAdd = async () => {
     const name = newName.trim();
-    if (!name) {
-      setIsAdding(false);
-      setNewName("");
-      return;
-    }
+    if (!name) { setIsAdding(false); setNewName(""); return; }
     try {
       const response = await fetch("/api/folders", {
         method: "POST",
@@ -129,42 +105,49 @@ export default function FolderList({
       await loadFolders();
       setExpandedFolderId(newFolder.id);
       window.dispatchEvent(new Event("folders-updated"));
-    } catch (error) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Erreur lors de la création du dossier:", error);
-      }
+    } catch {
       alert("Erreur lors de la création du dossier.");
     }
   };
 
-  const handleCancel = () => {
-    setIsAdding(false);
-    setNewName("");
-  };
+  const handleCancel = () => { setIsAdding(false); setNewName(""); };
 
   return (
-    <div className="mt-6">
-      <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 px-4 mb-2">
-        Dossiers
-      </p>
-      <div className="px-4 mb-2">
-        <motion.button
-          whileHover={{ x: 2 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={() => setIsAdding(true)}
-          className="text-xs font-bold text-gray-500 hover:text-gray-900 flex items-center gap-1 py-1 hover:bg-white/20 rounded-lg transition-all w-full"
+    <div className="mt-4">
+      <div className="flex items-center justify-between px-4 mb-1">
+        <p
+          className="text-[10px] font-bold uppercase tracking-[0.12em]"
+          style={{ color: "rgba(237,236,232,0.28)" }}
         >
-          <FolderPlus className="w-3.5 h-3.5 shrink-0" />
-          Nouveau dossier
+          Dossiers
+        </p>
+        <motion.button
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => setIsAdding(true)}
+          className="p-1 rounded-lg transition-colors"
+          style={{ color: "rgba(237,236,232,0.3)" }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = "rgba(255,255,255,0.06)";
+            e.currentTarget.style.color = "rgba(237,236,232,0.7)";
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = "transparent";
+            e.currentTarget.style.color = "rgba(237,236,232,0.3)";
+          }}
+          aria-label="Nouveau dossier"
+        >
+          <FolderPlus className="w-3.5 h-3.5" />
         </motion.button>
       </div>
+
       <AnimatePresence>
         {isAdding && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="px-4 mb-2 overflow-hidden flex items-center gap-2"
+            className="px-2 mb-2 overflow-hidden flex items-center gap-2"
           >
             <input
               type="text"
@@ -175,27 +158,39 @@ export default function FolderList({
                 if (e.key === "Escape") handleCancel();
               }}
               placeholder="Nom du dossier"
-              className="flex-1 bg-white/20 border border-white/30 rounded-lg px-3 py-2 text-sm outline-none focus:bg-white/30 focus:ring-1 focus:ring-white/40"
+              className="flex-1 rounded-xl px-3 py-1.5 text-xs outline-none transition-all"
+              style={{
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(139,92,246,0.3)",
+                color: "#EDECE8",
+              }}
               autoFocus
             />
             <button
               onClick={handleAdd}
-              className="py-2 px-3 text-xs font-bold text-gray-800 hover:bg-white/20 rounded-lg transition-all"
+              className="py-1.5 px-2.5 text-xs font-bold rounded-lg transition-all"
+              style={{ color: "rgba(139,92,246,0.9)", background: "rgba(139,92,246,0.1)" }}
             >
               OK
             </button>
             <button
               onClick={handleCancel}
-              className="py-2 px-3 text-xs font-bold text-gray-500 hover:bg-white/20 rounded-lg transition-all"
+              className="py-1.5 px-2.5 text-xs font-bold rounded-lg transition-all"
+              style={{ color: "rgba(237,236,232,0.4)" }}
             >
-              Annuler
+              ✕
             </button>
           </motion.div>
         )}
       </AnimatePresence>
-      <div className="space-y-0.5">
+
+      <div className="space-y-0.5 px-2">
         {isLoading ? (
-          <p className="px-4 py-3 text-gray-500 text-xs">Chargement...</p>
+          <div className="px-1 py-2 space-y-1.5">
+            {[0, 1].map(i => (
+              <div key={i} className="h-7 rounded-lg eco-skeleton" />
+            ))}
+          </div>
         ) : (
           folders.map((folder) => {
             const isExpanded = expandedFolderId === folder.id;
@@ -218,11 +213,16 @@ export default function FolderList({
                       transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
                       className="overflow-hidden"
                     >
-                      <div className="pl-6 pr-2 py-1 space-y-0.5 border-l-2 border-white/20 ml-4">
+                      <div
+                        className="pl-5 pr-1 py-1 space-y-0.5 ml-3 border-l"
+                        style={{ borderColor: "rgba(255,255,255,0.06)" }}
+                      >
                         {isLoadingEcos ? (
-                          <p className="py-2 text-xs text-gray-500">Chargement…</p>
+                          <div className="py-2 space-y-1.5">
+                            <div className="h-6 rounded eco-skeleton" />
+                          </div>
                         ) : ecos.length === 0 ? (
-                          <p className="py-2 text-xs text-gray-500 opacity-75">
+                          <p className="py-2 text-xs" style={{ color: "rgba(237,236,232,0.25)" }}>
                             Aucun ECO dans ce dossier
                           </p>
                         ) : (
@@ -231,7 +231,6 @@ export default function FolderList({
                               key={eco.id}
                               initial={{ opacity: 0, x: -4 }}
                               animate={{ opacity: 1, x: 0 }}
-                              className="opacity-90"
                             >
                               <EcoItem
                                 eco={eco}

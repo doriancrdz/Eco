@@ -152,7 +152,7 @@ export default function EcoCardMenu({ eco, onUpdate, onDelete }: EcoCardMenuProp
             onClick: undefined,
             customContent: (
               <div className="px-4 py-2 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                <FolderPlus className="w-4 h-4 text-gray-600 shrink-0" />
+                <FolderPlus className="w-4 h-4 shrink-0" style={{ color: "rgba(237,236,232,0.5)" }} />
                 <input
                   ref={folderInputRef}
                   type="text"
@@ -172,11 +172,12 @@ export default function EcoCardMenu({ eco, onUpdate, onDelete }: EcoCardMenuProp
                   }}
                   placeholder="Nom du dossier"
                   disabled={isCreating}
-                  className="flex-1 bg-white/30 border border-white/40 rounded-lg px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-white/40 text-gray-800 disabled:opacity-50"
+                  className="flex-1 rounded-lg px-2 py-1 text-sm outline-none disabled:opacity-50"
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#EDECE8" }}
                   onClick={(e) => e.stopPropagation()}
                 />
                 {isCreating && (
-                  <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin shrink-0" />
+                  <div className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin shrink-0" style={{ borderColor: "rgba(139,92,246,0.6)", borderTopColor: "transparent" }} />
                 )}
               </div>
             ),
@@ -231,7 +232,8 @@ export default function EcoCardMenu({ eco, onUpdate, onDelete }: EcoCardMenuProp
               if (e.key === "Enter") { e.preventDefault(); handleRename(); }
               else if (e.key === "Escape") { setRenameValue(eco.title); setIsRenaming(false); }
             }}
-            className="w-full font-bold text-gray-900 bg-white/80 border border-gray-300 rounded-xl px-3 py-1.5 text-sm outline-none focus:ring-2 focus:ring-gray-300 shadow-sm"
+            className="w-full font-bold rounded-xl px-3 py-1.5 text-sm outline-none shadow-sm"
+            style={{ background: "#1A1C22", border: "1px solid rgba(139,92,246,0.3)", color: "#EDECE8" }}
             onClick={(e) => e.stopPropagation()}
           />
         </div>
@@ -243,10 +245,13 @@ export default function EcoCardMenu({ eco, onUpdate, onDelete }: EcoCardMenuProp
       >
         <DropdownMenu items={menuItems} align="right">
           <button
-            className="p-1.5 rounded-xl bg-white/70 hover:bg-white/90 border border-white/60 shadow-sm backdrop-blur-sm transition-all focus:outline-none focus:ring-2 focus:ring-gray-300/50"
+            className="p-1.5 rounded-xl transition-all focus:outline-none"
+            style={{ background: "rgba(20,22,25,0.8)", border: "1px solid rgba(255,255,255,0.10)", backdropFilter: "blur(8px)" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "rgba(30,32,38,0.9)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "rgba(20,22,25,0.8)")}
             aria-label="Menu d'actions"
           >
-            <MoreHorizontal className="w-4 h-4 text-gray-600" />
+            <MoreHorizontal className="w-4 h-4" style={{ color: "rgba(237,236,232,0.5)" }} />
           </button>
         </DropdownMenu>
       </div>
@@ -261,14 +266,18 @@ export default function EcoCardMenu({ eco, onUpdate, onDelete }: EcoCardMenuProp
           <button
             onClick={() => setShowDeleteDialog(false)}
             disabled={isDeleting}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-gray-200 disabled:opacity-50"
+            className="px-4 py-2 text-sm font-medium rounded-xl transition-all focus:outline-none disabled:opacity-50"
+            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", color: "rgba(237,236,232,0.7)" }}
           >
             Annuler
           </button>
           <button
             onClick={handleDelete}
             disabled={isDeleting}
-            className="px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-red-400 disabled:opacity-50"
+            className="px-4 py-2 text-sm font-semibold rounded-xl transition-all focus:outline-none disabled:opacity-50"
+            style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.25)", color: "#EF4444" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "rgba(239,68,68,0.25)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "rgba(239,68,68,0.15)")}
           >
             {isDeleting ? "Suppression..." : "Supprimer"}
           </button>

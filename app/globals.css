@@ -13,27 +13,44 @@
 }
 
 :root {
-  /* Design Tokens - Aura Colors */
+  /* === ECO DARK PREMIUM DESIGN SYSTEM === */
+
+  /* Background layers */
+  --bg-base: #080A0F;
+  --bg-surface: #0D0E14;
+  --bg-elevated: #141619;
+  --bg-hover: #1A1C22;
+
+  /* Borders */
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.10);
+  --border-strong: rgba(255, 255, 255, 0.16);
+
+  /* Text */
+  --text-primary: #EDECE8;
+  --text-secondary: rgba(237, 236, 232, 0.55);
+  --text-muted: rgba(237, 236, 232, 0.30);
+
+  /* Accent (ECO brand) */
+  --accent-purple: #8B5CF6;
+  --accent-teal: #14B8A6;
+  --accent-gradient: linear-gradient(135deg, #8B5CF6 0%, #06B6D4 50%, #14B8A6 100%);
+
+  /* Legacy (used by landing page) */
   --aura-emerald-light: #d4f4e0;
   --aura-emerald: #b8e8d0;
   --aura-blue-light: #d4e8f4;
   --aura-blue: #b8d8e8;
   --aura-sand-light: #f0e8d8;
   --aura-sand: #e8dcc8;
-  
-  /* Glass Panel */
   --glass-bg: rgba(255, 255, 255, 0.7);
   --glass-border: rgba(255, 255, 255, 0.3);
   --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-  
-  /* Floating Card */
   --card-bg: rgba(255, 255, 255, 0.85);
   --card-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
-  
-  /* Text Colors */
-  --text-primary: #1a1a1a;
-  --text-secondary: #4b5563;
-  --text-muted: #6b7280;
+  --text-primary-legacy: #1a1a1a;
+  --text-secondary-legacy: #4b5563;
+  --text-muted-legacy: #6b7280;
 }
 
 body {
@@ -44,29 +61,280 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Background Aura Premium avec gradients radiaux et grain */
+/* ============================================================
+   ECO DASHBOARD — DARK PREMIUM SKIN
+   ============================================================ */
+
+/* App background */
+.eco-bg {
+  background-color: var(--bg-base);
+  background-image:
+    radial-gradient(ellipse at 20% 10%, rgba(139, 92, 246, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 90%, rgba(20, 184, 166, 0.06) 0%, transparent 50%);
+}
+
+/* Dark glass effect */
+.eco-glass {
+  background: rgba(13, 14, 20, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-subtle);
+}
+
+/* Premium card */
+.eco-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.eco-card:hover {
+  background: var(--bg-elevated);
+  border-color: var(--border-default);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(139, 92, 246, 0.08);
+  transform: translateY(-2px);
+}
+
+/* Sidebar nav item */
+.eco-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: left;
+  width: 100%;
+}
+
+.eco-nav-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+}
+
+.eco-nav-item.active {
+  background: rgba(139, 92, 246, 0.12);
+  color: var(--text-primary);
+}
+
+/* Input premium */
+.eco-input {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 12px;
+  padding: 10px 12px 10px 36px;
+  font-size: 14px;
+  width: 100%;
+}
+
+.eco-input::placeholder {
+  color: var(--text-muted);
+}
+
+.eco-input:focus {
+  outline: none;
+  border-color: rgba(139, 92, 246, 0.4);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.08);
+}
+
+/* Button primary */
+.eco-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%);
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.eco-btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 100%);
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.eco-btn-primary:hover::before {
+  opacity: 1;
+}
+
+.eco-btn-primary:hover {
+  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.35);
+  transform: translateY(-1px);
+}
+
+.eco-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.eco-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.10);
+  border-color: var(--border-strong);
+  transform: translateY(-1px);
+}
+
+/* Section label (pill) */
+.eco-section-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding: 0 8px;
+  margin-bottom: 4px;
+}
+
+/* Glow spots for background */
+.eco-glow-purple {
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.12) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.eco-glow-teal {
+  position: absolute;
+  width: 250px;
+  height: 250px;
+  background: radial-gradient(circle, rgba(20, 184, 166, 0.08) 0%, transparent 70%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+/* ============================================================
+   FOCUS MODE — RECORDING DARK SCREEN
+   ============================================================ */
+
+.eco-focus-bg {
+  background-color: #050608;
+  background-image:
+    radial-gradient(ellipse at 50% 30%, rgba(139, 92, 246, 0.15) 0%, transparent 60%),
+    radial-gradient(ellipse at 20% 80%, rgba(20, 184, 166, 0.08) 0%, transparent 50%);
+}
+
+/* ============================================================
+   PLAN BADGE
+   ============================================================ */
+
+.eco-plan-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  position: relative;
+  overflow: hidden;
+}
+
+.eco-plan-badge:hover {
+  background: rgba(255, 255, 255, 0.10);
+  border-color: rgba(139, 92, 246, 0.3);
+}
+
+/* ============================================================
+   ECO CARDS ANIMATION
+   ============================================================ */
+
+@keyframes eco-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.anim-fade-up {
+  animation: fadeUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+.anim-delay-0   { animation-delay: 0ms; }
+.anim-delay-100 { animation-delay: 100ms; }
+.anim-delay-200 { animation-delay: 200ms; }
+.anim-delay-300 { animation-delay: 300ms; }
+.anim-delay-400 { animation-delay: 400ms; }
+.anim-delay-500 { animation-delay: 500ms; }
+.anim-delay-600 { animation-delay: 600ms; }
+
+/* Shimmer effect for skeleton loaders */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.eco-skeleton {
+  background: linear-gradient(90deg,
+    rgba(255,255,255,0.04) 25%,
+    rgba(255,255,255,0.08) 50%,
+    rgba(255,255,255,0.04) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* ============================================================
+   LANDING PAGE LEGACY STYLES (unchanged)
+   ============================================================ */
+
 .aura-gradient {
   position: relative;
-  background: 
-    /* Grain subtil mais perceptible */
+  background:
     url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.045'/%3E%3C/svg%3E"),
-    /* Lumière douce centrale (derrière carte) */
     radial-gradient(circle at 50% 45%, rgba(212, 244, 224, 0.4) 0%, transparent 45%),
-    /* Lumière douce secondaire */
     radial-gradient(circle at 30% 60%, rgba(212, 232, 244, 0.3) 0%, transparent 40%),
-    /* Gradient radial émeraude */
     radial-gradient(circle at 20% 30%, var(--aura-emerald-light) 0%, transparent 50%),
-    /* Gradient radial bleu */
     radial-gradient(circle at 80% 70%, var(--aura-blue-light) 0%, transparent 50%),
-    /* Gradient radial sable */
     radial-gradient(circle at 50% 50%, var(--aura-sand-light) 0%, transparent 60%),
-    /* Base gradient */
     linear-gradient(135deg, var(--aura-emerald) 0%, var(--aura-blue) 50%, var(--aura-sand) 100%);
   background-attachment: fixed;
   background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
 }
 
-/* Glass Panel Effect */
 .glass-panel {
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
@@ -75,7 +343,6 @@ body {
   backdrop-filter: blur(12px);
 }
 
-/* Floating Card Effect Premium */
 .floating-card {
   position: relative;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%);
@@ -85,7 +352,6 @@ body {
   backdrop-filter: blur(16px);
 }
 
-/* Highlight subtil en haut à gauche */
 .floating-card::before {
   content: '';
   position: absolute;
@@ -104,35 +370,29 @@ body {
   z-index: 1;
 }
 
-/* Support Safari pour backdrop-blur */
 @supports (backdrop-filter: blur(12px)) or (-webkit-backdrop-filter: blur(12px)) {
   .backdrop-blur-glass {
     -webkit-backdrop-filter: blur(12px);
     backdrop-filter: blur(12px);
   }
-  
   .backdrop-blur-card {
     -webkit-backdrop-filter: blur(16px);
     backdrop-filter: blur(16px);
   }
 }
 
-/* Fallback si backdrop-filter n'est pas supporté */
 @supports not (backdrop-filter: blur(12px)) {
   .glass-panel {
     background-color: rgba(255, 255, 255, 0.9);
   }
-  
   .floating-card {
     background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 255, 255, 0.95) 100%);
   }
-  
   .floating-card::before {
     display: none;
   }
 }
 
-/* Aura Ring pour bouton micro - Signature Premium */
 .aura-ring {
   position: relative;
 }
@@ -174,29 +434,9 @@ body {
 }
 
 @keyframes aura-rotate {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
-
-/* Dashboard entry animations */
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.anim-fade-up {
-  animation: fadeUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) both;
-}
-.anim-delay-0   { animation-delay: 0ms; }
-.anim-delay-100 { animation-delay: 100ms; }
-.anim-delay-200 { animation-delay: 200ms; }
-.anim-delay-300 { animation-delay: 300ms; }
-.anim-delay-400 { animation-delay: 400ms; }
-.anim-delay-500 { animation-delay: 500ms; }
-.anim-delay-600 { animation-delay: 600ms; }
 
 .aura-ring:hover::before,
 .aura-ring:hover::after {
@@ -204,16 +444,9 @@ body {
   animation-duration: 4s, 6s;
 }
 
-/* Pulse pour enregistrement */
 @keyframes aura-pulse-recording {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 0.6;
-  }
-  50% {
-    transform: scale(1.15);
-    opacity: 0.8;
-  }
+  0%, 100% { transform: scale(1); opacity: 0.6; }
+  50% { transform: scale(1.15); opacity: 0.8; }
 }
 
 .aura-ring-recording::before,
@@ -221,19 +454,13 @@ body {
   animation: aura-rotate 4s linear infinite, aura-pulse-recording 2s ease-in-out infinite;
 }
 
-/* Gradient radial pour halo Pro */
 .bg-gradient-radial {
   background: radial-gradient(circle, var(--tw-gradient-stops));
 }
 
-/* Marquee animation pour testimonials */
 @keyframes marquee {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
 }
 
 .marquee-container {
@@ -245,34 +472,20 @@ body {
   animation-play-state: paused;
 }
 
-/* Style glassmorphism pour les cartes testimonials */
 .testimonial-card-glass {
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.6) 0%,
-    rgba(255, 255, 255, 0.5) 100%
-  );
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.5) 100%);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 
-    0 8px 32px rgba(0, 0, 0, 0.08),
-    0 2px 8px rgba(0, 0, 0, 0.04),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
 .testimonial-card-glass::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
+  top: 0; left: 0; right: 0;
   height: 50%;
-  background: radial-gradient(
-    ellipse at top left,
-    rgba(255, 255, 255, 0.5) 0%,
-    transparent 70%
-  );
+  background: radial-gradient(ellipse at top left, rgba(255, 255, 255, 0.5) 0%, transparent 70%);
   border-radius: inherit;
   pointer-events: none;
   z-index: 0;

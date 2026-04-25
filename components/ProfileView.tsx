@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useClerk } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Settings, LogOut, Sparkles } from "lucide-react";
+import { X, Settings, LogOut, Sparkles, CreditCard } from "lucide-react";
 import UserAvatar from "./UserAvatar";
 
 interface ProfileViewProps {
@@ -35,7 +35,7 @@ export default function ProfileView({
             setUserPlan(data.plan || "free");
           }
         } catch {
-          // Erreur silencieuse
+          // silent
         }
       };
       fetchPlan();
@@ -43,150 +43,232 @@ export default function ProfileView({
   }, [isOpen]);
 
   const handleSignOut = async () => {
-    await signOut({ redirectUrl: '/sign-in' });
+    await signOut({ redirectUrl: "/sign-in" });
     onClose();
   };
+
+  const planLabel =
+    userPlan === "free" ? "Free" :
+    userPlan === "student" ? "Student" :
+    userPlan === "pro" ? "Pro" :
+    userPlan === "business" ? "Business" :
+    userPlan;
+
+  const menuItems = [
+    {
+      icon: Settings,
+      label: "Paramètres",
+      action: () => { router.push("/settings/preferences"); onClose(); },
+    },
+    userPlan === "free" ? {
+      icon: Sparkles,
+      label: "Passer au forfait supérieur",
+      action: () => { router.push("/pricing"); onClose(); },
+      highlight: true,
+    } : {
+      icon: CreditCard,
+      label: "Gérer mon abonnement",
+      action: () => { router.push("/settings"); onClose(); },
+    },
+  ];
 
   return (
     <AnimatePresence>
       {isOpen && (
         <React.Fragment key="profile-view">
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        onClick={onClose}
-        className="fixed inset-0 bg-black/20 backdrop-blur-sm z-50"
-      />
-      <motion.div
-        initial={{ opacity: 0, x: 100 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: 100 }}
-        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-        className="fixed top-0 right-0 bottom-0 w-full max-w-sm bg-white/90 backdrop-blur-2xl border-l border-white/80 shadow-xl z-50 rounded-l-[3rem]"
-      >
-        <div className="p-8 pt-12">
-          <button
-            onClick={onClose}
-            className="absolute top-6 right-6 p-2 rounded-full hover:bg-gray-100 transition-colors"
-          >
-            <X className="w-5 h-5 text-gray-600" />
-          </button>
-
-          <div className="flex flex-col items-center gap-4 mb-8">
-            <div className="rounded-full border-4 border-white/80 shadow-lg">
-              <UserAvatar size="xl" />
-            </div>
-            <h2 className="text-xl font-bold text-gray-900">
-              {userName || "Utilisateur"}
-            </h2>
-          </div>
-
-          <div className="space-y-2">
-            <motion.button
-              whileHover={{ x: 4 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => {
-                router.push("/settings/preferences");
-                onClose();
-              }}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/60 border border-white/50 text-gray-900 font-medium hover:bg-white/90 transition-all"
-            >
-              <Settings className="w-5 h-5" />
-              Paramètres
-            </motion.button>
-
-            {userPlan === "free" && (
-              <motion.button
-                whileHover={{ x: 4 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => {
-                  router.push("/pricing");
-                  onClose();
-                }}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/60 border border-white/50 text-gray-900 font-medium hover:bg-white/90 transition-all"
-              >
-                <Sparkles className="w-5 h-5" />
-                Passer au forfait supérieur
-              </motion.button>
-            )}
-
-            {userPlan !== "free" && (
-              <motion.button
-                whileHover={{ x: 4 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => {
-                  router.push("/settings");
-                  onClose();
-                }}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/60 border border-white/50 text-gray-900 font-medium hover:bg-white/90 transition-all"
-              >
-                <Settings className="w-5 h-5" />
-                Gérer mon abonnement
-              </motion.button>
-            )}
-
-            <motion.button
-              whileHover={{ x: 4 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setShowLogoutConfirm(true)}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl bg-gray-900 text-white font-bold hover:bg-gray-800 transition-all"
-            >
-              <LogOut className="w-5 h-5" />
-              Déconnexion
-            </motion.button>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* Modale de confirmation de déconnexion — responsive mobile */}
-      <AnimatePresence>
-        {showLogoutConfirm && (
+          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setShowLogoutConfirm(false)}
-            className="fixed inset-0 min-h-[100dvh] bg-black/50 z-[60] flex items-center justify-center p-4 overflow-y-auto overscroll-contain"
-            aria-hidden="true"
+            onClick={onClose}
+            className="fixed inset-0 z-50"
+            style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)" }}
+          />
+
+          {/* Panel — slide from top-right */}
+          <motion.div
+            initial={{ opacity: 0, y: -12, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.96 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="fixed z-50 rounded-2xl"
+            style={{
+              top: 68,
+              right: 16,
+              width: 280,
+              background: "#141619",
+              border: "1px solid rgba(255,255,255,0.10)",
+              boxShadow: "0 24px 64px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04)",
+            }}
           >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              onClick={(e) => e.stopPropagation()}
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="logout-confirm-title"
-              className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6"
+            {/* Close */}
+            <button
+              onClick={onClose}
+              className="absolute top-3 right-3 p-1.5 rounded-lg transition-colors z-10"
+              style={{ color: "rgba(237,236,232,0.35)" }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+                e.currentTarget.style.color = "rgba(237,236,232,0.7)";
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.color = "rgba(237,236,232,0.35)";
+              }}
             >
-              <h3 id="logout-confirm-title" className="text-xl font-bold text-gray-900 mb-2">
-                Déconnexion
-              </h3>
-              <p className="text-gray-600 mb-6">
-                Êtes-vous sûr de vouloir vous déconnecter ?
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowLogoutConfirm(false)}
-                  className="flex-1 px-6 py-3 min-h-[44px] bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSignOut}
-                  className="flex-1 px-6 py-3 min-h-[44px] bg-red-600 hover:bg-red-700 text-white font-medium rounded-xl transition-colors"
-                >
-                  Se déconnecter
-                </button>
+              <X style={{ width: 14, height: 14 }} />
+            </button>
+
+            {/* User header */}
+            <div
+              className="flex items-center gap-3 p-4 pb-3"
+              style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}
+            >
+              <div className="shrink-0">
+                <UserAvatar size="md" />
               </div>
-            </motion.div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold truncate text-sm" style={{ color: "#EDECE8" }}>
+                  {userName || "Utilisateur"}
+                </p>
+                <div
+                  className="inline-flex items-center gap-1 mt-0.5 px-2 py-0.5 rounded-full text-xs font-semibold"
+                  style={{
+                    background: "rgba(139,92,246,0.15)",
+                    color: "#A78BFA",
+                    border: "1px solid rgba(139,92,246,0.2)",
+                  }}
+                >
+                  <Sparkles style={{ width: 10, height: 10 }} />
+                  {planLabel}
+                </div>
+              </div>
+            </div>
+
+            {/* Menu items */}
+            <div className="p-2">
+              {menuItems.map((item) => (
+                <motion.button
+                  key={item.label}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={item.action}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left"
+                  style={{
+                    color: item.highlight ? "#A78BFA" : "rgba(237,236,232,0.65)",
+                    background: item.highlight ? "rgba(139,92,246,0.08)" : "transparent",
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = item.highlight
+                      ? "rgba(139,92,246,0.15)"
+                      : "rgba(255,255,255,0.06)";
+                    e.currentTarget.style.color = item.highlight ? "#C4B5FD" : "#EDECE8";
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = item.highlight ? "rgba(139,92,246,0.08)" : "transparent";
+                    e.currentTarget.style.color = item.highlight ? "#A78BFA" : "rgba(237,236,232,0.65)";
+                  }}
+                >
+                  <item.icon style={{ width: 15, height: 15, flexShrink: 0 }} />
+                  {item.label}
+                </motion.button>
+              ))}
+            </div>
+
+            {/* Divider + Logout */}
+            <div
+              className="p-2 pt-0"
+              style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
+            >
+              <motion.button
+                whileTap={{ scale: 0.97 }}
+                onClick={() => setShowLogoutConfirm(true)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left mt-2"
+                style={{ color: "rgba(239,68,68,0.6)" }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = "rgba(239,68,68,0.08)";
+                  e.currentTarget.style.color = "#EF4444";
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.color = "rgba(239,68,68,0.6)";
+                }}
+              >
+                <LogOut style={{ width: 15, height: 15, flexShrink: 0 }} />
+                Déconnexion
+              </motion.button>
+            </div>
           </motion.div>
-        )}
-      </AnimatePresence>
+
+          {/* Logout confirm */}
+          <AnimatePresence>
+            {showLogoutConfirm && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setShowLogoutConfirm(false)}
+                className="fixed inset-0 z-[60] flex items-center justify-center p-4"
+                style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}
+                aria-hidden="true"
+              >
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.92, y: 8 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.92, y: 8 }}
+                  transition={{ type: "spring", damping: 28, stiffness: 320 }}
+                  onClick={(e) => e.stopPropagation()}
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="logout-confirm-title"
+                  className="w-full max-w-sm rounded-2xl p-6"
+                  style={{
+                    background: "#141619",
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    boxShadow: "0 32px 64px rgba(0,0,0,0.8)",
+                  }}
+                >
+                  <h3
+                    id="logout-confirm-title"
+                    className="text-lg font-bold mb-1.5"
+                    style={{ color: "#EDECE8" }}
+                  >
+                    Déconnexion
+                  </h3>
+                  <p className="text-sm mb-6" style={{ color: "rgba(237,236,232,0.5)" }}>
+                    Êtes-vous sûr de vouloir vous déconnecter ?
+                  </p>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setShowLogoutConfirm(false)}
+                      className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
+                      style={{
+                        background: "rgba(255,255,255,0.06)",
+                        border: "1px solid rgba(255,255,255,0.10)",
+                        color: "rgba(237,236,232,0.7)",
+                      }}
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSignOut}
+                      className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
+                      style={{
+                        background: "rgba(239,68,68,0.15)",
+                        border: "1px solid rgba(239,68,68,0.25)",
+                        color: "#EF4444",
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.background = "rgba(239,68,68,0.25)")}
+                      onMouseLeave={e => (e.currentTarget.style.background = "rgba(239,68,68,0.15)")}
+                    >
+                      Se déconnecter
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </React.Fragment>
       )}
     </AnimatePresence>

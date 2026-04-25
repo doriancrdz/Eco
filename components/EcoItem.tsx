@@ -28,7 +28,6 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
   const renameInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
 
-  // Charger les dossiers depuis l'API
   useEffect(() => {
     const loadFolders = async () => {
       try {
@@ -37,13 +36,8 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
           const data = await response.json();
           setFolders(data.folders || []);
         }
-      } catch (error) {
-        if (process.env.NODE_ENV === "development") {
-          console.error("Erreur lors du chargement des dossiers:", error);
-        }
-      }
+      } catch { /* silent */ }
     };
-    
     loadFolders();
     window.addEventListener("folders-updated", loadFolders);
     return () => window.removeEventListener("folders-updated", loadFolders);
@@ -56,11 +50,8 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
     }
   }, [isRenaming]);
 
-  // Mettre à jour la valeur du rename si l'ECO change
   useEffect(() => {
-    if (!isRenaming) {
-      setRenameValue(eco.title);
-    }
+    if (!isRenaming) setRenameValue(eco.title);
   }, [eco.title, isRenaming]);
 
   const handleRename = async () => {
@@ -70,26 +61,18 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
       setIsRenaming(false);
       return;
     }
-
     try {
       const response = await fetch(`/api/ecos/${eco.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ title: trimmed }),
       });
-
-      if (!response.ok) {
-        throw new Error("Erreur lors du renommage");
-      }
-
+      if (!response.ok) throw new Error("Erreur lors du renommage");
       window.dispatchEvent(new Event("eco-updated"));
       onUpdate?.();
       setIsRenaming(false);
       toast.success("ECO renommé");
-    } catch (error) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Erreur lors du renommage:", error);
-      }
+    } catch {
       setRenameValue(eco.title);
       setIsRenaming(false);
       toast.error("Erreur lors du renommage.");
@@ -97,13 +80,8 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
   };
 
   const handleRenameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleRename();
-    } else if (e.key === "Escape") {
-      setRenameValue(eco.title);
-      setIsRenaming(false);
-    }
+    if (e.key === "Enter") { e.preventDefault(); handleRename(); }
+    else if (e.key === "Escape") { setRenameValue(eco.title); setIsRenaming(false); }
   };
 
   const handleMoveToFolder = async (folderId: string | null) => {
@@ -114,18 +92,13 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-
       if (!response.ok) {
         const err = await response.json().catch(() => ({}));
         throw new Error(err.error || "Erreur lors du déplacement");
       }
-
       window.dispatchEvent(new Event("eco-updated"));
       onUpdate?.();
     } catch (error) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Erreur lors du déplacement:", error);
-      }
       toast.error(error instanceof Error ? error.message : "Erreur lors du déplacement de l'ECO.");
     }
   };
@@ -133,47 +106,27 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
   const handleCreateFolder = async () => {
     const trimmed = newFolderName.trim();
     if (!trimmed || isCreating) return;
-
     setIsCreating(true);
     try {
-      // Créer le dossier
       const folderResponse = await fetch("/api/folders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: trimmed }),
       });
-
-      if (!folderResponse.ok) {
-        throw new Error("Erreur lors de la création du dossier");
-      }
-
+      if (!folderResponse.ok) throw new Error("Erreur lors de la création du dossier");
       const newFolder = await folderResponse.json();
-      
-      // Déplacer l'ECO dans le nouveau dossier
       const moveResponse = await fetch(`/api/ecos/${eco.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ folderId: newFolder.id }),
       });
-
-      if (!moveResponse.ok) {
-        throw new Error("Erreur lors du déplacement de l'ECO");
-      }
-
-      // Déclencher les événements de mise à jour
+      if (!moveResponse.ok) throw new Error("Erreur lors du déplacement de l'ECO");
       window.dispatchEvent(new Event("folders-updated"));
       window.dispatchEvent(new Event("eco-updated"));
-      
-      // Réinitialiser l'état
       setIsCreatingFolder(false);
       setNewFolderName("");
       onUpdate?.();
-      
-      // Le menu se fermera automatiquement via le click outside handler
-    } catch (error) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Erreur lors de la création du dossier:", error);
-      }
+    } catch {
       toast.error("Erreur lors de la création du dossier.");
     } finally {
       setIsCreating(false);
@@ -181,19 +134,12 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
   };
 
   const handleCreateFolderKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleCreateFolder();
-    } else if (e.key === "Escape") {
-      setIsCreatingFolder(false);
-      setNewFolderName("");
-    }
+    if (e.key === "Enter") { e.preventDefault(); handleCreateFolder(); }
+    else if (e.key === "Escape") { setIsCreatingFolder(false); setNewFolderName(""); }
   };
 
   useEffect(() => {
-    if (isCreatingFolder && folderInputRef.current) {
-      folderInputRef.current.focus();
-    }
+    if (isCreatingFolder && folderInputRef.current) folderInputRef.current.focus();
   }, [isCreatingFolder]);
 
   const handleArchive = async () => {
@@ -207,10 +153,7 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
       window.dispatchEvent(new Event("eco-updated"));
       onUpdate?.();
       onDelete?.();
-    } catch (error) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Erreur lors de l'archivage:", error);
-      }
+    } catch {
       toast.error("Erreur lors de l'archivage de l'ECO.");
     }
   };
@@ -218,74 +161,71 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      const response = await fetch(`/api/ecos/${eco.id}`, {
-        method: "DELETE",
-      });
-
-      if (!response.ok) {
-        throw new Error("Erreur lors de la suppression");
-      }
-
+      const response = await fetch(`/api/ecos/${eco.id}`, { method: "DELETE" });
+      if (!response.ok) throw new Error("Erreur lors de la suppression");
       window.dispatchEvent(new Event("eco-updated"));
       onDelete?.();
       setShowDeleteDialog(false);
-    } catch (error) {
-      if (process.env.NODE_ENV === "development") {
-        console.error("Erreur lors de la suppression:", error);
-      }
+    } catch {
       toast.error("Erreur lors de la suppression de l'ECO.");
     } finally {
       setIsDeleting(false);
     }
   };
 
-  // Construire les items du sous-menu "Déplacer vers…"
+  const inputDarkStyle = {
+    background: "rgba(255,255,255,0.06)",
+    border: "1px solid rgba(255,255,255,0.12)",
+    color: "#EDECE8",
+    borderRadius: 8,
+    padding: "4px 8px",
+    fontSize: 13,
+    outline: "none",
+    width: "100%",
+  };
+
   const moveToFolderSubmenu = [
     ...(isCreatingFolder
-      ? [
-          {
-            label: "",
-            onClick: undefined,
-            customContent: (
-              <div className="px-4 py-2 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                <FolderPlus className="w-4 h-4 text-gray-600 shrink-0" />
-                <input
-                  ref={folderInputRef}
-                  type="text"
-                  value={newFolderName}
-                  onChange={(e) => setNewFolderName(e.target.value)}
-                  onKeyDown={handleCreateFolderKeyDown}
-                  onBlur={() => {
-                    // Ne pas fermer si on clique ailleurs dans le menu
-                    setTimeout(() => {
-                      if (!folderInputRef.current?.matches(":focus")) {
-                        setIsCreatingFolder(false);
-                        setNewFolderName("");
-                      }
-                    }, 200);
-                  }}
-                  placeholder="Nom du dossier"
-                  disabled={isCreating}
-                  className="flex-1 bg-white/30 border border-white/40 rounded-lg px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-white/40 text-gray-800 disabled:opacity-50"
-                  onClick={(e) => e.stopPropagation()}
+      ? [{
+          label: "",
+          onClick: undefined,
+          customContent: (
+            <div className="px-3 py-2 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+              <FolderPlus className="w-4 h-4 shrink-0" style={{ color: "rgba(237,236,232,0.5)" }} />
+              <input
+                ref={folderInputRef}
+                type="text"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                onKeyDown={handleCreateFolderKeyDown}
+                onBlur={() => {
+                  setTimeout(() => {
+                    if (!folderInputRef.current?.matches(":focus")) {
+                      setIsCreatingFolder(false);
+                      setNewFolderName("");
+                    }
+                  }, 200);
+                }}
+                placeholder="Nom du dossier"
+                disabled={isCreating}
+                style={inputDarkStyle}
+                onClick={(e) => e.stopPropagation()}
+              />
+              {isCreating && (
+                <div
+                  className="w-4 h-4 border-2 border-t-transparent rounded-full animate-spin shrink-0"
+                  style={{ borderColor: "rgba(139,92,246,0.6)", borderTopColor: "transparent" }}
                 />
-                {isCreating && (
-                  <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin shrink-0" />
-                )}
-              </div>
-            ),
-          },
-        ]
-      : [
-          {
-            label: "Nouveau dossier…",
-            onClick: async () => {
-              setIsCreatingFolder(true);
-              // Ne pas fermer le menu ici
-            },
-            icon: <FolderPlus className="w-4 h-4" />,
-          },
-        ]),
+              )}
+            </div>
+          ),
+        }]
+      : [{
+          label: "Nouveau dossier…",
+          onClick: async () => { setIsCreatingFolder(true); },
+          icon: <FolderPlus className="w-4 h-4" />,
+        }]
+    ),
     ...(eco.folder ? [{ label: "Aucun dossier", onClick: () => handleMoveToFolder(null) }] : []),
     ...folders
       .filter((f) => f.id !== eco.folder)
@@ -296,26 +236,10 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
   ];
 
   const menuItems = [
-    {
-      label: "Renommer",
-      onClick: () => {
-        setIsRenaming(true);
-      },
-    },
-    {
-      label: "Déplacer vers…",
-      submenu: moveToFolderSubmenu,
-    },
-    {
-      label: "Archiver",
-      onClick: handleArchive,
-      icon: <Archive className="w-4 h-4" />,
-    },
-    {
-      label: "Supprimer",
-      onClick: () => setShowDeleteDialog(true),
-      danger: true,
-    },
+    { label: "Renommer", onClick: () => { setIsRenaming(true); } },
+    { label: "Déplacer vers…", submenu: moveToFolderSubmenu },
+    { label: "Archiver", onClick: handleArchive, icon: <Archive className="w-4 h-4" /> },
+    { label: "Supprimer", onClick: () => setShowDeleteDialog(true), danger: true },
   ];
 
   return (
@@ -323,14 +247,19 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
       <motion.div
         whileHover={{ x: 2 }}
         whileTap={{ scale: 0.98 }}
-        className={`group relative w-full text-left px-4 py-2.5 rounded-xl transition-all cursor-pointer flex items-center gap-2 ${
-          isSelected ? "bg-white/25" : "hover:bg-white/20"
-        }`}
+        className="group relative w-full text-left px-3 py-2 rounded-xl transition-all cursor-pointer flex items-center gap-2"
+        style={{
+          background: isSelected ? "rgba(139,92,246,0.12)" : "transparent",
+          borderLeft: isSelected ? "2px solid rgba(139,92,246,0.4)" : "2px solid transparent",
+        }}
+        onMouseEnter={e => {
+          if (!isSelected) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)";
+        }}
+        onMouseLeave={e => {
+          if (!isSelected) (e.currentTarget as HTMLElement).style.background = "transparent";
+        }}
       >
-        <div
-          className="flex-1 flex flex-col gap-0.5 min-w-0"
-          onClick={() => onSelect(eco)}
-        >
+        <div className="flex-1 flex flex-col gap-0.5 min-w-0" onClick={() => onSelect(eco)}>
           {isRenaming ? (
             <input
               ref={renameInputRef}
@@ -339,15 +268,15 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
               onChange={(e) => setRenameValue(e.target.value)}
               onBlur={handleRename}
               onKeyDown={handleRenameKeyDown}
-              className="font-medium text-sm text-gray-800 bg-white/30 border border-white/40 rounded-lg px-2 py-1 outline-none focus:ring-2 focus:ring-white/40 w-full"
+              style={inputDarkStyle}
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
-            <span className="font-medium text-sm text-gray-800 truncate">
+            <span className="font-medium text-sm truncate" style={{ color: isSelected ? "#EDECE8" : "rgba(237,236,232,0.75)" }}>
               {eco.title}
             </span>
           )}
-          <div className="flex items-center gap-1 text-xs text-gray-400 flex-wrap">
+          <div className="flex items-center gap-1 text-xs flex-wrap" style={{ color: "rgba(237,236,232,0.3)" }}>
             <span>
               {new Date(eco.created_at).toLocaleDateString("fr-FR", {
                 day: "numeric",
@@ -357,18 +286,18 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
             </span>
             {eco.duration_seconds != null && eco.duration_seconds > 0 && (
               <>
-                <span className="text-gray-300">·</span>
+                <span style={{ color: "rgba(237,236,232,0.15)" }}>·</span>
                 <span>{Math.max(1, Math.round(eco.duration_seconds / 60))} min</span>
               </>
             )}
             {eco.source_type === "screen" ? (
               <>
-                <span className="text-gray-300">·</span>
+                <span style={{ color: "rgba(237,236,232,0.15)" }}>·</span>
                 <Monitor className="w-3 h-3 shrink-0" />
               </>
             ) : (
               <>
-                <span className="text-gray-300">·</span>
+                <span style={{ color: "rgba(237,236,232,0.15)" }}>·</span>
                 <Mic className="w-3 h-3 shrink-0" />
               </>
             )}
@@ -378,7 +307,7 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
                 const words = parsed?.resume?.trim().split(/\s+/).filter(Boolean).length ?? 0;
                 return words > 0 ? (
                   <>
-                    <span className="text-gray-300">·</span>
+                    <span style={{ color: "rgba(237,236,232,0.15)" }}>·</span>
                     <span>{words} mots</span>
                   </>
                 ) : null;
@@ -386,8 +315,8 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
             })()}
             {eco.has_pdf_context && (
               <>
-                <span className="text-gray-300">·</span>
-                <FileText className="w-3 h-3 shrink-0 text-violet-500" />
+                <span style={{ color: "rgba(237,236,232,0.15)" }}>·</span>
+                <FileText className="w-3 h-3 shrink-0" style={{ color: "#A78BFA" }} />
               </>
             )}
           </div>
@@ -398,10 +327,13 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
         >
           <DropdownMenu items={menuItems} align="right">
             <button
-              className="p-1 rounded-lg hover:bg-white/20 transition-colors focus:outline-none focus:ring-2 focus:ring-white/40"
+              className="p-1 rounded-lg transition-colors focus:outline-none"
+              style={{ color: "rgba(237,236,232,0.35)" }}
+              onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
+              onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
               aria-label="Menu d'actions"
             >
-              <MoreHorizontal className="w-4 h-4 text-gray-600" />
+              <MoreHorizontal className="w-4 h-4" />
             </button>
           </DropdownMenu>
         </div>
@@ -417,14 +349,26 @@ export default function EcoItem({ eco, isSelected, onSelect, onUpdate, onDelete 
           <button
             onClick={() => setShowDeleteDialog(false)}
             disabled={isDeleting}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-gray-200 disabled:opacity-50"
+            className="px-4 py-2 text-sm font-medium rounded-xl transition-all disabled:opacity-50"
+            style={{
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.10)",
+              color: "rgba(237,236,232,0.7)",
+            }}
           >
             Annuler
           </button>
           <button
             onClick={handleDelete}
             disabled={isDeleting}
-            className="px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors focus:outline-none focus:ring-2 focus:ring-red-400 disabled:opacity-50"
+            className="px-4 py-2 text-sm font-semibold rounded-xl transition-all disabled:opacity-50"
+            style={{
+              background: "rgba(239,68,68,0.15)",
+              border: "1px solid rgba(239,68,68,0.25)",
+              color: "#EF4444",
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = "rgba(239,68,68,0.25)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "rgba(239,68,68,0.15)")}
           >
             {isDeleting ? "Suppression..." : "Supprimer"}
           </button>

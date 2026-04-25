@@ -36,9 +36,7 @@ export default function FolderItem({
   }, [isRenaming]);
 
   useEffect(() => {
-    if (!isRenaming) {
-      setRenameValue(folder.name);
-    }
+    if (!isRenaming) setRenameValue(folder.name);
   }, [folder.name, isRenaming]);
 
   const handleRename = async () => {
@@ -59,8 +57,7 @@ export default function FolderItem({
       onUpdate?.();
       setIsRenaming(false);
       toast.success("Dossier renommé");
-    } catch (error) {
-      console.error("Erreur lors du renommage:", error);
+    } catch {
       setRenameValue(folder.name);
       setIsRenaming(false);
       toast.error("Erreur lors du renommage.");
@@ -68,21 +65,14 @@ export default function FolderItem({
   };
 
   const handleRenameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleRename();
-    } else if (e.key === "Escape") {
-      setRenameValue(folder.name);
-      setIsRenaming(false);
-    }
+    if (e.key === "Enter") { e.preventDefault(); handleRename(); }
+    else if (e.key === "Escape") { setRenameValue(folder.name); setIsRenaming(false); }
   };
 
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
-      const response = await fetch(`/api/folders/${folder.id}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(`/api/folders/${folder.id}`, { method: "DELETE" });
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || "Erreur lors de la suppression");
@@ -92,7 +82,6 @@ export default function FolderItem({
       onUpdate?.();
       setShowDeleteDialog(false);
     } catch (error) {
-      console.error("Erreur lors de la suppression:", error);
       toast.error(error instanceof Error ? error.message : "Erreur lors de la suppression du dossier.");
     } finally {
       setIsDeleting(false);
@@ -100,19 +89,8 @@ export default function FolderItem({
   };
 
   const menuItems = [
-    {
-      label: "Renommer",
-      onClick: () => {
-        if (!isDefault) setIsRenaming(true);
-      },
-      disabled: isDefault,
-    },
-    {
-      label: "Supprimer",
-      onClick: () => setShowDeleteDialog(true),
-      danger: true,
-      disabled: isDefault,
-    },
+    { label: "Renommer", onClick: () => { if (!isDefault) setIsRenaming(true); }, disabled: isDefault },
+    { label: "Supprimer", onClick: () => setShowDeleteDialog(true), danger: true, disabled: isDefault },
   ];
 
   return (
@@ -120,20 +98,26 @@ export default function FolderItem({
       <motion.div
         whileHover={{ x: 2 }}
         whileTap={{ scale: 0.98 }}
-        className="group relative w-full text-left flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-700 hover:bg-white/20 transition-all cursor-pointer"
+        className="group relative w-full text-left flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer"
+        style={{ color: "rgba(237,236,232,0.65)" }}
+        onMouseEnter={e => {
+          (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)";
+          (e.currentTarget as HTMLElement).style.color = "rgba(237,236,232,0.9)";
+        }}
+        onMouseLeave={e => {
+          (e.currentTarget as HTMLElement).style.background = "transparent";
+          (e.currentTarget as HTMLElement).style.color = "rgba(237,236,232,0.65)";
+        }}
       >
-        <div
-          className="flex-1 flex items-center gap-3 min-w-0"
-          onClick={onToggle}
-        >
+        <div className="flex-1 flex items-center gap-2 min-w-0" onClick={onToggle}>
           <motion.span
             animate={{ rotate: isExpanded ? 90 : 0 }}
             transition={{ duration: 0.2 }}
             className="shrink-0"
           >
-            <ChevronRight className="w-4 h-4 text-gray-500" />
+            <ChevronRight className="w-3.5 h-3.5" style={{ color: "rgba(237,236,232,0.3)" }} />
           </motion.span>
-          <Folder className="w-4 h-4 shrink-0" />
+          <Folder className="w-4 h-4 shrink-0" style={{ color: "rgba(237,236,232,0.4)" }} />
           {isRenaming ? (
             <input
               ref={renameInputRef}
@@ -143,7 +127,12 @@ export default function FolderItem({
               onBlur={handleRename}
               onKeyDown={handleRenameKeyDown}
               onClick={(e) => e.stopPropagation()}
-              className="flex-1 bg-white/30 border border-white/40 rounded-lg px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-white/40 text-gray-800"
+              className="flex-1 rounded-lg px-2 py-0.5 text-sm outline-none"
+              style={{
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid rgba(139,92,246,0.3)",
+                color: "#EDECE8",
+              }}
             />
           ) : (
             <span className="truncate flex-1">{folder.name}</span>
@@ -155,10 +144,13 @@ export default function FolderItem({
         >
           <DropdownMenu items={menuItems} align="right">
             <button
-              className="p-1 rounded-lg hover:bg-white/20 transition-colors focus:outline-none focus:ring-2 focus:ring-white/40"
+              className="p-1 rounded-lg transition-colors focus:outline-none"
+              style={{ color: "rgba(237,236,232,0.3)" }}
+              onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
+              onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
               aria-label="Menu d'actions"
             >
-              <MoreHorizontal className="w-4 h-4 text-gray-600" />
+              <MoreHorizontal className="w-4 h-4" />
             </button>
           </DropdownMenu>
         </div>
@@ -174,14 +166,26 @@ export default function FolderItem({
           <button
             onClick={() => setShowDeleteDialog(false)}
             disabled={isDeleting}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-gray-200 disabled:opacity-50"
+            className="px-4 py-2 text-sm font-medium rounded-xl transition-all disabled:opacity-50"
+            style={{
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.10)",
+              color: "rgba(237,236,232,0.7)",
+            }}
           >
             Annuler
           </button>
           <button
             onClick={handleDelete}
             disabled={isDeleting}
-            className="px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-xl transition-all focus:outline-none focus:ring-2 focus:ring-red-400 disabled:opacity-50"
+            className="px-4 py-2 text-sm font-semibold rounded-xl transition-all disabled:opacity-50"
+            style={{
+              background: "rgba(239,68,68,0.15)",
+              border: "1px solid rgba(239,68,68,0.25)",
+              color: "#EF4444",
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = "rgba(239,68,68,0.25)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "rgba(239,68,68,0.15)")}
           >
             {isDeleting ? "Suppression..." : "Supprimer"}
           </button>

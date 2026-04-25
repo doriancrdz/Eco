@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Clock } from "lucide-react";
+import { Zap } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface BillingMeResponse {
@@ -25,24 +25,16 @@ export default function PlanBadge() {
         if (res.ok) {
           const json = await res.json();
           setData(json);
-          if (process.env.NODE_ENV !== "production") {
-            console.log("[PlanBadge] quota after fetch", { availableMinutes: json.availableMinutes });
-          }
         }
       } catch {
-        // Erreur silencieuse
+        // silent
       } finally {
         setLoading(false);
       }
     };
 
     fetchBilling();
-    const onQuotaUpdated = () => {
-      if (process.env.NODE_ENV !== "production") {
-        console.log("[PlanBadge] quota-updated, refetch");
-      }
-      fetchBilling();
-    };
+    const onQuotaUpdated = () => fetchBilling();
     window.addEventListener("quota-updated", onQuotaUpdated);
     return () => window.removeEventListener("quota-updated", onQuotaUpdated);
   }, []);
@@ -59,17 +51,14 @@ export default function PlanBadge() {
     plan === "business" ? "Business" :
     plan;
 
-  const isPaid = plan !== "free";
-
   if (loading) {
     return (
       <div
-        className="rounded-full px-4 py-2 flex items-center gap-2 h-9 animate-pulse bg-[#f6f5f4] border border-[#e7e6e4]"
-        style={{ minWidth: 120 }}
+        className="eco-plan-badge"
+        style={{ minWidth: 100, opacity: 0.5 }}
       >
-        <div className="w-4 h-4 rounded bg-[#e7e6e4]" />
-        <div className="h-3 rounded w-8 bg-[#e7e6e4]" />
-        <div className="h-3 rounded w-12 bg-[#e7e6e4]" />
+        <div className="eco-skeleton w-3 h-3 rounded" />
+        <div className="eco-skeleton h-3 w-16 rounded" />
       </div>
     );
   }
@@ -78,32 +67,40 @@ export default function PlanBadge() {
 
   return (
     <motion.button
-      initial={{ opacity: 0, y: -8 }}
+      initial={{ opacity: 0, y: -6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
       onClick={() => router.push("/settings")}
-      className="relative overflow-hidden rounded-full px-4 pt-2 pb-3 flex items-center gap-2 text-sm font-bold cursor-pointer transition-all hover:scale-105 bg-[#f6f5f4] border border-[#e7e6e4] text-[#131211] hover:bg-[#eeede9]"
+      className="eco-plan-badge"
+      style={{ position: "relative" }}
     >
-      <Clock className="w-4 h-4 shrink-0 text-[#8b8884]" />
+      <Zap style={{ width: 13, height: 13, flexShrink: 0, color: "#8B5CF6" }} />
 
-      {/* Mobile : minutes seules */}
-      <span className="sm:hidden font-bold">
+      {/* Mobile */}
+      <span className="sm:hidden font-semibold text-xs" style={{ color: "#EDECE8" }}>
         {minutesLeft} min
       </span>
 
-      {/* Desktop : minutes / total */}
-      <span className="hidden sm:inline font-bold">
+      {/* Desktop */}
+      <span className="hidden sm:inline font-semibold text-xs" style={{ color: "#EDECE8" }}>
         {minutesLeft} / {totalMinutes} min
       </span>
 
-      <span className="text-[#8b8884]">|</span>
-      <span className="font-bold">{planLabel}</span>
+      <span style={{ color: "rgba(237,236,232,0.25)", fontSize: 11 }}>·</span>
+      <span className="font-bold text-xs" style={{ color: "#EDECE8" }}>{planLabel}</span>
 
-      {/* Barre de progression — desktop uniquement */}
-      <div className="hidden sm:block absolute bottom-0 left-0 right-0 h-1 bg-[#e7e6e4]">
+      {/* Progress bar */}
+      <div
+        className="hidden sm:block absolute bottom-0 left-0 right-0 rounded-b-full overflow-hidden"
+        style={{ height: 2, background: "rgba(255,255,255,0.08)" }}
+      >
         <div
-          className="h-full bg-gradient-to-r from-teal-400 via-blue-400 to-indigo-400 transition-[width] duration-500"
-          style={{ width: `${percentage}%` }}
+          style={{
+            width: `${percentage}%`,
+            height: "100%",
+            background: "linear-gradient(90deg, #8B5CF6 0%, #06B6D4 100%)",
+            transition: "width 0.5s ease",
+          }}
         />
       </div>
     </motion.button>

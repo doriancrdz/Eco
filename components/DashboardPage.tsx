@@ -1285,8 +1285,8 @@ export default function DashboardPage() {
   // Desktop : FocusMode plein écran exclusif
   if (isDesktop && isFocusMode) {
     return (
-      <div className="min-h-screen text-gray-900 relative overflow-hidden">
-        <div className="fixed inset-0 aura-gradient -z-10" aria-hidden />
+      <div className="min-h-screen relative overflow-hidden">
+        <div className="fixed inset-0 eco-focus-bg -z-10" aria-hidden />
         <FocusMode
           isActive={isFocusMode}
           isRecording={isRecording}
@@ -1341,7 +1341,7 @@ export default function DashboardPage() {
       <>
         {parts.map((part, i) =>
           part.toLowerCase() === query.toLowerCase() ? (
-            <mark key={i} className="bg-yellow-200/90 text-gray-900 rounded px-0.5 not-italic">{part}</mark>
+            <mark key={i} className="rounded px-0.5 not-italic" style={{ background: "rgba(139,92,246,0.25)", color: "#EDECE8" }}>{part}</mark>
           ) : (
             <span key={i}>{part}</span>
           )
@@ -1352,9 +1352,12 @@ export default function DashboardPage() {
   // ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen text-gray-900 flex relative overflow-hidden">
+    <div className="min-h-screen flex relative overflow-hidden" style={{ color: "#EDECE8" }}>
       {/* Background */}
-      <div className="fixed inset-0 bg-[#fafaf9] -z-10" aria-hidden />
+      <div className="fixed inset-0 -z-10 eco-bg" aria-hidden />
+      {/* Ambient glow spots */}
+      <div className="eco-glow-purple -z-10" style={{ top: "10%", left: "60%", position: "fixed" }} aria-hidden />
+      <div className="eco-glow-teal -z-10" style={{ bottom: "20%", left: "30%", position: "fixed" }} aria-hidden />
 
       <>
         {/* Desktop: Sidebar fixe à gauche. Mobile/Tablet: drawer */}
@@ -1435,7 +1438,12 @@ export default function DashboardPage() {
                         <motion.div
                           initial={{ opacity: 0, y: 8 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className="mb-4 px-4 py:3 rounded-xl bg-red-50 border border-red-200 text-red-800 text-center text-sm font-medium max-w-md"
+                          className="mb-4 px-4 py-3 rounded-xl text-center text-sm font-medium max-w-md"
+                          style={{
+                            background: "rgba(239,68,68,0.10)",
+                            border: "1px solid rgba(239,68,68,0.25)",
+                            color: "#FCA5A5",
+                          }}
                         >
                           Paiement échoué — accès suspendu
                         </motion.div>
@@ -1459,16 +1467,16 @@ export default function DashboardPage() {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1, duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
-                        className="mt-4"
+                        className="mt-4 text-center"
                       >
-                        <h1 className="text-3xl font-bold tracking-[-0.04em] text-[#131211]">
+                        <h1 className="text-3xl font-bold tracking-[-0.04em]" style={{ color: "#EDECE8" }}>
                           Bonjour,{" "}
                           {user?.firstName
-                            ? <><span className="italic">{user.firstName}</span>.</>
+                            ? <><span className="italic" style={{ color: "#A78BFA" }}>{user.firstName}</span>.</>
                             : "!"}
                         </h1>
-                        <p className="text-[#8b8884] text-base font-normal mt-1.5">
-                          Prêt à enregistrer un nouveau cours ?
+                        <p className="text-base font-normal mt-2" style={{ color: "rgba(237,236,232,0.4)" }}>
+                          Prêt à transformer ton prochain cours ?
                         </p>
                       </motion.div>
                       <motion.div
@@ -1478,23 +1486,23 @@ export default function DashboardPage() {
                         className="flex flex-col sm:flex-row gap-3 mt-8"
                       >
                         <motion.button
-                          whileHover={{ scale: 1.04, y: -2 }}
+                          whileHover={{ scale: 1.03, y: -2 }}
                           whileTap={{ scale: 0.97 }}
                           onClick={handleStartRecording}
                           disabled={paymentBlocked}
-                          className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm bg-gradient-to-r from-teal-400 via-blue-400 to-indigo-400 text-white shadow-sm hover:opacity-90 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] disabled:opacity-40"
+                          className="eco-btn-primary disabled:opacity-40"
                         >
-                          <Mic className="w-4 h-4 text-white" />
+                          <Mic className="w-4 h-4" />
                           Enregistrer
                         </motion.button>
                         <motion.button
-                          whileHover={{ scale: 1.04, y: -2 }}
+                          whileHover={{ scale: 1.03, y: -2 }}
                           whileTap={{ scale: 0.97 }}
                           onClick={handleStartSystemAudioRecording}
                           disabled={paymentBlocked}
-                          className="flex items-center gap-2 px-6 py-3 rounded-xl font-semibold text-sm bg-white border border-[#e7e6e4] text-[#131211] shadow-sm hover:bg-[#f6f5f4] hover:border-teal-300 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] disabled:opacity-40"
+                          className="eco-btn-secondary disabled:opacity-40"
                         >
-                          <Monitor className="w-4 h-4 text-[#8b8884]" />
+                          <Monitor className="w-4 h-4" style={{ color: "rgba(237,236,232,0.5)" }} />
                           Capturer l&apos;audio
                         </motion.button>
                       </motion.div>
@@ -1517,7 +1525,10 @@ export default function DashboardPage() {
                             <button
                               onClick={() => !isPdfExtracting && setShowPdfPopover(true)}
                               disabled={isPdfExtracting}
-                              className="text-sm text-gray-400 hover:text-gray-600 transition-colors duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] flex items-center gap-1 disabled:opacity-50"
+                              className="text-sm transition-colors duration-200 flex items-center gap-1 disabled:opacity-50"
+                              style={{ color: "rgba(237,236,232,0.35)" }}
+                              onMouseEnter={e => (e.currentTarget.style.color = "rgba(237,236,232,0.6)")}
+                              onMouseLeave={e => (e.currentTarget.style.color = "rgba(237,236,232,0.35)")}
                             >
                               {isPdfExtracting ? (
                                 <>
@@ -1545,11 +1556,16 @@ export default function DashboardPage() {
                                   animate={{ opacity: 1, y: 0 }}
                                   exit={{ opacity: 0, y: 6 }}
                                   transition={{ duration: 0.18, ease: "easeOut" }}
-                                  className="absolute z-50 left-1/2 -translate-x-1/2 mt-3 w-[300px] sm:w-[320px] bg-white rounded-2xl shadow-xl border border-gray-100 p-5 flex flex-col gap-4"
+                                  className="absolute z-50 left-1/2 -translate-x-1/2 mt-3 w-[300px] sm:w-[320px] rounded-2xl p-5 flex flex-col gap-4"
+                                  style={{
+                                    background: "#141619",
+                                    border: "1px solid rgba(255,255,255,0.10)",
+                                    boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
+                                  }}
                                 >
                                   <div>
-                                    <p className="font-semibold text-gray-800 text-sm mb-2">📄 PDF de contexte</p>
-                                    <p className="text-xs text-gray-500 leading-relaxed">
+                                    <p className="font-semibold text-sm mb-2" style={{ color: "#EDECE8" }}>📄 PDF de contexte</p>
+                                    <p className="text-xs leading-relaxed" style={{ color: "rgba(237,236,232,0.5)" }}>
                                       Ajoute un document de cours avant d&apos;enregistrer. L&apos;IA s&apos;appuiera dessus pour mieux comprendre le vocabulaire et les notions de ton cours — le résumé, les points clés et le quiz seront plus précis et adaptés à ton contenu.
                                     </p>
                                   </div>
@@ -1559,13 +1575,18 @@ export default function DashboardPage() {
                                         setShowPdfPopover(false);
                                         pdfInputRef.current?.click();
                                       }}
-                                      className="w-full py-2 rounded-full text-sm font-semibold bg-gradient-to-r from-[#99f6e4] via-[#7dd3fc] to-[#a5b4fc] text-gray-900 hover:opacity-90 transition-all"
+                                      className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all"
+                                      style={{
+                                        background: "linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%)",
+                                        color: "white",
+                                      }}
                                     >
                                       Ajouter un PDF
                                     </button>
                                     <button
                                       onClick={() => setShowPdfPopover(false)}
-                                      className="text-xs text-gray-400 hover:text-gray-600 transition-colors text-center py-1"
+                                      className="text-xs transition-colors text-center py-1"
+                                      style={{ color: "rgba(237,236,232,0.3)" }}
                                     >
                                       Annuler
                                     </button>
@@ -1584,16 +1605,27 @@ export default function DashboardPage() {
                         {/* Liste des PDFs + badge */}
                         {pdfFiles.length > 0 && (
                           <div className="flex flex-col items-center gap-1 mt-1">
-                            <span className="text-xs font-semibold text-gray-600 flex items-center gap-1">
-                              <FileText className="w-3.5 h-3.5" />
+                            <span className="text-xs font-semibold flex items-center gap-1" style={{ color: "rgba(237,236,232,0.5)" }}>
+                              <FileText className="w-3.5 h-3.5" style={{ color: "#A78BFA" }} />
                               PDF de contexte ajouté
                             </span>
                             {pdfFiles.map((pdf, i) => (
-                              <div key={i} className="flex items-center gap-2 text-xs text-gray-500 bg-white/60 border border-white/50 rounded-full px-3 py-1">
+                              <div
+                                key={i}
+                                className="flex items-center gap-2 text-xs rounded-full px-3 py-1"
+                                style={{
+                                  background: "rgba(139,92,246,0.08)",
+                                  border: "1px solid rgba(139,92,246,0.2)",
+                                  color: "rgba(237,236,232,0.6)",
+                                }}
+                              >
                                 <span className="truncate max-w-[180px]">{pdf.name}</span>
                                 <button
                                   onClick={() => removePdf(i)}
-                                  className="text-gray-400 hover:text-red-500 transition-colors font-bold leading-none"
+                                  className="transition-colors font-bold leading-none"
+                                  style={{ color: "rgba(237,236,232,0.35)" }}
+                                  onMouseEnter={e => (e.currentTarget.style.color = "rgba(239,68,68,0.8)")}
+                                  onMouseLeave={e => (e.currentTarget.style.color = "rgba(237,236,232,0.35)")}
                                   aria-label="Supprimer"
                                 >
                                   ×
@@ -1606,28 +1638,34 @@ export default function DashboardPage() {
 
                       {isBillingLoading ? (
                         <div
-                          className="mt-6 px-7 py-3 rounded-full flex items-center gap-2 bg-gray-100 animate-pulse"
-                          style={{ minHeight: 44 }}
+                          className="mt-6 px-7 py-3 rounded-xl flex items-center gap-2 animate-pulse"
+                          style={{ minHeight: 44, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.06)" }}
                         >
-                          <div className="w-4 h-4 rounded bg-gray-300 shrink-0" />
-                          <div className="h-4 w-40 rounded bg-gray-300" />
+                          <div className="w-4 h-4 rounded eco-skeleton shrink-0" />
+                          <div className="h-4 w-40 rounded eco-skeleton" />
                         </div>
                       ) : userPlan === "free" ? (
                         <motion.button
-                          whileHover={{ scale: 1.05, y: -2 }}
+                          whileHover={{ scale: 1.03, y: -2 }}
                           whileTap={{ scale: 0.97 }}
                           onClick={() => router.push("/pricing")}
                           onHoverStart={() => setUpgradeHovered(true)}
                           onHoverEnd={() => setUpgradeHovered(false)}
-                          className="relative mt-6 px-7 py-3 rounded-full font-bold text-sm bg-gradient-to-r from-[#99f6e4] via-[#7dd3fc] to-[#a5b4fc] text-gray-900 shadow-lg hover:shadow-xl border border-white/40 backdrop-blur-sm flex items-center gap-2 transition-all duration-300 overflow-hidden"
+                          className="relative mt-6 px-6 py-3 rounded-xl font-semibold text-sm flex items-center gap-2 transition-all duration-300 overflow-hidden"
+                          style={{
+                            background: "rgba(139,92,246,0.12)",
+                            border: "1px solid rgba(139,92,246,0.3)",
+                            color: "#C4B5FD",
+                          }}
                         >
-                          <Sparkles className="w-4 h-4 shrink-0 relative z-10" />
-                          <span className="relative z-10">Passer à Student — dès 19€/mois</span>
-                          <ArrowRight className="w-4 h-4 shrink-0 relative z-10" />
+                          <Sparkles className="w-4 h-4 shrink-0" />
+                          <span>Passer à Student — dès 19€/mois</span>
+                          <ArrowRight className="w-4 h-4 shrink-0" />
                           <motion.div
-                            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none"
+                            className="absolute inset-0 pointer-events-none"
+                            style={{ background: "linear-gradient(90deg, transparent, rgba(139,92,246,0.15), transparent)" }}
                             animate={{ x: upgradeHovered ? "100%" : "-100%" }}
-                            transition={{ duration: 0.6 }}
+                            transition={{ duration: 0.8 }}
                           />
                         </motion.button>
                       ) : null}
@@ -1640,13 +1678,24 @@ export default function DashboardPage() {
                         className="mt-16 w-full max-w-4xl space-y-4"
                       >
                         <div className="flex items-center justify-between">
-                          <h2 className="text-xl font-medium tracking-[-0.03em] text-gray-800">Tes derniers <em>ECOs</em></h2>
+                          <h2 className="text-lg font-semibold tracking-[-0.03em]" style={{ color: "#EDECE8" }}>
+                            Tes derniers <em style={{ color: "#A78BFA", fontStyle: "italic" }}>ECOs</em>
+                          </h2>
                           {ecos.length > 0 && !isSearchActive && (
                             <button
                               onClick={() => setViewAllEcos(true)}
-                              className="text-sm text-[#8b8884] hover:text-[#131211] transition-colors"
+                              className="text-xs font-medium transition-colors px-3 py-1.5 rounded-lg"
+                              style={{ color: "rgba(237,236,232,0.35)", background: "rgba(255,255,255,0.04)" }}
+                              onMouseEnter={e => {
+                                e.currentTarget.style.color = "rgba(237,236,232,0.7)";
+                                e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+                              }}
+                              onMouseLeave={e => {
+                                e.currentTarget.style.color = "rgba(237,236,232,0.35)";
+                                e.currentTarget.style.background = "rgba(255,255,255,0.04)";
+                              }}
                             >
-                              Voir tout
+                              Voir tout →
                             </button>
                           )}
                         </div>
@@ -1654,18 +1703,25 @@ export default function DashboardPage() {
                         {/* Barre de recherche */}
                         {ecos.length > 0 && (
                           <div className="relative">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                            <Search
+                              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
+                              style={{ color: "rgba(237,236,232,0.3)" }}
+                            />
                             <input
                               type="text"
                               value={searchQuery}
                               onChange={(e) => setSearchQuery(e.target.value)}
                               placeholder="Rechercher dans tes ECOs..."
-                              className="w-full pl-9 pr-8 py-2.5 text-sm bg-[#f6f5f4] border border-[#e7e6e4] rounded-xl outline-none focus:ring-2 focus:ring-teal-100 focus:border-teal-300 transition-all text-[#131211] placeholder:text-[#8b8884]"
+                              className="eco-input"
+                              style={{ paddingLeft: 36 }}
                             />
                             {searchQuery && (
                               <button
                                 onClick={() => setSearchQuery("")}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
+                                style={{ color: "rgba(237,236,232,0.3)" }}
+                                onMouseEnter={e => (e.currentTarget.style.color = "rgba(237,236,232,0.7)")}
+                                onMouseLeave={e => (e.currentTarget.style.color = "rgba(237,236,232,0.3)")}
                               >
                                 <X className="w-3.5 h-3.5" />
                               </button>
@@ -1673,19 +1729,23 @@ export default function DashboardPage() {
                           </div>
                         )}
 
-                        {/* Skeleton loaders pendant le chargement */}
+                        {/* Skeleton loaders */}
                         {isEcosLoading && (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {[0, 1, 2].map((i) => (
                               <div
                                 key={i}
-                                className="bg-white rounded-2xl border border-[#e7e6e4] p-6 animate-pulse"
+                                className="rounded-2xl p-5"
+                                style={{
+                                  background: "#0D0E14",
+                                  border: "1px solid rgba(255,255,255,0.06)",
+                                }}
                               >
                                 <div className="flex items-center gap-3 mb-3">
-                                  <div className="w-5 h-5 rounded-full bg-gray-200 shrink-0" />
-                                  <div className="h-4 bg-gray-200 rounded-full flex-1" />
+                                  <div className="w-7 h-7 rounded-lg eco-skeleton shrink-0" />
+                                  <div className="h-4 eco-skeleton rounded-lg flex-1" />
                                 </div>
-                                <div className="h-3 bg-gray-100 rounded-full w-24" />
+                                <div className="h-3 eco-skeleton rounded-lg w-28" />
                               </div>
                             ))}
                           </div>
@@ -1704,31 +1764,34 @@ export default function DashboardPage() {
                                 return (
                                   <motion.div
                                     key={eco.id}
-                                    initial={{ opacity: 0, y: 20 }}
+                                    initial={{ opacity: 0, y: 16 }}
                                     animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: index * 0.1, duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
-                                    whileHover={{ y: -4, scale: 1.01 }}
+                                    transition={{ delay: index * 0.06, duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+                                    whileHover={{ y: -3 }}
                                     whileTap={{ scale: 0.98 }}
-                                    className="group relative text-left bg-white border border-[#e7e6e4] rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] cursor-pointer"
+                                    className="group relative text-left cursor-pointer eco-card rounded-2xl"
                                   >
                                     {/* Corner brackets */}
-                                    <span className="absolute top-3 left-3 w-2 h-2 border-l-2 border-t-2 border-[#e7e6e4] rounded-tl-sm pointer-events-none" />
-                                    <span className="absolute top-3 right-10 w-2 h-2 border-r-2 border-t-2 border-[#e7e6e4] rounded-tr-sm pointer-events-none" />
-                                    <span className="absolute bottom-3 left-3 w-2 h-2 border-l-2 border-b-2 border-[#e7e6e4] rounded-bl-sm pointer-events-none" />
-                                    <span className="absolute bottom-3 right-3 w-2 h-2 border-r-2 border-b-2 border-[#e7e6e4] rounded-br-sm pointer-events-none" />
+                                    <span className="absolute top-3 left-3 w-2 h-2 border-l border-t pointer-events-none" style={{ borderColor: "rgba(139,92,246,0.3)" }} />
+                                    <span className="absolute top-3 right-10 w-2 h-2 border-r border-t pointer-events-none" style={{ borderColor: "rgba(139,92,246,0.3)" }} />
+                                    <span className="absolute bottom-3 left-3 w-2 h-2 border-l border-b pointer-events-none" style={{ borderColor: "rgba(139,92,246,0.3)" }} />
+                                    <span className="absolute bottom-3 right-3 w-2 h-2 border-r border-b pointer-events-none" style={{ borderColor: "rgba(139,92,246,0.3)" }} />
                                     <div
-                                      className="p-6"
+                                      className="p-5"
                                       onClick={() => handleEcoClick(eco)}
                                     >
-                                      <div className="flex items-center gap-3 mb-2 pr-6">
-                                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-100 to-blue-100 flex items-center justify-center shrink-0">
-                                          <SourceIcon className="w-4 h-4 text-teal-600 shrink-0" />
+                                      <div className="flex items-center gap-3 mb-2.5 pr-6">
+                                        <div
+                                          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                                          style={{ background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.2)" }}
+                                        >
+                                          <SourceIcon className="w-4 h-4 shrink-0" style={{ color: "#A78BFA" }} />
                                         </div>
-                                        <span className="font-bold text-[#131211]">
+                                        <span className="font-semibold text-sm truncate" style={{ color: "#EDECE8" }}>
                                           <HighlightTitle text={eco.title} query={debouncedQuery} />
                                         </span>
                                       </div>
-                                      <div className="flex items-center gap-1.5 text-xs text-[#8b8884] flex-wrap">
+                                      <div className="flex items-center gap-1.5 text-xs flex-wrap" style={{ color: "rgba(237,236,232,0.35)" }}>
                                         <span>
                                           {new Date(eco.created_at).toLocaleDateString("fr-FR", {
                                             day: "numeric",
@@ -1738,19 +1801,19 @@ export default function DashboardPage() {
                                         </span>
                                         {eco.duration_seconds != null && eco.duration_seconds > 0 && (
                                           <>
-                                            <span className="text-gray-300">·</span>
+                                            <span style={{ color: "rgba(237,236,232,0.15)" }}>·</span>
                                             <span>{Math.max(1, Math.round(eco.duration_seconds / 60))} min</span>
                                           </>
                                         )}
                                         {wordCount > 0 && (
                                           <>
-                                            <span className="text-gray-300">·</span>
+                                            <span style={{ color: "rgba(237,236,232,0.15)" }}>·</span>
                                             <span>{wordCount} mots</span>
                                           </>
                                         )}
                                         {eco.has_pdf_context && (
                                           <>
-                                            <span className="text-gray-300">·</span>
+                                            <span style={{ color: "rgba(237,236,232,0.15)" }}>·</span>
                                             <FileText className="w-3 h-3 shrink-0" />
                                           </>
                                         )}
@@ -1763,21 +1826,29 @@ export default function DashboardPage() {
                           </div>
                         )}
 
-                        {/* Aucun résultat de recherche */}
+                        {/* Aucun résultat */}
                         {!isEcosLoading && isSearchActive && filteredEcos.length === 0 && (
                           <div className="flex flex-col items-center justify-center py-16 gap-3">
-                            <Search className="w-10 h-10 text-gray-200" />
-                            <p className="text-gray-600 font-medium text-sm">Aucun ECO trouvé pour &quot;{debouncedQuery}&quot;</p>
-                            <button onClick={() => setSearchQuery("")} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Effacer la recherche</button>
+                            <Search className="w-10 h-10" style={{ color: "rgba(237,236,232,0.1)" }} />
+                            <p className="font-medium text-sm" style={{ color: "rgba(237,236,232,0.4)" }}>Aucun ECO trouvé pour &quot;{debouncedQuery}&quot;</p>
+                            <button
+                              onClick={() => setSearchQuery("")}
+                              className="text-xs transition-colors"
+                              style={{ color: "rgba(237,236,232,0.25)" }}
+                              onMouseEnter={e => (e.currentTarget.style.color = "rgba(237,236,232,0.5)")}
+                              onMouseLeave={e => (e.currentTarget.style.color = "rgba(237,236,232,0.25)")}
+                            >
+                              Effacer la recherche
+                            </button>
                           </div>
                         )}
 
-                        {/* Empty state (aucun ECO) */}
+                        {/* Empty state */}
                         {!isEcosLoading && ecos.length === 0 && (
                           <div className="flex flex-col items-center justify-center py-16 gap-3">
-                            <Mic className="w-12 h-12 text-gray-200" />
-                            <p className="text-gray-700 font-medium text-base">Ton premier ECO t&apos;attend</p>
-                            <p className="text-gray-400 text-sm">Lance un enregistrement pour commencer</p>
+                            <Mic className="w-12 h-12" style={{ color: "rgba(139,92,246,0.2)" }} />
+                            <p className="font-semibold text-base" style={{ color: "rgba(237,236,232,0.5)" }}>Ton premier ECO t&apos;attend</p>
+                            <p className="text-sm" style={{ color: "rgba(237,236,232,0.25)" }}>Lance un enregistrement pour commencer</p>
                           </div>
                         )}
                       </motion.div>
@@ -1794,27 +1865,37 @@ export default function DashboardPage() {
                     >
                       <div className="flex items-center gap-4 mb-6">
                         <motion.button
-                          whileHover={{ x: -4 }}
-                          whileTap={{ scale: 0.98 }}
+                          whileHover={{ x: -3 }}
+                          whileTap={{ scale: 0.97 }}
                           onClick={() => goHome("sidebar")}
-                          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 shrink-0"
+                          className="flex items-center gap-2 shrink-0 transition-colors"
+                          style={{ color: "rgba(237,236,232,0.5)" }}
+                          onMouseEnter={e => (e.currentTarget.style.color = "#EDECE8")}
+                          onMouseLeave={e => (e.currentTarget.style.color = "rgba(237,236,232,0.5)")}
                         >
-                          <ArrowLeft className="w-5 h-5" />
-                          <span className="font-bold">Retour</span>
+                          <ArrowLeft className="w-4 h-4" />
+                          <span className="font-semibold text-sm">Retour</span>
                         </motion.button>
                         <div className="relative flex-1">
-                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                          <Search
+                            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
+                            style={{ color: "rgba(237,236,232,0.3)" }}
+                          />
                           <input
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Rechercher dans tes ECOs..."
-                            className="w-full pl-9 pr-8 py-2.5 text-sm bg-white/60 backdrop-blur-md border border-gray-300 rounded-xl outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-400 transition-all text-gray-800 placeholder-gray-400"
+                            className="eco-input"
+                            style={{ paddingLeft: 36 }}
                           />
                           {searchQuery && (
                             <button
                               onClick={() => setSearchQuery("")}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                              className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
+                              style={{ color: "rgba(237,236,232,0.3)" }}
+                              onMouseEnter={e => (e.currentTarget.style.color = "rgba(237,236,232,0.7)")}
+                              onMouseLeave={e => (e.currentTarget.style.color = "rgba(237,236,232,0.3)")}
                             >
                               <X className="w-3.5 h-3.5" />
                             </button>
@@ -1822,7 +1903,7 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       {filteredEcos.length > 0 ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                           {filteredEcos.map((eco, index) => {
                             const SourceIcon = eco.source_type === "screen" ? Monitor : Mic;
                             const wordCount = (() => {
@@ -1834,22 +1915,27 @@ export default function DashboardPage() {
                                 key={eco.id}
                                 initial={{ opacity: 0, y: 8 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: index * 0.05 }}
-                                whileHover={{ y: -4, scale: 1.01 }}
+                                transition={{ delay: index * 0.04 }}
+                                whileHover={{ y: -3 }}
                                 whileTap={{ scale: 0.98 }}
-                                className="group relative text-left bg-white/75 backdrop-blur-2xl rounded-[2rem] border border-white/80 shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer"
+                                className="group relative text-left cursor-pointer eco-card rounded-2xl"
                               >
                                 <div
-                                  className="p-6"
+                                  className="p-5"
                                   onClick={() => handleEcoClick(eco)}
                                 >
-                                  <div className="flex items-center gap-3 mb-2 pr-6">
-                                    <SourceIcon className="w-5 h-5 text-gray-600 shrink-0" />
-                                    <span className="font-bold text-gray-900 truncate">
+                                  <div className="flex items-center gap-3 mb-2.5 pr-6">
+                                    <div
+                                      className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                                      style={{ background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.2)" }}
+                                    >
+                                      <SourceIcon className="w-4 h-4 shrink-0" style={{ color: "#A78BFA" }} />
+                                    </div>
+                                    <span className="font-semibold text-sm truncate" style={{ color: "#EDECE8" }}>
                                       <HighlightTitle text={eco.title} query={debouncedQuery} />
                                     </span>
                                   </div>
-                                  <div className="flex items-center gap-1.5 text-xs text-gray-500 flex-wrap">
+                                  <div className="flex items-center gap-1.5 text-xs flex-wrap" style={{ color: "rgba(237,236,232,0.35)" }}>
                                     <span>
                                       {new Date(eco.created_at).toLocaleDateString("fr-FR", {
                                         day: "numeric",
@@ -1859,19 +1945,19 @@ export default function DashboardPage() {
                                     </span>
                                     {eco.duration_seconds != null && eco.duration_seconds > 0 && (
                                       <>
-                                        <span className="text-gray-300">·</span>
+                                        <span style={{ color: "rgba(237,236,232,0.15)" }}>·</span>
                                         <span>{Math.max(1, Math.round(eco.duration_seconds / 60))} min</span>
                                       </>
                                     )}
                                     {wordCount > 0 && (
                                       <>
-                                        <span className="text-gray-300">·</span>
+                                        <span style={{ color: "rgba(237,236,232,0.15)" }}>·</span>
                                         <span>{wordCount} mots</span>
                                       </>
                                     )}
                                     {eco.has_pdf_context && (
                                       <>
-                                        <span className="text-gray-300">·</span>
+                                        <span style={{ color: "rgba(237,236,232,0.15)" }}>·</span>
                                         <FileText className="w-3 h-3 shrink-0" />
                                       </>
                                     )}
@@ -1884,9 +1970,17 @@ export default function DashboardPage() {
                         </div>
                       ) : (
                         <div className="flex flex-col items-center justify-center py-16 gap-3">
-                          <Search className="w-10 h-10 text-gray-200" />
-                          <p className="text-gray-600 font-medium text-sm">Aucun ECO trouvé pour &quot;{debouncedQuery}&quot;</p>
-                          <button onClick={() => setSearchQuery("")} className="text-xs text-gray-400 hover:text-gray-600 transition-colors">Effacer la recherche</button>
+                          <Search className="w-10 h-10" style={{ color: "rgba(237,236,232,0.1)" }} />
+                          <p className="font-medium text-sm" style={{ color: "rgba(237,236,232,0.4)" }}>Aucun ECO trouvé pour &quot;{debouncedQuery}&quot;</p>
+                          <button
+                            onClick={() => setSearchQuery("")}
+                            className="text-xs transition-colors"
+                            style={{ color: "rgba(237,236,232,0.25)" }}
+                            onMouseEnter={e => (e.currentTarget.style.color = "rgba(237,236,232,0.5)")}
+                            onMouseLeave={e => (e.currentTarget.style.color = "rgba(237,236,232,0.25)")}
+                          >
+                            Effacer la recherche
+                          </button>
                         </div>
                       )}
                     </motion.div>
@@ -1980,16 +2074,19 @@ export default function DashboardPage() {
                       {processingError ? (
                         <>
                           <div className="flex flex-col items-center gap-4 text-center max-w-sm">
-                            <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                              <span className="text-red-600 text-xl">✕</span>
+                            <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }}>
+                              <span className="text-xl" style={{ color: "#EF4444" }}>✕</span>
                             </div>
-                            <p className="text-lg font-semibold text-gray-900">Traitement échoué</p>
-                            <p className="text-sm text-gray-500">{processingError}</p>
+                            <p className="text-lg font-semibold" style={{ color: "#EDECE8" }}>Traitement échoué</p>
+                            <p className="text-sm" style={{ color: "rgba(237,236,232,0.5)" }}>{processingError}</p>
                           </div>
                           <button
                             type="button"
                             onClick={() => { setProcessingError(null); goHome(); }}
-                            className="flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 transition-colors font-medium"
+                            className="flex items-center gap-1.5 text-sm font-medium transition-colors"
+                            style={{ color: "rgba(237,236,232,0.4)" }}
+                            onMouseEnter={e => (e.currentTarget.style.color = "rgba(237,236,232,0.8)")}
+                            onMouseLeave={e => (e.currentTarget.style.color = "rgba(237,236,232,0.4)")}
                           >
                             <ArrowLeft className="w-4 h-4" />
                             <span>Retour à l&apos;accueil</span>
@@ -2007,7 +2104,7 @@ export default function DashboardPage() {
                               transition={{ duration: 0.3 }}
                               className="flex flex-col items-center gap-2 text-center"
                             >
-                              <p className="text-xl font-bold text-gray-800">
+                              <p className="text-xl font-bold" style={{ color: "#EDECE8" }}>
                                 {processingStep === "uploading" && "Envoi de l\u2019enregistrement\u2026"}
                                 {processingStep === "transcribing" && "Transcription en cours\u2026"}
                                 {processingStep === "summarizing" && "G\u00e9n\u00e9ration du r\u00e9sum\u00e9\u2026"}
@@ -2023,8 +2120,8 @@ export default function DashboardPage() {
                               const isActive = i === currentIdx;
                               return (
                                 <span key={step} className="flex items-center gap-3">
-                                  <span className={`w-2.5 h-2.5 rounded-full transition-all duration-500 ${isDone ? "bg-gray-400" : isActive ? "bg-gray-800 animate-pulse" : "bg-gray-200"}`} />
-                                  {i < 2 && <span className={`w-8 h-px block transition-all duration-500 ${isDone ? "bg-gray-400" : "bg-gray-200"}`} />}
+                                  <span className={`w-2.5 h-2.5 rounded-full transition-all duration-500 ${isActive ? "animate-pulse" : ""}`} style={{ background: isDone ? "rgba(139,92,246,0.7)" : isActive ? "#8B5CF6" : "rgba(255,255,255,0.15)" }} />
+                                  {i < 2 && <span className="w-8 h-px block transition-all duration-500" style={{ background: isDone ? "rgba(139,92,246,0.4)" : "rgba(255,255,255,0.10)" }} />}
                                 </span>
                               );
                             })}
@@ -2032,7 +2129,10 @@ export default function DashboardPage() {
                           <button
                             type="button"
                             onClick={() => goHome()}
-                            className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-gray-600 mt-2 transition-colors"
+                            className="flex items-center gap-1.5 text-sm mt-2 transition-colors"
+                            style={{ color: "rgba(237,236,232,0.3)" }}
+                            onMouseEnter={e => (e.currentTarget.style.color = "rgba(237,236,232,0.6)")}
+                            onMouseLeave={e => (e.currentTarget.style.color = "rgba(237,236,232,0.3)")}
                           >
                             <ArrowLeft className="w-4 h-4" />
                             <span>Retour à l&apos;accueil</span>
@@ -2085,37 +2185,52 @@ export default function DashboardPage() {
             aria-hidden="true"
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
+              initial={{ opacity: 0, scale: 0.93, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.93, y: 8 }}
+              transition={{ type: "spring", damping: 28, stiffness: 320 }}
               onClick={(e) => e.stopPropagation()}
               role="dialog"
               aria-modal="true"
               aria-labelledby="auth-modal-title"
-              className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6"
+              className="w-full max-w-md rounded-2xl p-6"
+              style={{
+                background: "#141619",
+                border: "1px solid rgba(255,255,255,0.10)",
+                boxShadow: "0 32px 64px rgba(0,0,0,0.7)",
+              }}
             >
-              <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+              <div
+                className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center"
+                style={{ background: "linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%)" }}
+              >
                 <LogIn className="w-8 h-8 text-white" />
               </div>
-              <h3 id="auth-modal-title" className="text-2xl font-bold text-center text-gray-900 mb-2">
+              <h3 id="auth-modal-title" className="text-2xl font-bold text-center mb-2" style={{ color: "#EDECE8" }}>
                 Connexion requise
               </h3>
-              <p className="text-center text-gray-600 mb-6">
+              <p className="text-center mb-6" style={{ color: "rgba(237,236,232,0.5)" }}>
                 Tu dois être connecté pour lancer un enregistrement.
-                Créez un compte gratuitement en quelques secondes !
+                Crée un compte gratuitement en quelques secondes !
               </p>
               <div className="flex flex-col gap-3">
                 <button
                   type="button"
                   onClick={() => router.push("/sign-in")}
-                  className="w-full px-6 py-3 min-h-[44px] bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-xl"
+                  className="w-full px-6 py-3 min-h-[44px] font-bold rounded-xl transition-all"
+                  style={{ background: "linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%)", color: "white" }}
                 >
                   Se connecter / S&apos;inscrire
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowAuthModal(false)}
-                  className="w-full px-6 py-3 min-h-[44px] bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-xl transition-colors"
+                  className="w-full px-6 py-3 min-h-[44px] font-medium rounded-xl transition-all"
+                  style={{
+                    background: "rgba(255,255,255,0.06)",
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    color: "rgba(237,236,232,0.6)",
+                  }}
                 >
                   Annuler
                 </button>

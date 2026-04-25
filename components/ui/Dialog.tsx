@@ -17,17 +17,12 @@ export default function Dialog({ open, onOpenChange, title, description, childre
 
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onOpenChange(false);
-      }
+      if (event.key === "Escape") onOpenChange(false);
     };
-
     if (open) {
       document.addEventListener("keydown", handleEscape);
-      // Empêcher le scroll du body
       document.body.style.overflow = "hidden";
     }
-
     return () => {
       document.removeEventListener("keydown", handleEscape);
       document.body.style.overflow = "unset";
@@ -38,36 +33,43 @@ export default function Dialog({ open, onOpenChange, title, description, childre
     <AnimatePresence>
       {open && (
         <>
-          {/* Overlay */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100]"
+            className="fixed inset-0 z-[100]"
+            style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(6px)" }}
             onClick={() => onOpenChange(false)}
             aria-hidden="true"
           />
-          {/* Dialog */}
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div
               ref={dialogRef}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.2 }}
-              className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6"
+              initial={{ opacity: 0, scale: 0.93, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.93, y: 8 }}
+              transition={{ type: "spring", damping: 28, stiffness: 320 }}
+              className="max-w-md w-full rounded-2xl p-6"
+              style={{
+                background: "#141619",
+                border: "1px solid rgba(255,255,255,0.10)",
+                boxShadow: "0 32px 64px rgba(0,0,0,0.7)",
+              }}
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-start justify-between mb-4">
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+                  <h2 className="text-lg font-semibold" style={{ color: "#EDECE8" }}>{title}</h2>
                   {description && (
-                    <p className="text-sm text-gray-600 mt-1">{description}</p>
+                    <p className="text-sm mt-1" style={{ color: "rgba(237,236,232,0.5)" }}>{description}</p>
                   )}
                 </div>
                 <button
                   onClick={() => onOpenChange(false)}
-                  className="text-gray-400 hover:text-gray-600 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-200 rounded-lg p-1"
+                  className="transition-colors focus:outline-none rounded-lg p-1"
+                  style={{ color: "rgba(237,236,232,0.35)" }}
+                  onMouseEnter={e => (e.currentTarget.style.color = "rgba(237,236,232,0.7)")}
+                  onMouseLeave={e => (e.currentTarget.style.color = "rgba(237,236,232,0.35)")}
                   aria-label="Fermer"
                 >
                   <X className="w-5 h-5" />
