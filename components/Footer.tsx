@@ -11,25 +11,12 @@ export default function Footer() {
     >
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm">
-          <p style={{ color: "#8b8884" }}>© 2026 ECO · Tous droits réservés</p>
+          <p className="text-[#8b8884]">© 2026 ECO · Tous droits réservés</p>
           <div className="flex gap-6">
-            {[
-              { href: "/legal/cgu", label: "CGU" },
-              { href: "/legal/cgv", label: "CGV" },
-              { href: "/legal/confidentialite", label: "Confidentialité" },
-              { href: "/legal/mentions-legales", label: "Mentions légales" },
-            ].map(({ href, label }) => (
-              <Link
-                key={href}
-                href={href}
-                className="transition-colors"
-                style={{ color: "#8b8884" }}
-                onMouseEnter={e => (e.currentTarget.style.color = "#EDECE8")}
-                onMouseLeave={e => (e.currentTarget.style.color = "#8b8884")}
-              >
-                {label}
-              </Link>
-            ))}
+            <Link href="/legal/cgu" className="text-[#8b8884] hover:text-white transition-colors">CGU</Link>
+            <Link href="/legal/cgv" className="text-[#8b8884] hover:text-white transition-colors">CGV</Link>
+            <Link href="/legal/confidentialite" className="text-[#8b8884] hover:text-white transition-colors">Confidentialité</Link>
+            <Link href="/legal/mentions-legales" className="text-[#8b8884] hover:text-white transition-colors">Mentions légales</Link>
           </div>
         </div>
       </div>
