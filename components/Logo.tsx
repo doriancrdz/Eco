@@ -67,15 +67,13 @@ export default function Logo({
 
   return (
     <motion.div
-      className="relative inline-flex items-center justify-center"
+      className="relative inline-flex items-center justify-center bg-transparent"
       style={{
         width: size,
         height: size,
         background: "transparent",
         outline: "none",
         boxShadow: "none",
-        borderRadius: "50%",
-        overflow: "hidden",
       }}
       onClick={isClickable ? onClick : undefined}
       role={isClickable ? "button" : undefined}
@@ -91,10 +89,13 @@ export default function Logo({
           : undefined
       }
     >
-      {/* Fond subtil pour les zones transparentes du PNG (yeux, coins) */}
+      {/* Glow derrière la bulle pour adoucir les zones transparentes */}
       <div
-        className="absolute inset-0 rounded-full pointer-events-none"
-        style={{ background: "rgba(255,255,255,0.05)" }}
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: "radial-gradient(circle at 45% 45%, rgba(180,190,255,0.10) 0%, rgba(150,220,210,0.06) 45%, transparent 70%)",
+          transform: "scale(0.85)",
+        }}
       />
       <motion.div
         className="w-full h-full flex items-center justify-center cursor-pointer select-none rounded-none border-0 overflow-visible"
