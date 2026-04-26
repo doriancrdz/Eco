@@ -67,13 +67,15 @@ export default function Logo({
 
   return (
     <motion.div
-      className="relative inline-flex items-center justify-center bg-transparent"
+      className="relative inline-flex items-center justify-center"
       style={{
         width: size,
         height: size,
         background: "transparent",
         outline: "none",
         boxShadow: "none",
+        borderRadius: "50%",
+        overflow: "hidden",
       }}
       onClick={isClickable ? onClick : undefined}
       role={isClickable ? "button" : undefined}
@@ -89,7 +91,11 @@ export default function Logo({
           : undefined
       }
     >
-      {/* Rendu identique à l'accueil : logo seul, aucun shape/overlay (glow très diffus uniquement) */}
+      {/* Fond subtil pour les zones transparentes du PNG (yeux, coins) */}
+      <div
+        className="absolute inset-0 rounded-full pointer-events-none"
+        style={{ background: "rgba(255,255,255,0.05)" }}
+      />
       <motion.div
         className="w-full h-full flex items-center justify-center cursor-pointer select-none rounded-none border-0 overflow-visible"
         style={{
