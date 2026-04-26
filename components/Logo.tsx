@@ -149,6 +149,7 @@ export default function Logo({
           priority={size >= 200}
           unoptimized
           className="bg-transparent block w-full h-full object-contain select-none"
+          style={{ filter: "brightness(1.15) contrast(0.95)" }}
         />
       </motion.div>
       {showWarning && (

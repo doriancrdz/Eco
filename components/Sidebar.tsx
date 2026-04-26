@@ -163,14 +163,17 @@ export default function Sidebar({
                   className="w-full px-4 py-4 flex items-center gap-2.5 shrink-0 bg-transparent border-0 cursor-pointer hover:opacity-90 transition-opacity text-left focus:outline-none"
                   aria-label="Retour à l'accueil"
                 >
-                  <Image
-                    src="/logo-eco.png"
-                    alt=""
-                    width={22}
-                    height={22}
-                    unoptimized
-                    className="bg-transparent block object-contain pointer-events-none"
-                  />
+                  <div className="rounded-full bg-white/5 p-0.5 shrink-0">
+                    <Image
+                      src="/logo-eco.png"
+                      alt=""
+                      width={22}
+                      height={22}
+                      unoptimized
+                      className="bg-transparent block object-contain pointer-events-none"
+                      style={{ filter: "brightness(1.15) contrast(0.95)" }}
+                    />
+                  </div>
                   <span className="font-bold pointer-events-none" style={{ color: "#EDECE8", fontSize: 15, letterSpacing: "-0.02em" }}>ECO</span>
                 </button>
 

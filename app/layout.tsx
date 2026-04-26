@@ -55,10 +55,16 @@ export default function RootLayout({
             <Footer />
             <Toaster
               position="bottom-right"
+              theme="dark"
               richColors
               closeButton
               duration={4000}
               toastOptions={{
+                style: {
+                  background: "#141619",
+                  border: "1px solid rgba(255,255,255,0.10)",
+                  color: "#EDECE8",
+                },
                 classNames: {
                   toast: "rounded-2xl shadow-xl",
                 },

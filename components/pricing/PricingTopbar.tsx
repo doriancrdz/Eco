@@ -11,35 +11,48 @@ export default function PricingTopbar() {
   const router = useRouter();
 
   return (
-    <div className="sticky top-0 z-50 backdrop-blur-md bg-white/60 border-b border-white/40">
+    <div
+      className="sticky top-0 z-50"
+      style={{
+        background: "rgba(8,10,15,0.92)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        borderBottom: "1px solid rgba(255,255,255,0.06)",
+      }}
+    >
       <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between relative">
-        {/* Bouton retour - tout à gauche */}
-        <Link href="/" className="flex items-center gap-2 group transition-transform duration-200 hover:-translate-x-0.5">
-          <div className="flex items-center gap-2">
-            <ArrowLeft className="w-5 h-5 text-gray-600 group-hover:text-gray-900 transition-colors" />
-            <span className="font-medium text-gray-700 group-hover:text-gray-900 transition-colors">ECO</span>
-          </div>
+        <Link
+          href="/"
+          className="flex items-center gap-2 group transition-colors"
+          style={{ color: "rgba(237,236,232,0.45)" }}
+          onMouseEnter={e => (e.currentTarget.style.color = "rgba(237,236,232,0.8)")}
+          onMouseLeave={e => (e.currentTarget.style.color = "rgba(237,236,232,0.45)")}
+        >
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+          <span className="font-medium text-sm">ECO</span>
         </Link>
 
-        {/* Logo + ECO centré - position absolue */}
         <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
-          <Image
-            src="/logo-eco.png"
-            alt="ECO"
-            width={32}
-            height={32}
-            className="w-8 h-8"
-            priority
-            quality={90}
-          />
-          <span className="text-lg font-bold text-gray-900">ECO</span>
+          <div className="rounded-full bg-white/5 p-0.5">
+            <Image
+              src="/logo-eco.png"
+              alt="ECO"
+              width={28}
+              height={28}
+              className="w-7 h-7"
+              priority
+              quality={90}
+              style={{ filter: "brightness(1.15) contrast(0.95)" }}
+            />
+          </div>
+          <span className="text-base font-bold" style={{ color: "#EDECE8", letterSpacing: "-0.02em" }}>ECO</span>
         </div>
 
-        {/* Bouton connexion si non connecté - à droite */}
         {!isSignedIn ? (
           <button
             onClick={() => router.push("/sign-in?redirect_url=/pricing")}
-            className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+            className="px-4 py-2 rounded-xl text-sm font-semibold transition-all"
+            style={{ background: "linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%)", color: "white" }}
           >
             Se connecter
           </button>

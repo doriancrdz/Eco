@@ -6,27 +6,9 @@ import { ChevronDown } from "lucide-react";
 import { PLANS, PlanType } from "@/lib/billingConfig";
 
 const comparisonData = [
-  {
-    label: "Minutes/mois",
-    free: "10 min",
-    student: "800 min",
-    pro: "2000 min",
-    business: "6000 min",
-  },
-  {
-    label: "Support",
-    free: "Communauté",
-    student: "Email",
-    pro: "Email prioritaire",
-    business: "Dédié",
-  },
-  {
-    label: "Idéal pour",
-    free: "Essai",
-    student: "Étudiants",
-    pro: "Professionnels",
-    business: "Équipes",
-  },
+  { label: "Minutes/mois", free: "10 min", student: "800 min", pro: "2000 min", business: "6000 min" },
+  { label: "Support", free: "Communauté", student: "Email", pro: "Email prioritaire", business: "Dédié" },
+  { label: "Idéal pour", free: "Essai", student: "Étudiants", pro: "Professionnels", business: "Équipes" },
 ];
 
 export default function PricingComparison() {
@@ -34,21 +16,21 @@ export default function PricingComparison() {
 
   return (
     <div className="w-full">
-      {/* Desktop: Tableau */}
+      {/* Desktop: Table */}
       <div className="hidden md:block overflow-x-auto">
-        <div className="floating-card rounded-3xl border border-white/40 p-6 bg-white/70 backdrop-blur-md">
+        <div
+          className="rounded-2xl p-6"
+          style={{ background: "#141619", border: "1px solid rgba(255,255,255,0.08)" }}
+        >
           <table className="w-full">
             <thead>
-              <tr className="border-b border-white/30">
-                <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600"></th>
+              <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+                <th className="text-left py-3 px-4 text-sm font-semibold" style={{ color: "rgba(237,236,232,0.35)" }}></th>
                 {Object.entries(PLANS).map(([key, plan]) => (
                   <th
                     key={key}
-                    className={`text-center py-3 px-4 text-sm font-semibold ${
-                      key === "pro"
-                        ? "text-gray-900 bg-gradient-to-b from-aura-emerald/10 to-transparent"
-                        : "text-gray-700"
-                    }`}
+                    className="text-center py-3 px-4 text-sm font-semibold"
+                    style={{ color: key === "student" ? "#A78BFA" : "rgba(237,236,232,0.75)" }}
                   >
                     {plan.name}
                   </th>
@@ -59,20 +41,22 @@ export default function PricingComparison() {
               {comparisonData.map((row, idx) => (
                 <motion.tr
                   key={idx}
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.05, duration: 0.3 }}
-                  className="border-b border-white/20 last:border-0"
+                  style={{ borderBottom: idx < comparisonData.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none" }}
                 >
-                  <td className="py-4 px-4 text-sm font-medium text-gray-700">
+                  <td className="py-4 px-4 text-sm font-medium" style={{ color: "rgba(237,236,232,0.6)" }}>
                     {row.label}
                   </td>
                   {(["free", "student", "pro", "business"] as PlanType[]).map((planKey) => (
                     <td
                       key={planKey}
-                      className={`text-center py-4 px-4 text-sm text-gray-600 ${
-                        planKey === "pro" ? "bg-gradient-to-b from-aura-emerald/5 to-transparent" : ""
-                      }`}
+                      className="text-center py-4 px-4 text-sm"
+                      style={{
+                        color: planKey === "student" ? "rgba(167,139,250,0.9)" : "rgba(237,236,232,0.6)",
+                        background: planKey === "student" ? "rgba(139,92,246,0.04)" : "transparent",
+                      }}
                     >
                       {row[planKey as keyof typeof row]}
                     </td>
@@ -84,26 +68,26 @@ export default function PricingComparison() {
         </div>
       </div>
 
-      {/* Mobile: Accordéon */}
+      {/* Mobile: Accordion */}
       <div className="md:hidden space-y-3">
         {comparisonData.map((row, idx) => (
           <motion.div
             key={idx}
-            initial={{ opacity: 0, y: 10 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: idx * 0.05, duration: 0.3 }}
-            className="floating-card rounded-2xl border border-white/40 overflow-hidden bg-white/70 backdrop-blur-md"
+            className="rounded-2xl overflow-hidden"
+            style={{ background: "#141619", border: "1px solid rgba(255,255,255,0.08)" }}
           >
             <button
               onClick={() => setOpenRow(openRow === idx ? null : idx)}
-              className="w-full px-4 py-4 flex items-center justify-between text-left hover:bg-white/30 transition-colors"
+              className="w-full px-4 py-4 flex items-center justify-between text-left transition-colors"
+              onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.04)")}
+              onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
             >
-              <span className="text-sm font-semibold text-gray-900">{row.label}</span>
-              <motion.div
-                animate={{ rotate: openRow === idx ? 180 : 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                <ChevronDown className="w-4 h-4 text-gray-500" />
+              <span className="text-sm font-semibold" style={{ color: "#EDECE8" }}>{row.label}</span>
+              <motion.div animate={{ rotate: openRow === idx ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                <ChevronDown className="w-4 h-4" style={{ color: "rgba(237,236,232,0.35)" }} />
               </motion.div>
             </button>
             <AnimatePresence>
@@ -113,16 +97,20 @@ export default function PricingComparison() {
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.2 }}
-                  className="overflow-hidden border-t border-white/20"
+                  className="overflow-hidden"
+                  style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
                 >
                   <div className="px-4 py-4 space-y-3">
                     {Object.entries(PLANS).map(([key, plan]) => (
                       <div
                         key={key}
-                        className="flex items-center justify-between py-2 border-b border-white/10 last:border-0"
+                        className="flex items-center justify-between py-2"
+                        style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}
                       >
-                        <span className="text-xs font-medium text-gray-600">{plan.name}</span>
-                        <span className="text-sm text-gray-900">{row[key as PlanType]}</span>
+                        <span className="text-xs font-medium" style={{ color: "rgba(237,236,232,0.45)" }}>{plan.name}</span>
+                        <span className="text-sm" style={{ color: key === "student" ? "#A78BFA" : "rgba(237,236,232,0.75)" }}>
+                          {row[key as PlanType]}
+                        </span>
                       </div>
                     ))}
                   </div>

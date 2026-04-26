@@ -250,14 +250,12 @@ export default function PricingPage() {
   };
 
   return (
-    <div className="min-h-screen aura-gradient relative">
-      {/* Overlay noise subtil pour la page pricing */}
-      <div
-        className="absolute inset-0 opacity-[0.03] pointer-events-none"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-        }}
-      />
+    <div className="min-h-screen eco-bg relative">
+      {/* Ambient glows */}
+      <div className="fixed inset-0 pointer-events-none -z-10" aria-hidden>
+        <div className="absolute top-0 left-1/3 w-[500px] h-[500px]" style={{ background: "radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 70%)" }} />
+        <div className="absolute top-1/3 right-1/4 w-96 h-96" style={{ background: "radial-gradient(circle, rgba(6,182,212,0.06) 0%, transparent 70%)" }} />
+      </div>
 
       <div className="relative z-10">
         {/* Topbar */}
@@ -265,10 +263,16 @@ export default function PricingPage() {
 
         {/* Header */}
         <div className="pt-12 pb-12 px-4 text-center">
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-semibold text-gray-900 mb-6 tracking-tight">
+          <h1
+            className="text-4xl md:text-5xl lg:text-6xl font-semibold mb-6 tracking-[-0.02em]"
+            style={{ color: "#EDECE8" }}
+          >
             Choisis ton plan
           </h1>
-          <p className="text-lg md:text-xl lg:text-2xl text-gray-600 max-w-2xl mx-auto leading-relaxed mb-8">
+          <p
+            className="text-lg md:text-xl lg:text-2xl max-w-2xl mx-auto leading-relaxed mb-8"
+            style={{ color: "rgba(237,236,232,0.5)" }}
+          >
             Transforme ta voix en connaissance structurée. Plans flexibles pour tous tes besoins.
           </p>
 
@@ -284,7 +288,12 @@ export default function PricingPage() {
               return (
                 <div
                   key={idx}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/60 backdrop-blur-sm border border-white/40 text-xs md:text-sm font-medium text-gray-700 hover:bg-white/70 hover:border-white/50 transition-all duration-200"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs md:text-sm font-medium transition-all duration-200"
+                  style={{
+                    background: "rgba(255,255,255,0.06)",
+                    border: "1px solid rgba(255,255,255,0.10)",
+                    color: "rgba(237,236,232,0.65)",
+                  }}
                 >
                   <Icon className="w-3.5 h-3.5" />
                   <span>{chip.label}</span>
@@ -302,7 +311,10 @@ export default function PricingPage() {
         {/* Message d'erreur */}
         {error && (
           <div className="max-w-4xl mx-auto px-4 mb-8">
-            <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-xl text-sm">
+            <div
+              className="px-4 py-3 rounded-xl text-sm flex items-center gap-2"
+              style={{ background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.2)", color: "#FCD34D" }}
+            >
               {error}
             </div>
           </div>
@@ -349,10 +361,10 @@ export default function PricingPage() {
         {/* Comparaison rapide */}
         <div className="max-w-6xl mx-auto px-4 mb-16">
           <div className="mb-8 text-center">
-            <h2 className="text-2xl md:text-3xl font-semibold text-gray-900 mb-2">
+            <h2 className="text-2xl md:text-3xl font-semibold mb-2 tracking-[-0.02em]" style={{ color: "#EDECE8" }}>
               Comparaison rapide
             </h2>
-            <p className="text-sm md:text-base text-gray-600">
+            <p className="text-sm md:text-base" style={{ color: "rgba(237,236,232,0.5)" }}>
               Tous les détails en un coup d&apos;œil
             </p>
           </div>
@@ -367,10 +379,10 @@ export default function PricingPage() {
         {/* Packs de minutes */}
         <div id="packs" className="max-w-6xl mx-auto px-4 mb-24 scroll-mt-20">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-semibold text-gray-900 mb-4">
+            <h2 className="text-3xl md:text-4xl font-semibold mb-4 tracking-[-0.02em]" style={{ color: "#EDECE8" }}>
               Packs de minutes supplémentaires
             </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            <p className="text-lg max-w-2xl mx-auto" style={{ color: "rgba(237,236,232,0.5)" }}>
               Achète un pack pour bénéficier de minutes supplémentaires.
             </p>
           </div>

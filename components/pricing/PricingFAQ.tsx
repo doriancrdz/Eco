@@ -2,33 +2,28 @@
 
 import { memo, useState } from "react";
 import { ChevronDown } from "lucide-react";
-import { AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 
 const faqs = [
   {
     question: "Les minutes sont-elles cumulables d'un mois sur l'autre ?",
-    answer:
-      "Les minutes incluses dans ton plan se réinitialisent 1 mois après la date de souscription (pas le 1er du mois). Par exemple, si tu t'abonnes le 15 février, tes minutes se réinitialisent le 15 mars. Les packs de minutes supplémentaires que tu achètes sont permanents : ils s'ajoutent à ton compteur et ne se réinitialisent jamais. Tu peux les utiliser quand tu le souhaites, sans limite de temps.",
+    answer: "Les minutes incluses dans ton plan se réinitialisent 1 mois après la date de souscription (pas le 1er du mois). Par exemple, si tu t'abonnes le 15 février, tes minutes se réinitialisent le 15 mars. Les packs de minutes supplémentaires que tu achètes sont permanents : ils s'ajoutent à ton compteur et ne se réinitialisent jamais. Tu peux les utiliser quand tu le souhaites, sans limite de temps.",
   },
   {
     question: "Puis-je acheter des packs même avec le plan Free ?",
-    answer:
-      "Oui, absolument ! Les packs de minutes sont disponibles pour tous les utilisateurs, y compris ceux sur le plan Free. C'est idéal si tu as besoin de quelques minutes supplémentaires ponctuellement.",
+    answer: "Oui, absolument ! Les packs de minutes sont disponibles pour tous les utilisateurs, y compris ceux sur le plan Free. C'est idéal si tu as besoin de quelques minutes supplémentaires ponctuellement.",
   },
   {
     question: "Y a-t-il une limite de durée par enregistrement ?",
-    answer:
-      "Oui, chaque enregistrement est limité à 60 minutes maximum. Cette limite s'applique à tous les plans pour garantir une qualité optimale de transcription.",
+    answer: "Oui, chaque enregistrement est limité à 60 minutes maximum. Cette limite s'applique à tous les plans pour garantir une qualité optimale de transcription.",
   },
   {
     question: "Puis-je changer de plan à tout moment ?",
-    answer:
-      "Oui, tu peux mettre à jour ton plan à tout moment depuis la page Paramètres. Le changement prend effet immédiatement et les minutes de ton nouveau plan sont disponibles dès la mise à jour.",
+    answer: "Oui, tu peux mettre à jour ton plan à tout moment depuis la page Paramètres. Le changement prend effet immédiatement et les minutes de ton nouveau plan sont disponibles dès la mise à jour.",
   },
   {
     question: "Les données sont-elles sécurisées ?",
-    answer:
-      "Oui, tous tes enregistrements et transcriptions sont stockés localement dans ton navigateur. Nous ne conservons aucune donnée sur nos serveurs. Ta vie privée est notre priorité.",
+    answer: "Oui, tous tes enregistrements et transcriptions sont stockés de manière sécurisée. Nous utilisons un chiffrement de bout en bout pour protéger tes données. Ta vie privée est notre priorité.",
   },
 ];
 
@@ -37,35 +32,59 @@ function PricingFAQ() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <h2 className="text-3xl md:text-4xl font-semibold text-gray-900 mb-12 text-center">
+      <h2
+        className="text-3xl md:text-4xl font-semibold mb-12 text-center tracking-[-0.02em]"
+        style={{ color: "#EDECE8" }}
+      >
         Questions fréquentes
       </h2>
-      <div className="space-y-4">
+      <div className="space-y-3">
         {faqs.map((faq, index) => (
           <div
             key={index}
-            className="floating-card rounded-card border border-white/40 overflow-hidden hover:border-white/60 hover:shadow-xl transition-all duration-300"
+            className="rounded-2xl overflow-hidden transition-all duration-300"
+            style={{
+              background: "#141619",
+              border: openIndex === index ? "1px solid rgba(139,92,246,0.25)" : "1px solid rgba(255,255,255,0.08)",
+            }}
           >
             <button
               onClick={() => setOpenIndex(openIndex === index ? null : index)}
-              className="w-full px-6 py-5 flex items-center justify-between text-left hover:bg-white/30 transition-colors group"
+              className="w-full px-6 py-5 flex items-center justify-between text-left transition-colors group"
+              onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.04)")}
+              onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
             >
-              <span className="font-semibold text-gray-900 pr-4 text-base group-hover:text-gray-800 transition-colors">
+              <span className="font-semibold pr-4 text-sm md:text-base" style={{ color: "#EDECE8" }}>
                 {faq.question}
               </span>
               <div
                 className={`flex-shrink-0 transition-transform duration-300 ${openIndex === index ? "rotate-180" : ""}`}
               >
-                <ChevronDown className="w-5 h-5 text-gray-500 group-hover:text-gray-700 transition-colors" />
+                <ChevronDown
+                  className="w-5 h-5"
+                  style={{ color: openIndex === index ? "#A78BFA" : "rgba(237,236,232,0.35)" }}
+                />
               </div>
             </button>
             <AnimatePresence>
               {openIndex === index && (
-                <div className="overflow-hidden">
-                  <div className="px-6 pb-5 text-gray-600 text-sm leading-relaxed border-t border-white/20 pt-4">
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+                  className="overflow-hidden"
+                >
+                  <div
+                    className="px-6 pb-5 text-sm leading-relaxed pt-4"
+                    style={{
+                      color: "rgba(237,236,232,0.6)",
+                      borderTop: "1px solid rgba(255,255,255,0.06)",
+                    }}
+                  >
                     {faq.answer}
                   </div>
-                </div>
+                </motion.div>
               )}
             </AnimatePresence>
           </div>

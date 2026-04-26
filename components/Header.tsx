@@ -50,14 +50,17 @@ export default function Header({
           className="p-0 bg-transparent border-0 rounded-none transition-opacity shrink-0 cursor-pointer focus:outline-none"
           aria-label="Retour à l'accueil"
         >
-          <Image
-            src="/logo-eco.png"
-            alt=""
-            width={36}
-            height={36}
-            unoptimized
-            className="bg-transparent block h-9 w-9 object-contain select-none pointer-events-none"
-          />
+          <div className="rounded-full bg-white/5 p-0.5">
+            <Image
+              src="/logo-eco.png"
+              alt=""
+              width={36}
+              height={36}
+              unoptimized
+              className="bg-transparent block h-9 w-9 object-contain select-none pointer-events-none"
+              style={{ filter: "brightness(1.15) contrast(0.95)" }}
+            />
+          </div>
         </motion.button>
 
         {onToggleSidebar && (
@@ -117,14 +120,17 @@ export default function Header({
         className="hidden md:flex absolute left-1/2 -translate-x-1/2 items-center gap-2 bg-transparent p-0 border-0 z-[25] cursor-pointer focus:outline-none min-w-[100px] justify-center"
         aria-label="Retour à l'accueil"
       >
-        <Image
-          src="/logo-eco.png"
-          alt=""
-          width={28}
-          height={28}
-          unoptimized
-          className="w-7 h-7 bg-transparent block object-contain select-none pointer-events-none"
-        />
+        <div className="rounded-full bg-white/5 p-0.5">
+          <Image
+            src="/logo-eco.png"
+            alt=""
+            width={28}
+            height={28}
+            unoptimized
+            className="w-7 h-7 bg-transparent block object-contain select-none pointer-events-none"
+            style={{ filter: "brightness(1.15) contrast(0.95)" }}
+          />
+        </div>
         <span className="text-base font-bold pointer-events-none" style={{ color: "#EDECE8", letterSpacing: "-0.02em" }}>ECO</span>
       </button>
 

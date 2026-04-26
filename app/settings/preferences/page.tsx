@@ -10,11 +10,7 @@ import { getEcos } from "@/lib/storage";
 import { Eco } from "@/types";
 
 type TabId = "general" | "data" | "security" | "account";
-
-interface Tab {
-  id: TabId;
-  label: string;
-}
+interface Tab { id: TabId; label: string; }
 
 const tabs: Tab[] = [
   { id: "general", label: "Général" },
@@ -23,10 +19,33 @@ const tabs: Tab[] = [
   { id: "account", label: "Compte" },
 ];
 
-interface BillingData {
-  plan: string;
-  planName: string;
-}
+interface BillingData { plan: string; planName: string; }
+
+/* ─── Shared styles ─────────────────────────────────── */
+const cardStyle: React.CSSProperties = { background: "#141619", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16 };
+const rowBorderStyle: React.CSSProperties = { borderBottom: "1px solid rgba(255,255,255,0.06)" };
+const selectStyle: React.CSSProperties = {
+  background: "rgba(255,255,255,0.06)",
+  border: "1px solid rgba(255,255,255,0.10)",
+  color: "#EDECE8",
+  borderRadius: 12,
+  padding: "8px 12px",
+  fontSize: 14,
+  fontWeight: 500,
+  outline: "none",
+  cursor: "pointer",
+};
+const actionBtnStyle: React.CSSProperties = {
+  background: "rgba(255,255,255,0.06)",
+  border: "1px solid rgba(255,255,255,0.10)",
+  color: "rgba(237,236,232,0.7)",
+  borderRadius: 12,
+  padding: "8px 16px",
+  fontSize: 14,
+  fontWeight: 500,
+  cursor: "pointer",
+  transition: "background 0.15s",
+};
 
 export default function PreferencesPage() {
   const { isLoaded, isSignedIn } = useAuth();
@@ -38,8 +57,6 @@ export default function PreferencesPage() {
   const [appearance, setAppearance] = useState<string>("system");
   const [language, setLanguage] = useState<string>("auto");
   const [spokenLanguage, setSpokenLanguage] = useState<string>("auto");
-  
-  // Modales
   const [showArchivedModal, setShowArchivedModal] = useState(false);
   const [showArchiveAllModal, setShowArchiveAllModal] = useState(false);
   const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
@@ -49,206 +66,132 @@ export default function PreferencesPage() {
   const [isLoadingDelete, setIsLoadingDelete] = useState(false);
 
   useEffect(() => {
-    if (isLoaded && !isSignedIn) {
-      router.push("/sign-in?redirect_url=/settings/preferences");
-      return;
-    }
-
-    const fetchBilling = async () => {
-      try {
-        const res = await fetch("/api/billing/me", { credentials: "include" });
-        if (res.ok) {
-          const data = await res.json();
-          setBillingData(data);
-        }
-      } catch {
-        // Erreur silencieuse
-      }
-    };
-
+    if (isLoaded && !isSignedIn) { router.push("/sign-in?redirect_url=/settings/preferences"); return; }
     if (isSignedIn) {
-      fetchBilling();
+      fetch("/api/billing/me", { credentials: "include" })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (data) setBillingData(data); })
+        .catch(() => {});
     }
   }, [isLoaded, isSignedIn, router]);
 
-  if (isLoaded && !isSignedIn) {
-    return null;
-  }
+  if (isLoaded && !isSignedIn) return null;
 
-  const handlePasswordChange = () => {
-    openUserProfile();
-  };
-
-  const handleMFA = () => {
-    openUserProfile();
-  };
-
-  const handleAppearanceChange = (value: string) => {
-    setAppearance(value);
-    // TODO: theme implementation
-    // Si le dark mode n'est pas implémenté globalement, stocker uniquement la valeur sans effet visuel immédiat
-  };
-
+  const handleAppearanceChange = (value: string) => setAppearance(value);
   const handleOpenArchived = async () => {
     setShowArchivedModal(true);
-    // Récupérer les ECOs archivés depuis localStorage
     const allEcos = getEcos();
-    const archived = allEcos.filter((eco: any) => eco.archived === true);
-    setArchivedEcos(archived);
+    setArchivedEcos(allEcos.filter((eco: Eco & { archived?: boolean }) => eco.archived === true));
   };
-
   const handleArchiveAll = async () => {
     setIsLoadingArchive(true);
     try {
-      const res = await fetch("/api/ecos/archive-all", {
-        method: "PATCH",
-        credentials: "include",
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setShowArchiveAllModal(false);
-        // Rafraîchir la liste locale
-        window.dispatchEvent(new Event("eco-updated"));
-        // Toast de confirmation (simple alert pour l'instant)
-        alert(`${data.count || 0} ECOs archivés avec succès`);
-      }
-    } catch (error) {
-      console.error("Erreur lors de l'archivage:", error);
-    } finally {
-      setIsLoadingArchive(false);
-    }
+      const res = await fetch("/api/ecos/archive-all", { method: "PATCH", credentials: "include" });
+      if (res.ok) { const d = await res.json(); setShowArchiveAllModal(false); window.dispatchEvent(new Event("eco-updated")); alert(`${d.count || 0} ECOs archivés`); }
+    } finally { setIsLoadingArchive(false); }
   };
-
   const handleDeleteAll = async () => {
     if (deleteConfirmText !== "SUPPRIMER") return;
-    
     setIsLoadingDelete(true);
     try {
-      const res = await fetch("/api/ecos/delete-all", {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setShowDeleteAllModal(false);
-        setDeleteConfirmText("");
-        // Vider la liste locale
-        if (typeof window !== "undefined") {
-          localStorage.removeItem("eco_recordings");
-        }
-        window.dispatchEvent(new Event("eco-updated"));
-        // Toast de confirmation
-        alert(`${data.count || 0} ECOs supprimés définitivement`);
-      }
-    } catch (error) {
-      console.error("Erreur lors de la suppression:", error);
-    } finally {
-      setIsLoadingDelete(false);
-    }
+      const res = await fetch("/api/ecos/delete-all", { method: "DELETE", credentials: "include" });
+      if (res.ok) { const d = await res.json(); setShowDeleteAllModal(false); setDeleteConfirmText(""); if (typeof window !== "undefined") localStorage.removeItem("eco_recordings"); window.dispatchEvent(new Event("eco-updated")); alert(`${d.count || 0} ECOs supprimés`); }
+    } finally { setIsLoadingDelete(false); }
   };
 
   const plan = billingData?.plan || "free";
   const planName = billingData?.planName || "Free";
 
+  /* ── Row helper ──────────────────────────────────────── */
+  const Row = ({ label, desc, action }: { label: string; desc?: string; action: React.ReactNode }) => (
+    <div className="flex items-center justify-between py-5" style={rowBorderStyle}>
+      <div className="flex-1 mr-4">
+        <p className="text-sm font-medium" style={{ color: "rgba(237,236,232,0.8)" }}>{label}</p>
+        {desc && <p className="text-xs mt-0.5" style={{ color: "rgba(237,236,232,0.4)" }}>{desc}</p>}
+      </div>
+      {action}
+    </div>
+  );
+
   return (
-    <div className="min-h-screen aura-gradient relative">
-      {/* Overlay noise subtil */}
-      <div
-        className="absolute inset-0 opacity-[0.03] pointer-events-none"
-        style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
-        }}
-      />
+    <div className="min-h-screen eco-bg relative">
+      {/* Glows */}
+      <div className="fixed inset-0 pointer-events-none -z-10" aria-hidden>
+        <div className="absolute top-0 right-1/4 w-96 h-96" style={{ background: "radial-gradient(circle, rgba(139,92,246,0.06) 0%, transparent 70%)" }} />
+      </div>
 
       <div className="relative z-10 max-w-5xl mx-auto px-4 py-8">
         {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="mb-8"
-        >
+        <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors mb-6 group"
+            className="inline-flex items-center gap-2 mb-6 group transition-colors text-sm font-medium"
+            style={{ color: "rgba(237,236,232,0.4)" }}
+            onMouseEnter={e => (e.currentTarget.style.color = "rgba(237,236,232,0.8)")}
+            onMouseLeave={e => (e.currentTarget.style.color = "rgba(237,236,232,0.4)")}
           >
-            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-            <span className="text-sm font-medium">Retour à l&apos;accueil</span>
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+            Retour à l&apos;accueil
           </Link>
-
-          <h1 className="text-3xl font-extrabold text-gray-900 mb-2">
-            Paramètres
-          </h1>
+          <h1 className="text-3xl font-extrabold mb-2 tracking-[-0.02em]" style={{ color: "#EDECE8" }}>Paramètres</h1>
         </motion.div>
 
-        {/* Layout principal */}
-        <div className="flex gap-8 p-8">
-          {/* Liste des onglets à gauche */}
-          <div className="w-56 shrink-0 bg-white/20 backdrop-blur-md rounded-2xl border border-white/30 p-2">
+        {/* Layout */}
+        <div className="flex gap-6">
+          {/* Tab sidebar */}
+          <div className="w-52 shrink-0 rounded-2xl p-2" style={cardStyle}>
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                  activeTab === tab.id
-                    ? "bg-white/40 text-gray-900 font-bold"
-                    : "text-gray-600 hover:bg-white/20"
-                }`}
+                className="w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
+                style={{
+                  background: activeTab === tab.id ? "rgba(139,92,246,0.14)" : "transparent",
+                  color: activeTab === tab.id ? "#EDECE8" : "rgba(237,236,232,0.5)",
+                  fontWeight: activeTab === tab.id ? 600 : 500,
+                }}
+                onMouseEnter={e => { if (activeTab !== tab.id) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)"; }}
+                onMouseLeave={e => { if (activeTab !== tab.id) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
               >
                 {tab.label}
               </button>
             ))}
           </div>
 
-          {/* Contenu de l'onglet actif à droite */}
-          <div className="flex-1 bg-white/20 backdrop-blur-md rounded-2xl border border-white/30 p-8">
+          {/* Content */}
+          <div className="flex-1 rounded-2xl p-7" style={cardStyle}>
             {activeTab === "general" && (
               <div>
-                <h2 className="text-xl font-bold mb-6 text-gray-900">Général</h2>
-                <div className="space-y-0">
-                  {/* Ligne 1: Apparence */}
-                  <div className="flex items-center justify-between py-5 border-b border-white/20">
-                    <label className="text-sm font-medium text-gray-800">Apparence</label>
-                    <select
-                      value={appearance}
-                      onChange={(e) => handleAppearanceChange(e.target.value)}
-                      className="bg-white/30 backdrop-blur-md border border-white/30 rounded-xl px-3 py-2 text-sm font-medium text-gray-800 outline-none cursor-pointer hover:bg-white/40 transition-all"
-                    >
-                      <option value="system">Système</option>
-                      <option value="light">Clair</option>
-                      <option value="dark">Sombre</option>
-                    </select>
-                  </div>
-
-                  {/* Ligne 2: Langue */}
-                  <div className="flex items-center justify-between py-5 border-b border-white/20">
-                    <label className="text-sm font-medium text-gray-800">Langue</label>
-                    <select
-                      value={language}
-                      onChange={(e) => setLanguage(e.target.value)}
-                      className="bg-white/30 backdrop-blur-md border border-white/30 rounded-xl px-3 py-2 text-sm font-medium text-gray-800 outline-none cursor-pointer hover:bg-white/40 transition-all"
-                    >
-                      <option value="auto">Détection automatique</option>
-                    </select>
-                  </div>
-
-                  {/* Ligne 3: Langue parlée */}
-                  <div className="flex items-start justify-between py-5">
-                    <div className="flex-1">
-                      <label className="text-sm font-medium text-gray-800 block">Langue parlée</label>
-                      <p className="text-xs text-gray-500 mt-1">
-                        La langue dans laquelle tu parles lors de tes enregistrements ECO. Utilisée pour optimiser la transcription.
-                      </p>
-                    </div>
-                    <div className="ml-4">
-                      <select
-                        value={spokenLanguage}
-                        onChange={(e) => setSpokenLanguage(e.target.value)}
-                        className="bg-white/30 backdrop-blur-md border border-white/30 rounded-xl px-3 py-2 text-sm font-medium text-gray-800 outline-none cursor-pointer hover:bg-white/40 transition-all"
-                      >
+                <h2 className="text-lg font-bold mb-5" style={{ color: "#EDECE8" }}>Général</h2>
+                <div>
+                  <Row
+                    label="Apparence"
+                    action={
+                      <select value={appearance} onChange={e => handleAppearanceChange(e.target.value)} style={selectStyle}>
+                        <option value="system">Système</option>
+                        <option value="light">Clair</option>
+                        <option value="dark">Sombre</option>
+                      </select>
+                    }
+                  />
+                  <Row
+                    label="Langue de l'interface"
+                    action={
+                      <select value={language} onChange={e => setLanguage(e.target.value)} style={selectStyle}>
                         <option value="auto">Détection automatique</option>
                       </select>
+                    }
+                  />
+                  <div className="flex items-start justify-between py-5">
+                    <div className="flex-1 mr-4">
+                      <p className="text-sm font-medium" style={{ color: "rgba(237,236,232,0.8)" }}>Langue parlée</p>
+                      <p className="text-xs mt-0.5" style={{ color: "rgba(237,236,232,0.4)" }}>
+                        La langue dans laquelle tu parles lors de tes enregistrements ECO.
+                      </p>
                     </div>
+                    <select value={spokenLanguage} onChange={e => setSpokenLanguage(e.target.value)} style={selectStyle}>
+                      <option value="auto">Détection automatique</option>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -256,54 +199,32 @@ export default function PreferencesPage() {
 
             {activeTab === "data" && (
               <div>
-                <h2 className="text-xl font-bold mb-6 text-gray-900">Gestion des données</h2>
-                <div className="space-y-0">
-                  {/* Bloc 1: ECOs archivés */}
-                  <div className="flex items-center justify-between py-5 border-b border-white/20">
-                    <div className="flex-1">
-                      <h3 className="text-sm font-medium text-gray-800">ECOs archivés</h3>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Consulte et gère tes ECOs archivés.
-                      </p>
-                    </div>
-                    <button
-                      onClick={handleOpenArchived}
-                      className="bg-white/40 border border-white/40 rounded-xl px-4 py-2 text-sm font-medium hover:bg-white/60 transition-all text-gray-900 ml-4"
-                    >
-                      Gérer
-                    </button>
-                  </div>
-
-                  {/* Bloc 2: Archiver tous les ECOs */}
-                  <div className="flex items-center justify-between py-5 border-b border-white/20">
-                    <div className="flex-1">
-                      <h3 className="text-sm font-medium text-gray-800">Archiver tous les ECOs</h3>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Déplacer tous tes ECOs vers les archives. Cette action est réversible.
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setShowArchiveAllModal(true)}
-                      className="bg-white/40 border border-white/40 rounded-xl px-4 py-2 text-sm font-medium hover:bg-white/60 transition-all text-gray-900 ml-4"
-                    >
-                      Archiver tout
-                    </button>
-                  </div>
-
-                  {/* Bloc 3: Supprimer tous les ECOs */}
+                <h2 className="text-lg font-bold mb-5" style={{ color: "#EDECE8" }}>Gestion des données</h2>
+                <div>
+                  <Row label="ECOs archivés" desc="Consulte et gère tes ECOs archivés." action={
+                    <button style={actionBtnStyle} onClick={handleOpenArchived}
+                      onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.10)")}
+                      onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.06)")}
+                    >Gérer</button>
+                  } />
+                  <Row label="Archiver tous les ECOs" desc="Déplacer tous tes ECOs vers les archives. Réversible." action={
+                    <button style={actionBtnStyle} onClick={() => setShowArchiveAllModal(true)}
+                      onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.10)")}
+                      onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.06)")}
+                    >Archiver tout</button>
+                  } />
                   <div className="flex items-center justify-between py-5">
-                    <div className="flex-1">
-                      <h3 className="text-sm font-medium text-gray-800">Supprimer tous les ECOs</h3>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Supprimer définitivement tous tes ECOs. Cette action est irréversible.
-                      </p>
+                    <div className="flex-1 mr-4">
+                      <p className="text-sm font-medium" style={{ color: "rgba(237,236,232,0.8)" }}>Supprimer tous les ECOs</p>
+                      <p className="text-xs mt-0.5" style={{ color: "rgba(237,236,232,0.4)" }}>Supprimer définitivement tous tes ECOs. Irréversible.</p>
                     </div>
                     <button
                       onClick={() => setShowDeleteAllModal(true)}
-                      className="bg-red-50 border border-red-200 text-red-600 rounded-xl px-4 py-2 text-sm font-medium hover:bg-red-100 transition-all ml-4"
-                    >
-                      Supprimer tout
-                    </button>
+                      className="rounded-xl px-4 py-2 text-sm font-medium transition-all"
+                      style={{ background: "rgba(239,68,68,0.10)", border: "1px solid rgba(239,68,68,0.20)", color: "#F87171" }}
+                      onMouseEnter={e => (e.currentTarget.style.background = "rgba(239,68,68,0.18)")}
+                      onMouseLeave={e => (e.currentTarget.style.background = "rgba(239,68,68,0.10)")}
+                    >Supprimer tout</button>
                   </div>
                 </div>
               </div>
@@ -311,25 +232,25 @@ export default function PreferencesPage() {
 
             {activeTab === "security" && (
               <div>
-                <h2 className="text-xl font-bold mb-6 text-gray-900">Sécurité</h2>
+                <h2 className="text-lg font-bold mb-5" style={{ color: "#EDECE8" }}>Sécurité</h2>
                 <div className="space-y-6">
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Mot de passe</h3>
+                    <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "rgba(237,236,232,0.35)" }}>Mot de passe</p>
                     <button
-                      onClick={handlePasswordChange}
-                      className="bg-white/40 border border-white/40 rounded-xl px-4 py-2 font-medium hover:bg-white/60 transition-all text-gray-900"
-                    >
-                      Modifier le mot de passe
-                    </button>
+                      onClick={() => openUserProfile()}
+                      style={actionBtnStyle}
+                      onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.10)")}
+                      onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.06)")}
+                    >Modifier le mot de passe</button>
                   </div>
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Authentification à deux facteurs</h3>
+                    <p className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: "rgba(237,236,232,0.35)" }}>Authentification à deux facteurs</p>
                     <button
-                      onClick={handleMFA}
-                      className="bg-white/40 border border-white/40 rounded-xl px-4 py-2 font-medium hover:bg-white/60 transition-all text-gray-900"
-                    >
-                      Configurer le MFA
-                    </button>
+                      onClick={() => openUserProfile()}
+                      style={actionBtnStyle}
+                      onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.10)")}
+                      onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.06)")}
+                    >Configurer le MFA</button>
                   </div>
                 </div>
               </div>
@@ -337,43 +258,38 @@ export default function PreferencesPage() {
 
             {activeTab === "account" && (
               <div>
-                <h2 className="text-xl font-bold mb-6 text-gray-900">Compte</h2>
-                <div className="space-y-6">
+                <h2 className="text-lg font-bold mb-5" style={{ color: "#EDECE8" }}>Compte</h2>
+                <div className="space-y-5">
+                  {[
+                    { label: "Nom", value: user?.firstName || user?.username || "—" },
+                    { label: "Email", value: user?.primaryEmailAddress?.emailAddress || "—" },
+                  ].map(({ label, value }) => (
+                    <div key={label}>
+                      <p className="text-xs font-black uppercase tracking-widest mb-1" style={{ color: "rgba(237,236,232,0.3)" }}>{label}</p>
+                      <p className="text-base font-semibold" style={{ color: "rgba(237,236,232,0.8)" }}>{value}</p>
+                    </div>
+                  ))}
                   <div>
-                    <label className="text-xs font-black uppercase tracking-widest text-gray-400 block mb-2">
-                      Nom
-                    </label>
-                    <div className="text-lg font-semibold text-gray-900">
-                      {user?.firstName || user?.username || "—"}
-                    </div>
+                    <p className="text-xs font-black uppercase tracking-widest mb-3" style={{ color: "rgba(237,236,232,0.3)" }}>Plan</p>
+                    {plan === "free" ? (
+                      <div>
+                        <p className="text-sm mb-3" style={{ color: "rgba(237,236,232,0.5)" }}>Tu es sur le plan gratuit</p>
+                        <motion.button
+                          whileHover={{ scale: 1.02, y: -1 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => router.push("/pricing")}
+                          className="px-6 py-3 rounded-xl font-bold text-sm"
+                          style={{ background: "linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%)", color: "white" }}
+                        >
+                          Passer au forfait supérieur
+                        </motion.button>
+                      </div>
+                    ) : (
+                      <span className="inline-block px-4 py-1.5 rounded-xl text-sm font-bold" style={{ background: "linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%)", color: "white" }}>
+                        {planName}
+                      </span>
+                    )}
                   </div>
-                  <div>
-                    <label className="text-xs font-black uppercase tracking-widest text-gray-400 block mb-2">
-                      Email
-                    </label>
-                    <div className="text-lg font-semibold text-gray-900">
-                      {user?.primaryEmailAddress?.emailAddress || "—"}
-                    </div>
-                  </div>
-                  {plan === "free" ? (
-                    <div className="pt-4">
-                      <p className="text-gray-600 mb-4">Tu es sur le plan gratuit</p>
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => router.push("/pricing")}
-                        className="bg-gradient-to-r from-[#99f6e4] via-[#7dd3fc] to-[#a5b4fc] text-gray-900 font-bold px-6 py-3 rounded-xl"
-                      >
-                        Passer au forfait supérieur
-                      </motion.button>
-                    </div>
-                  ) : (
-                    <div className="pt-4">
-                      <p className="text-gray-600">
-                        Tu es sur le plan {planName}
-                      </p>
-                    </div>
-                  )}
                 </div>
               </div>
             )}
@@ -381,154 +297,117 @@ export default function PreferencesPage() {
         </div>
       </div>
 
-      {/* Modale ECOs archivés */}
+      {/* ── Modal: ECOs archivés ──────────────────────────── */}
       <AnimatePresence>
         {showArchivedModal && (
           <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setShowArchivedModal(false)}
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center"
+              className="fixed inset-0 z-50" style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(6px)" }}
             />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-50 flex items-center justify-center p-4"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="bg-white/80 backdrop-blur-xl rounded-3xl border border-white/40 shadow-2xl p-8 max-w-md w-full mx-4">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">ECOs archivés</h3>
-                <div className="overflow-y-auto max-h-96">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.94 }}
+                transition={{ type: "spring", damping: 28, stiffness: 320 }}
+                className="max-w-md w-full rounded-2xl p-7"
+                style={{ background: "#141619", border: "1px solid rgba(255,255,255,0.10)", boxShadow: "0 32px 64px rgba(0,0,0,0.7)" }}
+                onClick={e => e.stopPropagation()}
+              >
+                <h3 className="text-lg font-bold mb-4" style={{ color: "#EDECE8" }}>ECOs archivés</h3>
+                <div className="overflow-y-auto max-h-80 space-y-2">
                   {archivedEcos.length === 0 ? (
-                    <p className="text-gray-500 text-sm text-center py-8">Aucun ECO archivé</p>
-                  ) : (
-                    <div className="space-y-2">
-                      {archivedEcos.map((eco) => (
-                        <div key={eco.id} className="p-3 bg-white/40 rounded-xl">
-                          <div className="text-sm font-medium text-gray-900">{eco.title}</div>
-                          <div className="text-xs text-gray-500 mt-1">
-                            {new Date(eco.created_at).toLocaleDateString("fr-FR")}
-                          </div>
-                        </div>
-                      ))}
+                    <p className="text-sm text-center py-8" style={{ color: "rgba(237,236,232,0.35)" }}>Aucun ECO archivé</p>
+                  ) : archivedEcos.map(eco => (
+                    <div key={eco.id} className="p-3 rounded-xl" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                      <div className="text-sm font-medium" style={{ color: "#EDECE8" }}>{eco.title}</div>
+                      <div className="text-xs mt-0.5" style={{ color: "rgba(237,236,232,0.4)" }}>{new Date(eco.created_at).toLocaleDateString("fr-FR")}</div>
                     </div>
-                  )}
+                  ))}
                 </div>
-                <button
-                  onClick={() => setShowArchivedModal(false)}
-                  className="mt-6 w-full bg-white/40 border border-white/40 rounded-xl px-4 py-2 text-sm font-medium hover:bg-white/60 transition-all text-gray-900"
-                >
-                  Fermer
-                </button>
-              </div>
-            </motion.div>
+                <button onClick={() => setShowArchivedModal(false)} className="mt-5 w-full rounded-xl py-2.5 text-sm font-medium transition-all"
+                  style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", color: "rgba(237,236,232,0.7)" }}
+                >Fermer</button>
+              </motion.div>
+            </div>
           </>
         )}
       </AnimatePresence>
 
-      {/* Modale Archiver tout */}
+      {/* ── Modal: Archiver tout ──────────────────────────── */}
       <AnimatePresence>
         {showArchiveAllModal && (
           <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               onClick={() => setShowArchiveAllModal(false)}
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center"
+              className="fixed inset-0 z-50" style={{ background: "rgba(0,0,0,0.65)", backdropFilter: "blur(6px)" }}
             />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-50 flex items-center justify-center p-4"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="bg-white/80 backdrop-blur-xl rounded-3xl border border-white/40 shadow-2xl p-8 max-w-md w-full mx-4">
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Archiver tous les ECOs ?</h3>
-                <p className="text-gray-600 text-sm mb-6">
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.94 }}
+                transition={{ type: "spring", damping: 28, stiffness: 320 }}
+                className="max-w-md w-full rounded-2xl p-7"
+                style={{ background: "#141619", border: "1px solid rgba(255,255,255,0.10)", boxShadow: "0 32px 64px rgba(0,0,0,0.7)" }}
+                onClick={e => e.stopPropagation()}
+              >
+                <h3 className="text-lg font-bold mb-2" style={{ color: "#EDECE8" }}>Archiver tous les ECOs ?</h3>
+                <p className="text-sm mb-6" style={{ color: "rgba(237,236,232,0.5)" }}>
                   Cette action archivera tous tes ECOs. Tu pourras les restaurer depuis la section ECOs archivés.
                 </p>
-                <div className="flex gap-4">
-                  <button
-                    onClick={() => setShowArchiveAllModal(false)}
-                    className="flex-1 bg-white/40 border border-white/40 rounded-xl px-4 py-2 text-sm font-medium hover:bg-white/60 transition-all text-gray-900"
-                  >
-                    Annuler
-                  </button>
-                  <button
-                    onClick={handleArchiveAll}
-                    disabled={isLoadingArchive}
-                    className="flex-1 bg-amber-500 text-white rounded-xl px-4 py-2 font-bold hover:bg-amber-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isLoadingArchive ? "Archivage..." : "Archiver"}
-                  </button>
+                <div className="flex gap-3">
+                  <button onClick={() => setShowArchiveAllModal(false)} className="flex-1 rounded-xl px-4 py-2.5 text-sm font-medium"
+                    style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", color: "rgba(237,236,232,0.7)" }}
+                  >Annuler</button>
+                  <button onClick={handleArchiveAll} disabled={isLoadingArchive} className="flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-50"
+                    style={{ background: "rgba(245,158,11,0.15)", border: "1px solid rgba(245,158,11,0.25)", color: "#FCD34D" }}
+                  >{isLoadingArchive ? "Archivage..." : "Archiver"}</button>
                 </div>
-              </div>
-            </motion.div>
+              </motion.div>
+            </div>
           </>
         )}
       </AnimatePresence>
 
-      {/* Modale Supprimer tout */}
+      {/* ── Modal: Supprimer tout ─────────────────────────── */}
       <AnimatePresence>
         {showDeleteAllModal && (
           <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => {
-                setShowDeleteAllModal(false);
-                setDeleteConfirmText("");
-              }}
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center"
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => { setShowDeleteAllModal(false); setDeleteConfirmText(""); }}
+              className="fixed inset-0 z-50" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}
             />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-50 flex items-center justify-center p-4"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="bg-white/80 backdrop-blur-xl rounded-3xl border border-white/40 shadow-2xl p-8 max-w-md w-full mx-4">
-                <h3 className="text-xl font-bold text-red-600 mb-2">Supprimer définitivement tous tes ECOs ?</h3>
-                <p className="text-gray-600 text-sm mb-4">
-                  Cette action est irréversible. Tous tes ECOs seront supprimés définitivement. Tape SUPPRIMER pour confirmer.
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.94 }}
+                transition={{ type: "spring", damping: 28, stiffness: 320 }}
+                className="max-w-md w-full rounded-2xl p-7"
+                style={{ background: "#141619", border: "1px solid rgba(255,255,255,0.10)", boxShadow: "0 32px 64px rgba(0,0,0,0.8)" }}
+                onClick={e => e.stopPropagation()}
+              >
+                <h3 className="text-lg font-bold mb-2" style={{ color: "#EF4444" }}>Supprimer définitivement tous tes ECOs ?</h3>
+                <p className="text-sm mb-4" style={{ color: "rgba(237,236,232,0.5)" }}>
+                  Cette action est irréversible. Tape <strong style={{ color: "#EDECE8" }}>SUPPRIMER</strong> pour confirmer.
                 </p>
                 <input
                   type="text"
                   value={deleteConfirmText}
-                  onChange={(e) => setDeleteConfirmText(e.target.value)}
-                  placeholder="Tapez SUPPRIMER"
-                  className="w-full bg-white/40 border border-white/40 rounded-xl px-3 py-2 min-h-[44px] text-base outline-none focus:border-red-300 mt-4"
+                  onChange={e => setDeleteConfirmText(e.target.value)}
+                  placeholder="SUPPRIMER"
+                  className="w-full rounded-xl px-3 py-2.5 min-h-[44px] text-base outline-none mt-3 mb-5"
+                  style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(239,68,68,0.25)", color: "#EDECE8" }}
+                  onFocus={e => (e.currentTarget.style.borderColor = "rgba(239,68,68,0.5)")}
+                  onBlur={e => (e.currentTarget.style.borderColor = "rgba(239,68,68,0.25)")}
                 />
-                <div className="flex gap-4 mt-6">
-                  <button
-                    onClick={() => {
-                      setShowDeleteAllModal(false);
-                      setDeleteConfirmText("");
-                    }}
-                    className="flex-1 bg-white/40 border border-white/40 rounded-xl px-4 py-2 text-sm font-medium hover:bg-white/60 transition-all text-gray-900"
-                  >
-                    Annuler
-                  </button>
-                  <button
-                    onClick={handleDeleteAll}
-                    disabled={deleteConfirmText !== "SUPPRIMER" || isLoadingDelete}
-                    className="flex-1 bg-red-600 text-white rounded-xl px-4 py-2 font-bold hover:bg-red-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isLoadingDelete ? "Suppression..." : "Supprimer définitivement"}
-                  </button>
+                <div className="flex gap-3">
+                  <button onClick={() => { setShowDeleteAllModal(false); setDeleteConfirmText(""); }}
+                    className="flex-1 rounded-xl px-4 py-2.5 text-sm font-medium"
+                    style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.10)", color: "rgba(237,236,232,0.7)" }}
+                  >Annuler</button>
+                  <button onClick={handleDeleteAll} disabled={deleteConfirmText !== "SUPPRIMER" || isLoadingDelete}
+                    className="flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.25)", color: "#EF4444" }}
+                    onMouseEnter={e => !isLoadingDelete && deleteConfirmText === "SUPPRIMER" && (e.currentTarget.style.background = "rgba(239,68,68,0.25)")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "rgba(239,68,68,0.15)")}
+                  >{isLoadingDelete ? "Suppression..." : "Supprimer définitivement"}</button>
                 </div>
-              </div>
-            </motion.div>
+              </motion.div>
+            </div>
           </>
         )}
       </AnimatePresence>
