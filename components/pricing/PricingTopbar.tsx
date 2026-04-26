@@ -33,18 +33,15 @@ export default function PricingTopbar() {
         </Link>
 
         <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
-          <div className="rounded-full bg-white/5 p-0.5">
-            <Image
-              src="/logo-eco.png"
-              alt="ECO"
-              width={28}
-              height={28}
-              className="w-7 h-7"
-              priority
-              quality={90}
-              style={{ filter: "brightness(1.15) contrast(0.95)" }}
-            />
-          </div>
+          <Image
+            src="/logo-eco.png"
+            alt="ECO"
+            width={28}
+            height={28}
+            className="w-7 h-7"
+            priority
+            quality={90}
+          />
           <span className="text-base font-bold" style={{ color: "#EDECE8", letterSpacing: "-0.02em" }}>ECO</span>
         </div>
 

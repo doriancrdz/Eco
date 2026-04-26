@@ -89,14 +89,6 @@ export default function Logo({
           : undefined
       }
     >
-      {/* Glow derrière la bulle pour adoucir les zones transparentes */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: "radial-gradient(circle at 45% 45%, rgba(180,190,255,0.10) 0%, rgba(150,220,210,0.06) 45%, transparent 70%)",
-          transform: "scale(0.85)",
-        }}
-      />
       <motion.div
         className="w-full h-full flex items-center justify-center cursor-pointer select-none rounded-none border-0 overflow-visible"
         style={{
@@ -156,7 +148,6 @@ export default function Logo({
           priority={size >= 200}
           unoptimized
           className="bg-transparent block w-full h-full object-contain select-none"
-          style={{ filter: "brightness(1.15) contrast(0.95)" }}
         />
       </motion.div>
       {showWarning && (
