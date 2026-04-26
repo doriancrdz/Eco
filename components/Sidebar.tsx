@@ -164,7 +164,7 @@ export default function Sidebar({
                   aria-label="Retour à l'accueil"
                 >
                   <Image
-                    src="/logo-eco.png"
+                    src="/logo-eco-v2.png"
                     alt=""
                     width={22}
                     height={22}

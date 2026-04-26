@@ -51,7 +51,7 @@ export default function Header({
           aria-label="Retour à l'accueil"
         >
           <Image
-            src="/logo-eco.png"
+            src="/logo-eco-v2.png"
             alt=""
             width={36}
             height={36}
@@ -118,7 +118,7 @@ export default function Header({
         aria-label="Retour à l'accueil"
       >
         <Image
-          src="/logo-eco.png"
+          src="/logo-eco-v2.png"
           alt=""
           width={28}
           height={28}

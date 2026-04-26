@@ -34,7 +34,7 @@ export default function PricingTopbar() {
 
         <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
           <Image
-            src="/logo-eco.png"
+            src="/logo-eco-v2.png"
             alt="ECO"
             width={28}
             height={28}

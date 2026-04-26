@@ -67,13 +67,15 @@ export default function Logo({
 
   return (
     <motion.div
-      className="relative inline-flex items-center justify-center bg-transparent"
+      className="relative inline-flex items-center justify-center"
       style={{
         width: size,
         height: size,
         background: "transparent",
         outline: "none",
         boxShadow: "none",
+        borderRadius: "50%",
+        overflow: "hidden",
       }}
       onClick={isClickable ? onClick : undefined}
       role={isClickable ? "button" : undefined}
@@ -141,7 +143,7 @@ export default function Logo({
         }
       >
         <Image
-          src="/logo-eco.png"
+          src="/logo-eco-v2.png"
           alt="ECO"
           width={size}
           height={size}
