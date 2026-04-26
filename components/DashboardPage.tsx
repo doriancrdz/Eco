@@ -56,6 +56,7 @@ export default function DashboardPage() {
   const { user, isSignedIn, isLoaded } = useUser();
   const { signOut } = useClerk();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const sidebarInitialized = useRef(false);
   const [showProfile, setShowProfile] = useState(false);
   const [userPlan, setUserPlan] = useState<string>(() => {
     if (typeof window === "undefined") return "free";
@@ -108,6 +109,14 @@ export default function DashboardPage() {
     const t = setTimeout(() => setDebouncedQuery(searchQuery), 300);
     return () => clearTimeout(t);
   }, [searchQuery]);
+
+  // Sidebar ouverte par défaut sur desktop
+  useEffect(() => {
+    if (!sidebarInitialized.current && isDesktop) {
+      sidebarInitialized.current = true;
+      setSidebarOpen(true);
+    }
+  }, [isDesktop]);
 
   // PDF context
   const [pdfFiles, setPdfFiles] = useState<Array<{ name: string; text: string }>>([]);
@@ -1410,7 +1419,7 @@ export default function DashboardPage() {
           )}
 
           <main className="flex-1 overflow-y-auto overflow-x-hidden pt-6">
-            <div className={`${sidebarOpen ? "" : "max-w-3xl mx-auto"} px-4 md:px-6 lg:px-8`}>
+            <div className={`${(!selectedEco && !isProcessing && !viewAllEcos) ? "max-w-3xl" : "max-w-5xl"} mx-auto px-4 md:px-6 lg:px-8`}>
               <AnimatePresence mode="wait">
                   {(() => {
                     const conditionHome = !selectedEco && !isFocusMode && !viewAllEcos && !isProcessing;
@@ -1456,7 +1465,7 @@ export default function DashboardPage() {
                       >
                         <Logo
                           state="idle"
-                          size={280}
+                          size={160}
                           onClick={handleStartRecording}
                           isClickable={!paymentBlocked}
                           showMicroWarning={false}
@@ -1467,15 +1476,15 @@ export default function DashboardPage() {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1, duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
-                        className="mt-4 text-center"
+                        className="mt-3 text-center"
                       >
-                        <h1 className="text-3xl font-bold tracking-[-0.04em]" style={{ color: "#EDECE8" }}>
+                        <h1 className="text-4xl md:text-5xl font-bold tracking-[-0.05em]" style={{ color: "#EDECE8" }}>
                           Bonjour,{" "}
                           {user?.firstName
                             ? <><span className="italic" style={{ color: "#A78BFA" }}>{user.firstName}</span>.</>
                             : "!"}
                         </h1>
-                        <p className="text-base font-normal mt-2" style={{ color: "rgba(237,236,232,0.4)" }}>
+                        <p className="text-sm font-normal mt-2.5" style={{ color: "rgba(237,236,232,0.38)" }}>
                           Prêt à transformer ton prochain cours ?
                         </p>
                       </motion.div>
@@ -1675,7 +1684,7 @@ export default function DashboardPage() {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.3, duration: 0.4 }}
-                        className="mt-16 w-full max-w-4xl space-y-4"
+                        className="mt-10 w-full max-w-4xl space-y-4"
                       >
                         <div className="flex items-center justify-between">
                           <h2 className="text-lg font-semibold tracking-[-0.03em]" style={{ color: "#EDECE8" }}>
@@ -1769,15 +1778,15 @@ export default function DashboardPage() {
                                     transition={{ delay: index * 0.06, duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
                                     whileHover={{ y: -3 }}
                                     whileTap={{ scale: 0.98 }}
-                                    className="group relative text-left cursor-pointer eco-card rounded-2xl"
+                                    className="group relative text-left cursor-pointer eco-card rounded-2xl overflow-hidden"
                                   >
-                                    {/* Corner brackets */}
-                                    <span className="absolute top-3 left-3 w-2 h-2 border-l border-t pointer-events-none" style={{ borderColor: "rgba(139,92,246,0.3)" }} />
-                                    <span className="absolute top-3 right-10 w-2 h-2 border-r border-t pointer-events-none" style={{ borderColor: "rgba(139,92,246,0.3)" }} />
-                                    <span className="absolute bottom-3 left-3 w-2 h-2 border-l border-b pointer-events-none" style={{ borderColor: "rgba(139,92,246,0.3)" }} />
-                                    <span className="absolute bottom-3 right-3 w-2 h-2 border-r border-b pointer-events-none" style={{ borderColor: "rgba(139,92,246,0.3)" }} />
+                                    {/* Accent line on hover */}
                                     <div
-                                      className="p-5"
+                                      className="absolute left-0 top-0 bottom-0 w-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                                      style={{ background: "linear-gradient(180deg, #8B5CF6, #06B6D4)" }}
+                                    />
+                                    <div
+                                      className="p-5 pl-6"
                                       onClick={() => handleEcoClick(eco)}
                                     >
                                       <div className="flex items-center gap-3 mb-2.5 pr-6">
@@ -1918,10 +1927,14 @@ export default function DashboardPage() {
                                 transition={{ delay: index * 0.04 }}
                                 whileHover={{ y: -3 }}
                                 whileTap={{ scale: 0.98 }}
-                                className="group relative text-left cursor-pointer eco-card rounded-2xl"
+                                className="group relative text-left cursor-pointer eco-card rounded-2xl overflow-hidden"
                               >
                                 <div
-                                  className="p-5"
+                                  className="absolute left-0 top-0 bottom-0 w-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                                  style={{ background: "linear-gradient(180deg, #8B5CF6, #06B6D4)" }}
+                                />
+                                <div
+                                  className="p-5 pl-6"
                                   onClick={() => handleEcoClick(eco)}
                                 >
                                   <div className="flex items-center gap-3 mb-2.5 pr-6">
