@@ -47,7 +47,7 @@ export default function Header({
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => onGoHome("logo")}
-          className="p-0 bg-transparent border-0 rounded-none transition-opacity shrink-0 cursor-pointer focus:outline-none"
+          className="p-0 bg-transparent border-0 rounded-none transition-opacity shrink-0 cursor-pointer focus:outline-none lg:hidden"
           aria-label="Retour à l'accueil"
         >
           <Image
@@ -123,7 +123,7 @@ export default function Header({
           width={28}
           height={28}
           unoptimized
-          className="w-7 h-7 bg-transparent block object-contain select-none pointer-events-none"
+          className="w-7 h-7 bg-transparent block object-contain select-none pointer-events-none lg:hidden"
         />
         <span className="text-base font-bold pointer-events-none" style={{ color: "#EDECE8", letterSpacing: "-0.02em" }}>ECO</span>
       </button>
