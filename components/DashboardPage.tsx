@@ -1361,7 +1361,7 @@ export default function DashboardPage() {
   // ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen flex relative overflow-hidden" style={{ color: "#EDECE8" }}>
+    <div className="h-screen flex relative overflow-hidden" style={{ color: "#EDECE8" }}>
       {/* Background */}
       <div className="fixed inset-0 -z-10 eco-bg" aria-hidden />
       {/* Ambient glow spots */}
