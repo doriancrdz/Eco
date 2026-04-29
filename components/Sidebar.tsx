@@ -208,17 +208,21 @@ export default function Sidebar({
                   )}
                 </div>
 
-                {/* Divider */}
-                <div className="mx-4 mt-3 mb-2" style={{ height: 1, background: "rgba(255,255,255,0.06)" }} />
+                {/* Divider nav → dossiers */}
+                <div className="mx-4 mt-3 mb-2 flex-shrink-0" style={{ height: 1, background: "rgba(255,255,255,0.06)" }} />
 
-                {/* Scrollable zone */}
-                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-hide">
+                {/* Dossiers — zone fixe (ne scroll pas) */}
+                <div className="flex-shrink-0">
                   <FolderList
                     onSelectEco={handleEcoClick}
                     onClose={onClose}
                     selectedEcoId={selectedEco}
                     expandFolderId={selectedFolder}
                   />
+                </div>
+
+                {/* MES ECOS — seule zone scrollable */}
+                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-hide">
                   <EcoHistory
                     selectedEcoId={selectedEco}
                     onSelectEco={handleEcoClick}

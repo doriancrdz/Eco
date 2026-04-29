@@ -12,7 +12,7 @@ import { transcriptionLimiter } from "@/lib/ratelimit";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
-  timeout: 120000,
+  timeout: 290000, // supérieur au plafond adaptatif (260s) — l'AbortController gère le timeout réel
 });
 
 function getR2Client(): S3Client | null {
@@ -199,7 +199,7 @@ export async function POST(
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        if (signal?.aborted) throw new Error("Whisper timeout — audio trop court ou silencieux");
+        if (signal?.aborted) throw new Error("Transcription interrompue (timeout Whisper) — veuillez réessayer");
         try {
           if (process.env.NODE_ENV === "development") {
             console.log(`[transcribe] Tentative ${attempt}/${maxRetries}`);
@@ -246,11 +246,13 @@ export async function POST(
           return;
         }
 
-        // Timeout Whisper adaptatif : 15s pour les fichiers courts (<500KB), 120s sinon
-        const isShortFile = audioFile.size < 500 * 1024;
-        const whisperTimeoutMs = isShortFile ? 15000 : 120000;
+        // Timeout Whisper adaptatif : 45s/MB, minimum 30s, plafond 260s
+        // Laisse ~35s de marge avant maxDuration Vercel (300s) pour DB + appel generate-summary
+        const sizeMB = audioFile.size / (1024 * 1024);
+        const whisperTimeoutMs = Math.min(260000, Math.max(30000, Math.round(sizeMB * 45 * 1000)));
         const whisperController = new AbortController();
         const whisperTimeoutId = setTimeout(() => whisperController.abort(), whisperTimeoutMs);
+        console.log(`[ECO] Whisper timeout set to ${(whisperTimeoutMs / 1000).toFixed(0)}s for ${sizeMB.toFixed(2)}MB file recordingId=${recordingId}`);
 
         const whisperStart = performance.now();
         let transcription: string;
