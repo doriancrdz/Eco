@@ -118,12 +118,6 @@ export default function DashboardPage() {
     }
   }, [isDesktop]);
 
-  // Empêche le scroll page entière sur le dashboard — masque le Footer global du layout
-  useEffect(() => {
-    document.documentElement.style.overflowY = "hidden";
-    return () => { document.documentElement.style.overflowY = ""; };
-  }, []);
-
   // PDF context
   const [pdfFiles, setPdfFiles] = useState<Array<{ name: string; text: string }>>([]);
   const [isPdfExtracting, setIsPdfExtracting] = useState(false);
