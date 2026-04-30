@@ -672,6 +672,18 @@ export default function LandingPage() {
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: ANIM_STYLES }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          "mainEntity": FAQ_ITEMS.map((item) => ({
+            "@type": "Question",
+            "name": item.q,
+            "acceptedAnswer": { "@type": "Answer", "text": item.a },
+          })),
+        }) }}
+      />
       <div className="min-h-screen" style={{ background: "#080A0F" }}>
         <Nav />
         <Hero />

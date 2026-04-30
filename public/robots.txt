@@ -1,13 +1,10 @@
 User-agent: *
+Allow: /
 Disallow: /api/
+Disallow: /dashboard
 Disallow: /admin/
 Disallow: /settings/
 Disallow: /sign-in/
 Disallow: /sign-up/
-
-User-agent: Googlebot
-Disallow: /api/
-Disallow: /admin/
-Allow: /
 
 Sitemap: https://econewapp.com/sitemap.xml
