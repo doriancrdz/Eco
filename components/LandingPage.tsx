@@ -29,7 +29,7 @@ const ANIM_STYLES = `
 .delay-6 { animation-delay: 0.6s; }
 .delay-7 { animation-delay: 0.7s; }
 .card-hover { transition: transform 0.25s ease, box-shadow 0.25s ease; }
-.card-hover:hover { transform: translateY(-4px); box-shadow: 0 24px 48px rgba(0,0,0,0.12); }
+.card-hover:hover { transform: translateY(-4px); box-shadow: 0 24px 48px rgba(0,0,0,0.5); }
 `;
 
 /* ─── Nav ─── */
@@ -53,16 +53,17 @@ function Nav() {
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrolled
-          ? "bg-white/85 backdrop-blur-xl border-b border-gray-200/60 shadow-sm"
-          : "bg-white/60 backdrop-blur-md border-b border-white/30"
+          ? "backdrop-blur-xl border-b border-white/10 shadow-sm"
+          : "backdrop-blur-md border-b border-white/8"
       }`}
+      style={{ background: scrolled ? "rgba(13,14,20,0.95)" : "rgba(8,10,15,0.80)" }}
     >
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <a href="#hero" className="flex items-center gap-2 shrink-0">
             <Image src="/logo-eco.png" alt="ECO" width={32} height={32} className="rounded-lg" />
-            <span className="font-bold text-gray-900 text-lg">ECO</span>
+            <span className="font-bold text-[#EDECE8] text-lg">ECO</span>
           </a>
 
           {/* Desktop links */}
@@ -71,7 +72,7 @@ function Nav() {
               <a
                 key={l.href}
                 href={l.href}
-                className="text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
+                className="text-sm font-medium text-[#8b8884] hover:text-[#EDECE8] transition-colors"
               >
                 {l.label}
               </a>
@@ -82,7 +83,7 @@ function Nav() {
           <div className="hidden md:block">
             <Link
               href="/sign-up"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 transition-colors shadow-sm"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-500 to-teal-500 text-white text-sm font-semibold hover:from-violet-400 hover:to-teal-400 transition-all shadow-sm"
             >
               Essayer gratuitement
               <ChevronRight className="w-4 h-4" />
@@ -91,7 +92,7 @@ function Nav() {
 
           {/* Mobile hamburger */}
           <button
-            className="md:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
+            className="md:hidden p-2 rounded-lg text-[#8b8884] hover:bg-white/8 transition-colors"
             onClick={() => setMobileOpen((v) => !v)}
             aria-label="Menu"
           >
@@ -102,20 +103,20 @@ function Nav() {
 
       {/* Mobile menu */}
       {mobileOpen && (
-        <div className="md:hidden bg-white/95 backdrop-blur-xl border-t border-gray-200/60 px-4 py-4 space-y-3">
+        <div className="md:hidden backdrop-blur-xl border-t border-white/10 px-4 py-4 space-y-3" style={{ background: "#0D0E14" }}>
           {links.map((l) => (
             <a
               key={l.href}
               href={l.href}
               onClick={() => setMobileOpen(false)}
-              className="block text-sm font-medium text-gray-700 hover:text-gray-900 py-2"
+              className="block text-sm font-medium text-[#8b8884] hover:text-[#EDECE8] py-2"
             >
               {l.label}
             </a>
           ))}
           <Link
             href="/sign-up"
-            className="block w-full text-center px-5 py-3 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 transition-colors mt-2"
+            className="block w-full text-center px-5 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-teal-500 text-white text-sm font-semibold hover:from-violet-400 hover:to-teal-400 transition-all mt-2"
           >
             Essayer gratuitement
           </Link>
@@ -133,21 +134,21 @@ function Hero() {
       className="min-h-screen flex flex-col items-center justify-center pt-24 pb-16 px-4 text-center"
     >
       {/* Badge */}
-      <div className="anim-fade-up delay-1 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/70 backdrop-blur-sm border border-white/60 shadow-sm text-sm font-medium text-gray-700 mb-8">
-        <Sparkles className="w-4 h-4 text-teal-500" />
+      <div className="anim-fade-up delay-1 inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/10 text-sm font-medium text-[#EDECE8] mb-8" style={{ background: "rgba(255,255,255,0.05)" }}>
+        <Sparkles className="w-4 h-4 text-teal-400" />
         Propulsé par l&apos;IA — Fait pour les étudiants
       </div>
 
       {/* Title */}
-      <h1 className="anim-fade-up delay-2 max-w-3xl text-4xl sm:text-5xl md:text-6xl font-bold text-gray-900 leading-tight tracking-tight mb-6">
+      <h1 className="anim-fade-up delay-2 max-w-3xl text-4xl sm:text-5xl md:text-6xl font-bold text-[#EDECE8] leading-tight tracking-tight mb-6">
         Tes cours audio, transformés en{" "}
-        <span className="bg-gradient-to-r from-teal-500 via-blue-500 to-violet-500 bg-clip-text text-transparent">
+        <span className="bg-gradient-to-r from-teal-400 via-blue-400 to-violet-400 bg-clip-text text-transparent">
           notes intelligentes
         </span>
       </h1>
 
       {/* Subtitle */}
-      <p className="anim-fade-up delay-3 max-w-xl text-lg text-gray-600 leading-relaxed mb-10">
+      <p className="anim-fade-up delay-3 max-w-xl text-lg text-[#8b8884] leading-relaxed mb-10">
         Enregistre n&apos;importe quel cours, ECO génère automatiquement un résumé, des points clés, un quiz et une transcription complète en quelques secondes.
       </p>
 
@@ -155,14 +156,14 @@ function Hero() {
       <div className="anim-fade-up delay-4 flex flex-col sm:flex-row items-center gap-4 mb-16">
         <Link
           href="/sign-up"
-          className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gray-900 text-white font-semibold text-base hover:bg-gray-800 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+          className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-violet-500 to-teal-500 text-white font-semibold text-base hover:from-violet-400 hover:to-teal-400 transition-all shadow-lg shadow-violet-500/20 hover:shadow-violet-500/30 hover:-translate-y-0.5"
         >
           Essayer gratuitement
           <ChevronRight className="w-5 h-5" />
         </Link>
         <a
           href="#demo"
-          className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-white/70 backdrop-blur-sm border border-white/60 text-gray-700 font-semibold text-base hover:bg-white/90 transition-all shadow-sm"
+          className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl border border-white/10 text-[#EDECE8] font-semibold text-base hover:bg-white/5 transition-all"
         >
           Voir la démo →
         </a>
@@ -171,7 +172,7 @@ function Hero() {
       {/* Video */}
       <div
         id="demo"
-        className="anim-fade-up delay-5 w-full max-w-4xl rounded-2xl overflow-hidden shadow-2xl border border-white/60"
+        className="anim-fade-up delay-5 w-full max-w-4xl rounded-2xl overflow-hidden shadow-2xl border border-white/10"
       >
         <video
           src="https://pub-0270797b38de40338d1b41adf0ef1dca.r2.dev/Demo%20Eco.mp4"
@@ -193,14 +194,15 @@ function SocialProof() {
   return (
     <section className="py-12 px-4">
       <div className="max-w-2xl mx-auto text-center">
-        <p className="text-sm font-medium text-gray-500 mb-6 uppercase tracking-widest">
+        <p className="text-sm font-medium text-[#8b8884] mb-6 uppercase tracking-widest">
           Adopté par des étudiants de grandes écoles
         </p>
         <div className="flex items-center justify-center gap-10">
           {schools.map((s) => (
             <span
               key={s}
-              className="text-2xl font-bold text-gray-300 tracking-tight select-none"
+              className="text-2xl font-bold tracking-tight select-none"
+              style={{ color: "rgba(237,236,232,0.25)" }}
             >
               {s}
             </span>
@@ -216,19 +218,19 @@ function HowItWorks() {
   const steps = [
     {
       num: "01",
-      icon: <Mic className="w-6 h-6 text-teal-600" />,
+      icon: <Mic className="w-6 h-6 text-teal-400" />,
       title: "Enregistre ton cours",
       desc: "Lance ECO avant le début de ton cours. L'app enregistre l'audio en arrière-plan sans consommer ta batterie.",
     },
     {
       num: "02",
-      icon: <Sparkles className="w-6 h-6 text-blue-500" />,
+      icon: <Sparkles className="w-6 h-6 text-blue-400" />,
       title: "L'IA génère tes notes",
       desc: "En quelques secondes, notre IA transcrit, analyse et structure ton cours en résumé, points clés et quiz personnalisés.",
     },
     {
       num: "03",
-      icon: <BookOpen className="w-6 h-6 text-violet-500" />,
+      icon: <BookOpen className="w-6 h-6 text-violet-400" />,
       title: "Révise avec quiz et points clés",
       desc: "Retrouve tout ton cours organisé, teste tes connaissances avec les quiz générés automatiquement et révise efficacement.",
     },
@@ -238,10 +240,10 @@ function HowItWorks() {
     <section id="how" className="py-20 px-4">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-16">
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
+          <h2 className="text-3xl sm:text-4xl font-bold text-[#EDECE8] mb-4">
             Trois étapes, c&apos;est tout.
           </h2>
-          <p className="text-lg text-gray-500 max-w-xl mx-auto">
+          <p className="text-lg text-[#8b8884] max-w-xl mx-auto">
             De l&apos;enregistrement aux notes structurées en quelques secondes. Aucune configuration requise.
           </p>
         </div>
@@ -250,16 +252,17 @@ function HowItWorks() {
           {steps.map((step, i) => (
             <div
               key={i}
-              className="card-hover relative bg-white/70 backdrop-blur-xl border border-white/50 rounded-2xl p-8 shadow-lg"
+              className="card-hover relative rounded-2xl p-8 border border-white/10"
+              style={{ background: "#141619" }}
             >
-              <div className="absolute top-6 right-6 text-4xl font-black text-gray-100 select-none">
+              <div className="absolute top-6 right-6 text-4xl font-black select-none" style={{ color: "rgba(255,255,255,0.04)" }}>
                 {step.num}
               </div>
-              <div className="w-12 h-12 rounded-xl bg-white/80 border border-white/60 flex items-center justify-center shadow-sm mb-5">
+              <div className="w-12 h-12 rounded-xl border border-white/10 flex items-center justify-center mb-5" style={{ background: "rgba(255,255,255,0.05)" }}>
                 {step.icon}
               </div>
-              <h3 className="text-lg font-bold text-gray-900 mb-3">{step.title}</h3>
-              <p className="text-gray-600 leading-relaxed text-sm">{step.desc}</p>
+              <h3 className="text-lg font-bold text-[#EDECE8] mb-3">{step.title}</h3>
+              <p className="text-[#8b8884] leading-relaxed text-sm">{step.desc}</p>
             </div>
           ))}
         </div>
@@ -277,24 +280,24 @@ const TABS = [
     desc: "ECO analyse ton cours et génère un résumé organisé avec des titres thématiques, du contexte et une synthèse. Pas de copier-coller — une vraie compréhension.",
     pills: ["Sections automatiques", "Hiérarchie visuelle"],
     mockup: (
-      <div className="bg-white/90 rounded-2xl border border-white/60 shadow-lg p-5 space-y-4 text-left">
-        <div className="h-2.5 w-32 bg-gray-900 rounded-full" />
+      <div className="rounded-2xl border border-white/10 shadow-lg p-5 space-y-4 text-left" style={{ background: "#1a1d24" }}>
+        <div className="h-2.5 w-32 rounded-full" style={{ background: "rgba(237,236,232,0.8)" }} />
         <div className="space-y-2">
-          <div className="h-2 w-full bg-gray-200 rounded-full" />
-          <div className="h-2 w-5/6 bg-gray-200 rounded-full" />
-          <div className="h-2 w-4/6 bg-gray-200 rounded-full" />
+          <div className="h-2 w-full rounded-full" style={{ background: "rgba(255,255,255,0.10)" }} />
+          <div className="h-2 w-5/6 rounded-full" style={{ background: "rgba(255,255,255,0.10)" }} />
+          <div className="h-2 w-4/6 rounded-full" style={{ background: "rgba(255,255,255,0.10)" }} />
         </div>
         <div className="h-2.5 w-40 bg-teal-500/70 rounded-full mt-4" />
         <div className="space-y-2">
-          <div className="h-2 w-full bg-gray-100 rounded-full" />
-          <div className="h-2 w-5/6 bg-gray-100 rounded-full" />
-          <div className="h-2 w-3/4 bg-gray-100 rounded-full" />
-          <div className="h-2 w-full bg-gray-100 rounded-full" />
+          <div className="h-2 w-full rounded-full" style={{ background: "rgba(255,255,255,0.06)" }} />
+          <div className="h-2 w-5/6 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }} />
+          <div className="h-2 w-3/4 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }} />
+          <div className="h-2 w-full rounded-full" style={{ background: "rgba(255,255,255,0.06)" }} />
         </div>
         <div className="h-2.5 w-36 bg-blue-400/70 rounded-full mt-4" />
         <div className="space-y-2">
-          <div className="h-2 w-full bg-gray-100 rounded-full" />
-          <div className="h-2 w-4/5 bg-gray-100 rounded-full" />
+          <div className="h-2 w-full rounded-full" style={{ background: "rgba(255,255,255,0.06)" }} />
+          <div className="h-2 w-4/5 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }} />
         </div>
       </div>
     ),
@@ -306,19 +309,19 @@ const TABS = [
     desc: "ECO extrait les concepts importants de ton cours et les structure en points clés avec définitions. Idéal pour une révision rapide avant un exam.",
     pills: ["Notions définies", "Révision rapide"],
     mockup: (
-      <div className="bg-white/90 rounded-2xl border border-white/60 shadow-lg p-5 space-y-3 text-left">
+      <div className="rounded-2xl border border-white/10 shadow-lg p-5 space-y-3 text-left" style={{ background: "#1a1d24" }}>
         {[
-          { color: "bg-teal-100", dot: "bg-teal-500", w: "w-4/5" },
-          { color: "bg-blue-100", dot: "bg-blue-500", w: "w-3/4" },
-          { color: "bg-violet-100", dot: "bg-violet-500", w: "w-5/6" },
-          { color: "bg-amber-100", dot: "bg-amber-500", w: "w-2/3" },
-          { color: "bg-rose-100", dot: "bg-rose-500", w: "w-4/5" },
+          { color: "rgba(45,212,191,0.10)", dot: "bg-teal-400", w: "w-4/5" },
+          { color: "rgba(96,165,250,0.10)", dot: "bg-blue-400", w: "w-3/4" },
+          { color: "rgba(167,139,250,0.10)", dot: "bg-violet-400", w: "w-5/6" },
+          { color: "rgba(251,191,36,0.10)", dot: "bg-amber-400", w: "w-2/3" },
+          { color: "rgba(251,113,133,0.10)", dot: "bg-rose-400", w: "w-4/5" },
         ].map((item, i) => (
-          <div key={i} className={`flex items-start gap-3 p-3 ${item.color} rounded-xl`}>
+          <div key={i} className={`flex items-start gap-3 p-3 rounded-xl`} style={{ background: item.color }}>
             <div className={`w-2.5 h-2.5 rounded-full ${item.dot} mt-1 shrink-0`} />
             <div className="space-y-1.5 flex-1">
-              <div className="h-2.5 w-24 bg-gray-400 rounded-full" />
-              <div className={`h-2 ${item.w} bg-gray-300 rounded-full`} />
+              <div className="h-2.5 w-24 rounded-full" style={{ background: "rgba(237,236,232,0.4)" }} />
+              <div className={`h-2 ${item.w} rounded-full`} style={{ background: "rgba(255,255,255,0.15)" }} />
             </div>
           </div>
         ))}
@@ -332,32 +335,36 @@ const TABS = [
     desc: "ECO génère automatiquement des questions QCM et ouvertes basées sur ton cours. Entraîne-toi, révèle les réponses et mesure ta progression.",
     pills: ["QCM automatique", "Questions ouvertes"],
     mockup: (
-      <div className="bg-white/90 rounded-2xl border border-white/60 shadow-lg p-5 space-y-4 text-left">
-        <div className="h-3 w-3/4 bg-gray-800 rounded-full" />
+      <div className="rounded-2xl border border-white/10 shadow-lg p-5 space-y-4 text-left" style={{ background: "#1a1d24" }}>
+        <div className="h-3 w-3/4 rounded-full" style={{ background: "rgba(237,236,232,0.7)" }} />
         <div className="space-y-2.5">
           {["A", "B", "C", "D"].map((letter, i) => (
             <div
               key={letter}
-              className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${
-                i === 1
-                  ? "bg-teal-50 border-teal-300"
-                  : "bg-gray-50 border-gray-200"
-              }`}
+              className={`flex items-center gap-3 p-3 rounded-xl border transition-colors`}
+              style={i === 1
+                ? { background: "rgba(45,212,191,0.10)", borderColor: "rgba(45,212,191,0.30)" }
+                : { background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.10)" }
+              }
             >
               <div
                 className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                  i === 1 ? "bg-teal-500 text-white" : "bg-gray-200 text-gray-500"
+                  i === 1 ? "bg-teal-500 text-white" : ""
                 }`}
+                style={i !== 1 ? { background: "rgba(255,255,255,0.10)", color: "#8b8884" } : {}}
               >
                 {letter}
               </div>
-              <div className={`h-2 rounded-full ${i === 1 ? "bg-teal-400 w-3/4" : "bg-gray-200 w-2/3"}`} />
+              <div
+                className={`h-2 rounded-full ${i === 1 ? "bg-teal-400 w-3/4" : "w-2/3"}`}
+                style={i !== 1 ? { background: "rgba(255,255,255,0.10)" } : {}}
+              />
             </div>
           ))}
         </div>
         <div className="flex gap-2 mt-2">
-          <div className="h-8 flex-1 bg-gray-900 rounded-xl" />
-          <div className="h-8 flex-1 bg-gray-100 rounded-xl" />
+          <div className="h-8 flex-1 rounded-xl bg-gradient-to-r from-violet-500 to-teal-500" />
+          <div className="h-8 flex-1 rounded-xl" style={{ background: "rgba(255,255,255,0.08)" }} />
         </div>
       </div>
     ),
@@ -369,10 +376,10 @@ const TABS = [
     desc: "Accède à la retranscription mot pour mot de ton enregistrement. Retrouve une notion précise, une citation, ou relis tout le cours depuis l'app.",
     pills: ["Mot pour mot", "Copie en 1 clic"],
     mockup: (
-      <div className="bg-white/90 rounded-2xl border border-white/60 shadow-lg p-5 space-y-2 text-left">
+      <div className="rounded-2xl border border-white/10 shadow-lg p-5 space-y-2 text-left" style={{ background: "#1a1d24" }}>
         <div className="flex items-center gap-2 mb-4">
-          <FileText className="w-4 h-4 text-gray-400" />
-          <div className="h-2.5 w-28 bg-gray-300 rounded-full" />
+          <FileText className="w-4 h-4 text-[#8b8884]" />
+          <div className="h-2.5 w-28 rounded-full" style={{ background: "rgba(237,236,232,0.25)" }} />
         </div>
         {[
           [1, 0.9, 0.7],
@@ -386,14 +393,14 @@ const TABS = [
             {row.map((w, j) => (
               <div
                 key={j}
-                className="h-2 bg-gray-200 rounded-full"
-                style={{ flex: w }}
+                className="h-2 rounded-full"
+                style={{ flex: w, background: "rgba(255,255,255,0.10)" }}
               />
             ))}
           </div>
         ))}
-        <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
-          <div className="h-8 w-28 bg-gray-900/10 rounded-xl" />
+        <div className="flex gap-2 mt-4 pt-4 border-t border-white/10">
+          <div className="h-8 w-28 rounded-xl" style={{ background: "rgba(255,255,255,0.08)" }} />
         </div>
       </div>
     ),
@@ -408,10 +415,10 @@ function Features() {
     <section id="features" className="py-20 px-4">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-14">
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
+          <h2 className="text-3xl sm:text-4xl font-bold text-[#EDECE8] mb-4">
             Tout ce dont tu as besoin pour réviser
           </h2>
-          <p className="text-lg text-gray-500 max-w-xl mx-auto">
+          <p className="text-lg text-[#8b8884] max-w-xl mx-auto">
             Résumé, points clés, quiz, transcription — tout est généré automatiquement depuis ton enregistrement.
           </p>
         </div>
@@ -422,11 +429,12 @@ function Features() {
             <button
               key={t.id}
               onClick={() => setActive(i)}
-              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${
                 active === i
-                  ? "bg-gray-900 text-white shadow-sm"
-                  : "bg-white/70 text-gray-600 hover:bg-white/90 border border-white/50"
+                  ? "bg-[#EDECE8] text-[#080A0F] border-transparent shadow-sm"
+                  : "border-white/10 text-[#8b8884] hover:bg-white/8 hover:text-[#EDECE8]"
               }`}
+              style={active !== i ? { background: "rgba(255,255,255,0.04)" } : {}}
             >
               {t.label}
             </button>
@@ -437,13 +445,14 @@ function Features() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
           {/* Left: text */}
           <div key={tab.id} className="anim-fade-in space-y-5">
-            <h3 className="text-2xl font-bold text-gray-900">{tab.title}</h3>
-            <p className="text-gray-600 leading-relaxed">{tab.desc}</p>
+            <h3 className="text-2xl font-bold text-[#EDECE8]">{tab.title}</h3>
+            <p className="text-[#8b8884] leading-relaxed">{tab.desc}</p>
             <div className="flex flex-wrap gap-2">
               {tab.pills.map((p) => (
                 <span
                   key={p}
-                  className="px-3 py-1.5 rounded-lg bg-white/70 border border-white/50 text-xs font-semibold text-gray-700 backdrop-blur-sm"
+                  className="px-3 py-1.5 rounded-lg border border-white/10 text-xs font-semibold text-[#8b8884]"
+                  style={{ background: "rgba(255,255,255,0.04)" }}
                 >
                   {p}
                 </span>
@@ -451,7 +460,7 @@ function Features() {
             </div>
             <Link
               href="/sign-up"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-teal-600 hover:text-teal-700 transition-colors"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-teal-400 hover:text-teal-300 transition-colors"
             >
               Essayer gratuitement <ChevronRight className="w-4 h-4" />
             </Link>
@@ -459,7 +468,7 @@ function Features() {
 
           {/* Right: mockup */}
           <div key={`mockup-${tab.id}`} className="anim-fade-in">
-            <div className="bg-white/30 backdrop-blur-sm border border-white/40 rounded-2xl p-6 shadow-inner">
+            <div className="border border-white/10 rounded-2xl p-6" style={{ background: "#0D0E14" }}>
               {tab.mockup}
             </div>
           </div>
@@ -496,7 +505,7 @@ function Testimonials() {
     <section className="py-20 px-4">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-14">
-          <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
+          <h2 className="text-3xl sm:text-4xl font-bold text-[#EDECE8] mb-4">
             Ils utilisent ECO
           </h2>
         </div>
@@ -505,17 +514,18 @@ function Testimonials() {
           {items.map((item, i) => (
             <div
               key={i}
-              className="card-hover bg-white/70 backdrop-blur-xl border border-white/50 rounded-2xl p-7 shadow-lg"
+              className="card-hover rounded-2xl p-7 border border-white/10"
+              style={{ background: "#141619" }}
             >
               <div className="flex gap-0.5 mb-4">
                 {Array.from({ length: item.stars }).map((_, j) => (
                   <Star key={j} className="w-4 h-4 fill-amber-400 text-amber-400" />
                 ))}
               </div>
-              <p className="text-gray-700 leading-relaxed text-sm mb-6">&ldquo;{item.text}&rdquo;</p>
+              <p className="text-[#8b8884] leading-relaxed text-sm mb-6">&ldquo;{item.text}&rdquo;</p>
               <div>
-                <div className="font-semibold text-gray-900 text-sm">{item.name}</div>
-                <div className="text-xs text-gray-500 mt-0.5">{item.school}</div>
+                <div className="font-semibold text-[#EDECE8] text-sm">{item.name}</div>
+                <div className="text-xs text-[#8b8884] mt-0.5">{item.school}</div>
               </div>
             </div>
           ))}
@@ -530,16 +540,16 @@ function CTA() {
   return (
     <section className="py-20 px-4">
       <div className="max-w-2xl mx-auto text-center">
-        <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl p-12 shadow-2xl">
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+        <div className="rounded-3xl p-12 shadow-2xl border border-white/10" style={{ background: "#141619" }}>
+          <h2 className="text-3xl sm:text-4xl font-bold text-[#EDECE8] mb-4">
             Prêt à transformer tes cours ?
           </h2>
-          <p className="text-gray-300 text-lg mb-8">
+          <p className="text-[#8b8884] text-lg mb-8">
             Commence gratuitement avec 10 minutes offertes. Sans carte bancaire.
           </p>
           <Link
             href="/sign-up"
-            className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-white text-gray-900 font-bold text-base hover:bg-gray-50 transition-all shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+            className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-violet-500 to-teal-500 text-white font-bold text-base hover:from-violet-400 hover:to-teal-400 transition-all shadow-lg shadow-violet-500/20 hover:shadow-violet-500/30 hover:-translate-y-0.5"
           >
             Créer mon compte gratuitement
             <ChevronRight className="w-5 h-5" />
@@ -547,7 +557,7 @@ function CTA() {
           <div className="mt-5">
             <Link
               href="/pricing"
-              className="text-sm text-gray-400 hover:text-gray-300 transition-colors"
+              className="text-sm text-[#8b8884] hover:text-[#EDECE8] transition-colors"
             >
               Voir les tarifs →
             </Link>
@@ -584,30 +594,31 @@ function FAQ() {
   return (
     <section className="py-20 px-4">
       <div className="max-w-2xl mx-auto">
-        <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 text-center mb-12">
+        <h2 className="text-3xl sm:text-4xl font-bold text-[#EDECE8] text-center mb-12">
           Questions fréquentes
         </h2>
         <div className="space-y-3">
           {FAQ_ITEMS.map((item, i) => (
             <div
               key={i}
-              className="bg-white/70 backdrop-blur-sm border border-white/50 rounded-2xl overflow-hidden shadow-sm"
+              className="border border-white/10 rounded-2xl overflow-hidden"
+              style={{ background: "#141619" }}
             >
               <button
                 className="w-full flex items-center justify-between px-6 py-5 text-left"
                 onClick={() => setOpen(open === i ? null : i)}
               >
-                <span className="font-semibold text-gray-900 text-sm sm:text-base pr-4">
+                <span className="font-semibold text-[#EDECE8] text-sm sm:text-base pr-4">
                   {item.q}
                 </span>
                 <ChevronDown
-                  className={`w-5 h-5 text-gray-400 shrink-0 transition-transform duration-200 ${
+                  className={`w-5 h-5 text-[#8b8884] shrink-0 transition-transform duration-200 ${
                     open === i ? "rotate-180" : ""
                   }`}
                 />
               </button>
               {open === i && (
-                <div className="px-6 pb-5 text-gray-600 text-sm leading-relaxed border-t border-gray-100 pt-4">
+                <div className="px-6 pb-5 text-[#8b8884] text-sm leading-relaxed border-t border-white/10 pt-4">
                   {item.a}
                 </div>
               )}
@@ -622,33 +633,33 @@ function FAQ() {
 /* ─── Footer ─── */
 function Footer() {
   return (
-    <footer className="border-t border-white/40 bg-white/40 backdrop-blur-sm py-12 px-4">
+    <footer className="border-t border-white/10 py-12 px-4" style={{ background: "#0D0E14" }}>
       <div className="max-w-6xl mx-auto">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
           {/* Logo + tagline */}
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
               <Image src="/logo-eco.png" alt="ECO" width={28} height={28} className="rounded-lg" />
-              <span className="font-bold text-gray-900">ECO</span>
+              <span className="font-bold text-[#EDECE8]">ECO</span>
             </div>
-            <p className="text-xs text-gray-500 max-w-[200px]">
+            <p className="text-xs text-[#8b8884] max-w-[200px]">
               Tes cours audio, transformés en notes intelligentes.
             </p>
           </div>
 
           {/* Links */}
-          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-500">
-            <Link href="/legal/cgu" className="hover:text-gray-800 transition-colors">CGU</Link>
-            <Link href="/legal/cgv" className="hover:text-gray-800 transition-colors">CGV</Link>
-            <Link href="/legal/confidentialite" className="hover:text-gray-800 transition-colors">Confidentialité</Link>
-            <Link href="/legal/mentions-legales" className="hover:text-gray-800 transition-colors">Mentions légales</Link>
-            <a href="mailto:support@econewapp.com" className="hover:text-gray-800 transition-colors">
+          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-[#8b8884]">
+            <Link href="/legal/cgu" className="hover:text-[#EDECE8] transition-colors">CGU</Link>
+            <Link href="/legal/cgv" className="hover:text-[#EDECE8] transition-colors">CGV</Link>
+            <Link href="/legal/confidentialite" className="hover:text-[#EDECE8] transition-colors">Confidentialité</Link>
+            <Link href="/legal/mentions-legales" className="hover:text-[#EDECE8] transition-colors">Mentions légales</Link>
+            <a href="mailto:support@econewapp.com" className="hover:text-[#EDECE8] transition-colors">
               support@econewapp.com
             </a>
           </div>
         </div>
 
-        <div className="mt-8 pt-6 border-t border-white/40 text-center text-xs text-gray-400">
+        <div className="mt-8 pt-6 border-t border-white/10 text-center text-xs text-[#8b8884]">
           © 2026 ECO. Tous droits réservés.
         </div>
       </div>
@@ -661,7 +672,7 @@ export default function LandingPage() {
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: ANIM_STYLES }} />
-      <div className="min-h-screen aura-gradient">
+      <div className="min-h-screen" style={{ background: "#080A0F" }}>
         <Nav />
         <Hero />
         <SocialProof />
