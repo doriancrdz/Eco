@@ -649,6 +649,7 @@ function Footer() {
 
           {/* Links */}
           <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-[#8b8884]">
+            <Link href="/blog" className="hover:text-[#EDECE8] transition-colors">Blog</Link>
             <Link href="/legal/cgu" className="hover:text-[#EDECE8] transition-colors">CGU</Link>
             <Link href="/legal/cgv" className="hover:text-[#EDECE8] transition-colors">CGV</Link>
             <Link href="/legal/confidentialite" className="hover:text-[#EDECE8] transition-colors">Confidentialité</Link>
