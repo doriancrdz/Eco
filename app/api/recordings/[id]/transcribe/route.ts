@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { waitUntil } from "@vercel/functions";
 import { auth } from "@clerk/nextjs/server";
 import OpenAI from "openai";
-import { S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { prisma } from "@/lib/prisma";
 import { transcriptionLimiter } from "@/lib/ratelimit";
 
@@ -103,6 +103,7 @@ export async function POST(
 
     const recordingId = params.id;
     let audioFile: File;
+    let r2Object: { s3: S3Client; bucket: string; key: string } | null = null;
 
     if (recording.r2Key || recording.fileId) {
       const s3 = getR2Client();
@@ -114,6 +115,7 @@ export async function POST(
         );
       }
       const key = recording.r2Key ?? `${recording.userId}/${recording.fileId}.webm`;
+      r2Object = { s3, bucket, key };
       if (process.env.NODE_ENV === "development") {
         console.log("[transcribe] Téléchargement depuis R2:", key);
       }
@@ -301,6 +303,15 @@ export async function POST(
             audioBlobSize: audioFile.size,
           },
         });
+
+        // La transcription est en base : l'audio n'est plus relu nulle part, on libère le stockage R2.
+        if (r2Object) {
+          const { s3, bucket, key } = r2Object;
+          await s3
+            .send(new DeleteObjectCommand({ Bucket: bucket, Key: key }))
+            .catch((e) => console.error(`[ECO] R2 delete failed recordingId=${recordingId}`, e?.message ?? e));
+        }
+
         if (process.env.NODE_ENV === "development") {
           console.log("[transcribe/bg] recording updated", {
             hasTranscription: !!transcription,

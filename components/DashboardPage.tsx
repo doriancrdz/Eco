@@ -1015,7 +1015,7 @@ export default function DashboardPage() {
       await new Promise<void>((resolve, reject) => {
         const startTs = Date.now();
         let statusPollCount = 0;
-        const MAX_STATUS_POLLS = 40; // 40 × 8s = 320s max
+        const MAX_STATUS_POLLS = 60; // 60 × 8s = 480s : couvre Whisper (≤300s) + résumé (≤120s)
         if (process.env.NODE_ENV !== "production") {
           console.log(`[pollRecordingStatus] Démarrage — max ${MAX_STATUS_POLLS} tentatives × 8s`);
         }

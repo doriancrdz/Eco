@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import SiteFooter from "@/components/marketing/SiteFooter";
 import Image from "next/image";
 import { ChevronLeft, Clock, ChevronRight } from "lucide-react";
 import { articles, getArticleBySlug, formatDate } from "@/lib/blog/articles";
@@ -20,12 +21,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: `${article.title} — Blog ECO`,
     description: article.description,
-    alternates: { canonical: `https://econewapp.com/blog/${article.slug}` },
+    alternates: { canonical: `/blog/${article.slug}` },
     robots: { index: true, follow: true },
     openGraph: {
       title: article.title,
       description: article.description,
-      url: `https://econewapp.com/blog/${article.slug}`,
+      url: `/blog/${article.slug}`,
       type: "article",
       publishedTime: article.date,
       siteName: "ECO",
@@ -109,14 +110,15 @@ export default function ArticlePage({ params }: Props) {
             Enregistre ton prochain cours et reçois automatiquement le résumé, les points clés et le quiz. Sans carte bancaire.
           </p>
           <Link
-            href="/"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-teal-500 text-white text-sm font-semibold hover:from-violet-400 hover:to-teal-400 transition-all shadow-lg shadow-violet-500/20 hover:-translate-y-0.5"
+            href="/sign-up"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#EDECE8] text-[#0A0A0B] text-sm font-medium hover:bg-white transition-colors"
           >
             Commencer gratuitement
             <ChevronRight className="w-4 h-4" />
           </Link>
         </div>
       </main>
+      <SiteFooter />
     </div>
   );
 }

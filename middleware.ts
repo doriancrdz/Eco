@@ -1,17 +1,20 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
-// Routes publiques (accessibles sans authentification)
+// Routes publiques (accessibles sans authentification).
+// Toute route absente de cette liste renvoie 404 aux visiteurs non connectés — y compris Stripe et Google.
 const isPublicRoute = createRouteMatcher([
+  '/',
   '/sign-in(.*)',
   '/sign-up(.*)',
+  '/pricing(.*)',
+  '/blog(.*)',
+  '/legal(.*)',
+  '/robots.txt',
+  '/sitemap.xml',
+  '/api/stripe/webhook', // appelé par Stripe (signature vérifiée dans la route) : active les plans après paiement
   '/api/webhooks(.*)',
   '/api/generate-summary', // appelé en interne par transcribe/background (pas de session Clerk)
-  '/',
-  '/pricing',
-  '/legal/terms',
-  '/legal/privacy',
-  '/legal/mentions',
 ]);
 
 // Bloquer les scanners/botnets sur les routes API (pas les pages publiques)

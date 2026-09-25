@@ -25,7 +25,7 @@ export default function CGUPage() {
           </h1>
           <p className="text-sm mb-8 text-[#8b8884]">Dernière mise à jour : février 2026</p>
 
-          <div className="prose prose-invert prose-lg max-w-none prose-headings:text-white/90 prose-headings:font-semibold prose-p:text-[#a1a0a0] prose-p:leading-relaxed prose-a:text-violet-400 prose-a:no-underline hover:prose-a:text-violet-300 prose-strong:text-white/90 prose-li:text-[#a1a0a0]">
+          <div className="legal-doc prose prose-invert prose-lg max-w-none prose-headings:text-white/90 prose-headings:font-semibold prose-p:text-[#a1a0a0] prose-p:leading-relaxed prose-a:text-violet-400 prose-a:no-underline hover:prose-a:text-violet-300 prose-strong:text-white/90 prose-li:text-[#a1a0a0]">
             <h2>1. Objet et acceptation</h2>
             <p>
               Les présentes Conditions Générales d&apos;Utilisation (CGU) régissent l&apos;accès et l&apos;utilisation

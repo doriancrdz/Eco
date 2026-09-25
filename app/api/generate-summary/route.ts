@@ -170,22 +170,6 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // GENERATING → 202, ne pas relancer
-    if (recording.aiStatus === "GENERATING") {
-      timings.total = performance.now() - perfStart;
-      if (process.env.NODE_ENV === "development") {
-        console.log("[generate-summary] 202 ALREADY GENERATING", { recordingId });
-      }
-      return NextResponse.json(
-        {
-          recordingId,
-          status: "GENERATING",
-          message: "Génération déjà en cours",
-        },
-        { status: 202 }
-      );
-    }
-
     if (!recording.transcriptionText || recording.transcriptionText.trim() === "") {
       if (process.env.NODE_ENV === "development") {
         console.log("[summary] TRANSCRIPTION_MISSING", { traceId, recordingId });
@@ -196,16 +180,31 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // LOCK: passer en GENERATING
+    // LOCK atomique : un seul appel OpenAI par recording, même si deux requêtes arrivent en même temps.
+    // Un verrou GENERATING plus vieux que maxDuration (120s) vient d'une fonction tuée : on peut le reprendre.
     const lockStart = performance.now();
-    await prisma.recording.update({
-      where: { id: recordingId },
+    const staleBefore = new Date(Date.now() - 3 * 60 * 1000);
+    const lock = await prisma.recording.updateMany({
+      where: {
+        id: recordingId,
+        OR: [
+          { aiStatus: { notIn: ["GENERATING", "DONE"] } },
+          { aiStatus: "GENERATING", aiStartedAt: null },
+          { aiStatus: "GENERATING", aiStartedAt: { lt: staleBefore } },
+        ],
+      },
       data: {
         aiStatus: "GENERATING",
         aiStartedAt: new Date(),
       },
     });
     timings.dbLock = performance.now() - lockStart;
+    if (lock.count === 0) {
+      return NextResponse.json(
+        { recordingId, status: "GENERATING", message: "Génération déjà en cours" },
+        { status: 202 }
+      );
+    }
 
     const textToSend = recording.transcriptionText;
     const textLength = textToSend.length;

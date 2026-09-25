@@ -1,533 +1,246 @@
-"use client";
-
-import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronDown, ChevronRight, Mic, Sparkles, BookOpen, FileText, CheckCircle, Star, Menu, X } from "lucide-react";
+import { ArrowRight, AudioLines, FileText, FolderClosed, Layers, Lock, MonitorSpeaker, Plus, Smartphone, Star } from "lucide-react";
+import SiteHeader from "@/components/marketing/SiteHeader";
+import SiteFooter from "@/components/marketing/SiteFooter";
+import Reveal from "@/components/marketing/Reveal";
+import ProductPreview from "@/components/marketing/ProductPreview";
+import { PLANS, MAX_RECORDING_DURATION_MINUTES } from "@/lib/billingConfig";
 
-/* ─── Animations CSS injectées une fois ─── */
-const ANIM_STYLES = `
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(24px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-@keyframes marquee {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
-}
-.anim-fade-up   { animation: fadeUp 0.6s ease both; }
-.anim-fade-in   { animation: fadeIn 0.4s ease both; }
-.delay-1 { animation-delay: 0.1s; }
-.delay-2 { animation-delay: 0.2s; }
-.delay-3 { animation-delay: 0.3s; }
-.delay-4 { animation-delay: 0.4s; }
-.delay-5 { animation-delay: 0.5s; }
-.delay-6 { animation-delay: 0.6s; }
-.delay-7 { animation-delay: 0.7s; }
-.card-hover { transition: transform 0.25s ease, box-shadow 0.25s ease; }
-.card-hover:hover { transform: translateY(-4px); box-shadow: 0 24px 48px rgba(0,0,0,0.5); }
-`;
+const DEMO_VIDEO = "https://pub-0270797b38de40338d1b41adf0ef1dca.r2.dev/Demo%20Eco.mp4";
 
-/* ─── Nav ─── */
-function Nav() {
-  const [scrolled, setScrolled] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
+/* ─── Hero ───────────────────────────────────────────────────────────── */
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 12);
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  const links = [
-    { label: "Comment ça marche", href: "#how" },
-    { label: "Fonctionnalités", href: "#features" },
-    { label: "Tarifs", href: "/pricing" },
-  ];
-
-  return (
-    <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-        scrolled
-          ? "backdrop-blur-xl border-b border-white/10 shadow-sm"
-          : "backdrop-blur-md border-b border-white/8"
-      }`}
-      style={{ background: scrolled ? "rgba(13,14,20,0.95)" : "rgba(8,10,15,0.80)" }}
-    >
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          {/* Logo */}
-          <a href="#hero" className="flex items-center gap-2 shrink-0">
-            <Image src="/logo-eco.png" alt="ECO" width={32} height={32} className="rounded-lg" />
-            <span className="font-bold text-[#EDECE8] text-lg">ECO</span>
-          </a>
-
-          {/* Desktop links */}
-          <div className="hidden md:flex items-center gap-8">
-            {links.map((l) => (
-              <a
-                key={l.href}
-                href={l.href}
-                className="text-sm font-medium text-[#8b8884] hover:text-[#EDECE8] transition-colors"
-              >
-                {l.label}
-              </a>
-            ))}
-          </div>
-
-          {/* Desktop CTA */}
-          <div className="hidden md:block">
-            <Link
-              href="/sign-up"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-violet-500 to-teal-500 text-white text-sm font-semibold hover:from-violet-400 hover:to-teal-400 transition-all shadow-sm"
-            >
-              Essayer gratuitement
-              <ChevronRight className="w-4 h-4" />
-            </Link>
-          </div>
-
-          {/* Mobile hamburger */}
-          <button
-            className="md:hidden p-2 rounded-lg text-[#8b8884] hover:bg-white/8 transition-colors"
-            onClick={() => setMobileOpen((v) => !v)}
-            aria-label="Menu"
-          >
-            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
-        </div>
-      </div>
-
-      {/* Mobile menu */}
-      {mobileOpen && (
-        <div className="md:hidden backdrop-blur-xl border-t border-white/10 px-4 py-4 space-y-3" style={{ background: "#0D0E14" }}>
-          {links.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              onClick={() => setMobileOpen(false)}
-              className="block text-sm font-medium text-[#8b8884] hover:text-[#EDECE8] py-2"
-            >
-              {l.label}
-            </a>
-          ))}
-          <Link
-            href="/sign-up"
-            className="block w-full text-center px-5 py-3 rounded-xl bg-gradient-to-r from-violet-500 to-teal-500 text-white text-sm font-semibold hover:from-violet-400 hover:to-teal-400 transition-all mt-2"
-          >
-            Essayer gratuitement
-          </Link>
-        </div>
-      )}
-    </nav>
-  );
-}
-
-/* ─── Hero ─── */
 function Hero() {
   return (
-    <section
-      id="hero"
-      className="min-h-screen flex flex-col items-center justify-center pt-24 pb-16 px-4 text-center"
-    >
-      {/* Badge */}
-      <div className="anim-fade-up delay-1 inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/10 text-sm font-medium text-[#EDECE8] mb-8" style={{ background: "rgba(255,255,255,0.05)" }}>
-        <Sparkles className="w-4 h-4 text-teal-400" />
-        Propulsé par l&apos;IA — Fait pour les étudiants
+    <section className="relative overflow-hidden pt-32 sm:pt-40">
+      <div aria-hidden className="pointer-events-none absolute left-1/2 top-[-140px] -translate-x-1/2">
+        <div className="mk-float relative h-[560px] w-[560px] opacity-[0.28] blur-[90px] sm:h-[720px] sm:w-[720px]">
+          <Image src="/logo-eco-v2.png" alt="" fill sizes="720px" className="object-contain" priority />
+        </div>
       </div>
+      <div className="mk-grain" aria-hidden />
 
-      {/* Title */}
-      <h1 className="anim-fade-up delay-2 max-w-3xl text-4xl sm:text-5xl md:text-6xl font-bold text-[#EDECE8] leading-tight tracking-tight mb-6">
-        Tes cours audio, transformés en{" "}
-        <span className="bg-gradient-to-r from-teal-400 via-blue-400 to-violet-400 bg-clip-text text-transparent">
-          notes intelligentes
-        </span>
-      </h1>
+      <div className="relative mx-auto max-w-6xl px-5 text-center sm:px-8">
+        <p className="mk-rise mk-eyebrow" style={{ animationDelay: "40ms" }}>
+          Pour les étudiants · Cours en français
+        </p>
 
-      {/* Subtitle */}
-      <p className="anim-fade-up delay-3 max-w-xl text-lg text-[#8b8884] leading-relaxed mb-10">
-        Enregistre n&apos;importe quel cours, ECO génère automatiquement un résumé, des points clés, un quiz et une transcription complète en quelques secondes.
-      </p>
-
-      {/* CTAs */}
-      <div className="anim-fade-up delay-4 flex flex-col sm:flex-row items-center gap-4 mb-16">
-        <Link
-          href="/sign-up"
-          className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-violet-500 to-teal-500 text-white font-semibold text-base hover:from-violet-400 hover:to-teal-400 transition-all shadow-lg shadow-violet-500/20 hover:shadow-violet-500/30 hover:-translate-y-0.5"
+        <h1
+          className="mk-display mk-rise mx-auto mt-6 max-w-4xl text-[52px] sm:text-[76px] lg:text-[92px]"
+          style={{ animationDelay: "120ms" }}
         >
-          Essayer gratuitement
-          <ChevronRight className="w-5 h-5" />
-        </Link>
-        <a
-          href="#demo"
-          className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl border border-white/10 text-[#EDECE8] font-semibold text-base hover:bg-white/5 transition-all"
-        >
-          Voir la démo →
-        </a>
-      </div>
+          Écoute ton cours.
+          <br />
+          <span className="italic mk-iris">ECO écrit tes fiches.</span>
+        </h1>
 
-      {/* Video */}
-      <div
-        id="demo"
-        className="anim-fade-up delay-5 w-full max-w-4xl rounded-2xl overflow-hidden shadow-2xl border border-white/10"
-      >
-        <video
-          src="https://pub-0270797b38de40338d1b41adf0ef1dca.r2.dev/Demo%20Eco.mp4"
-          autoPlay
-          muted
-          loop
-          playsInline
-          className="w-full h-auto block"
-        />
+        <p
+          className="mk-rise mx-auto mt-7 max-w-xl text-[17px] leading-relaxed sm:text-[18px]"
+          style={{ color: "var(--mk-muted)", animationDelay: "200ms" }}
+        >
+          Enregistre l&apos;amphi depuis ton navigateur. Quelques minutes après, tu as un résumé structuré, les notions définies, un quiz et des flashcards. Tout vient de ce que ton prof a vraiment dit.
+        </p>
+
+        <div className="mk-rise mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row" style={{ animationDelay: "280ms" }}>
+          <Link href="/sign-up" className="mk-btn mk-btn-primary w-full sm:w-auto">
+            Commencer gratuitement <ArrowRight className="h-4 w-4" />
+          </Link>
+          <Link href="#produit" className="mk-btn mk-btn-ghost w-full sm:w-auto">
+            Voir un exemple de fiche
+          </Link>
+        </div>
+        <p className="mk-rise mt-4 text-[13px]" style={{ color: "var(--mk-faint)", animationDelay: "320ms" }}>
+          10 minutes offertes · Sans carte bancaire · Rien à installer
+        </p>
+
+        <div className="mk-rise relative mx-auto mt-16 max-w-5xl sm:mt-20" style={{ animationDelay: "380ms" }}>
+          <div
+            className="overflow-hidden rounded-[18px] border p-1.5 shadow-[0_50px_140px_-30px_rgba(0,0,0,0.95)] sm:rounded-[22px] sm:p-2"
+            style={{ borderColor: "var(--mk-line-strong)", background: "rgba(255,255,255,0.03)" }}
+          >
+            <video
+              src={DEMO_VIDEO}
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              aria-label="Démonstration d'ECO : enregistrement d'un cours puis affichage du résumé"
+              className="block aspect-video w-full rounded-[13px] bg-[var(--mk-surface)] object-contain sm:rounded-[16px]"
+            />
+          </div>
+        </div>
       </div>
     </section>
   );
 }
 
-/* ─── Social Proof ─── */
-function SocialProof() {
-  const schools = ["EDHEC", "ESCP"];
+/* ─── Social proof strip ────────────────────────────────────────────── */
 
+function ProofStrip() {
   return (
-    <section className="py-12 px-4">
-      <div className="max-w-2xl mx-auto text-center">
-        <p className="text-sm font-medium text-[#8b8884] mb-6 uppercase tracking-widest">
-          Adopté par des étudiants de grandes écoles
+    <section className="mx-auto max-w-6xl px-5 pt-20 sm:px-8">
+      <Reveal className="flex flex-col items-center gap-3 text-center sm:flex-row sm:justify-center sm:gap-6">
+        <p className="text-[14px]" style={{ color: "var(--mk-muted)" }}>
+          Utilisé par des étudiants de
         </p>
-        <div className="flex items-center justify-center gap-10">
-          {schools.map((s) => (
-            <span
-              key={s}
-              className="text-2xl font-bold tracking-tight select-none"
-              style={{ color: "rgba(237,236,232,0.25)" }}
-            >
+        <div className="flex items-center gap-7">
+          {["EDHEC", "ESCP"].map((s) => (
+            <span key={s} className="text-[20px] font-semibold tracking-[0.08em]" style={{ color: "#5E5C58" }}>
               {s}
             </span>
           ))}
         </div>
-      </div>
+      </Reveal>
     </section>
   );
 }
 
-/* ─── How it works ─── */
-function HowItWorks() {
-  const steps = [
-    {
-      num: "01",
-      icon: <Mic className="w-6 h-6 text-teal-400" />,
-      title: "Enregistre ton cours",
-      desc: "Lance ECO avant le début de ton cours. L'app enregistre l'audio en arrière-plan sans consommer ta batterie.",
-    },
-    {
-      num: "02",
-      icon: <Sparkles className="w-6 h-6 text-blue-400" />,
-      title: "L'IA génère tes notes",
-      desc: "En quelques secondes, notre IA transcrit, analyse et structure ton cours en résumé, points clés et quiz personnalisés.",
-    },
-    {
-      num: "03",
-      icon: <BookOpen className="w-6 h-6 text-violet-400" />,
-      title: "Révise avec quiz et points clés",
-      desc: "Retrouve tout ton cours organisé, teste tes connaissances avec les quiz générés automatiquement et révise efficacement.",
-    },
-  ];
+/* ─── Product ───────────────────────────────────────────────────────── */
 
+function Product() {
   return (
-    <section id="how" className="py-20 px-4">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl sm:text-4xl font-bold text-[#EDECE8] mb-4">
-            Trois étapes, c&apos;est tout.
+    <section id="produit" className="scroll-mt-20 px-5 pt-32 sm:px-8 sm:pt-40">
+      <div className="mx-auto max-w-6xl">
+        <Reveal className="mx-auto max-w-2xl text-center">
+          <p className="mk-eyebrow">Ce que tu reçois</p>
+          <h2 className="mk-display mt-5 text-[42px] sm:text-[56px]">
+            Une heure de cours.
+            <br />
+            <span className="italic" style={{ color: "var(--mk-muted)" }}>
+              Une fiche que tu as envie de relire.
+            </span>
           </h2>
-          <p className="text-lg text-[#8b8884] max-w-xl mx-auto">
-            De l&apos;enregistrement aux notes structurées en quelques secondes. Aucune configuration requise.
+          <p className="mt-6 text-[16px] leading-relaxed" style={{ color: "var(--mk-muted)" }}>
+            Voici le type de fiche qu&apos;ECO produit à partir d&apos;un cours enregistré. Clique sur les onglets, réponds au quiz, retourne les cartes.
           </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {steps.map((step, i) => (
-            <div
-              key={i}
-              className="card-hover relative rounded-2xl p-8 border border-white/10"
-              style={{ background: "#141619" }}
-            >
-              <div className="absolute top-6 right-6 text-4xl font-black select-none" style={{ color: "rgba(255,255,255,0.04)" }}>
-                {step.num}
-              </div>
-              <div className="w-12 h-12 rounded-xl border border-white/10 flex items-center justify-center mb-5" style={{ background: "rgba(255,255,255,0.05)" }}>
-                {step.icon}
-              </div>
-              <h3 className="text-lg font-bold text-[#EDECE8] mb-3">{step.title}</h3>
-              <p className="text-[#8b8884] leading-relaxed text-sm">{step.desc}</p>
-            </div>
-          ))}
-        </div>
+        </Reveal>
+        <Reveal delay={120} className="mx-auto mt-14 max-w-4xl">
+          <ProductPreview />
+        </Reveal>
       </div>
     </section>
   );
 }
 
-/* ─── Features ─── */
-const TABS = [
+/* ─── How it works ──────────────────────────────────────────────────── */
+
+const STEPS = [
   {
-    id: "resume",
-    label: "Résumé structuré",
-    title: "Un résumé clair, structuré par sections thématiques",
-    desc: "ECO analyse ton cours et génère un résumé organisé avec des titres thématiques, du contexte et une synthèse. Pas de copier-coller — une vraie compréhension.",
-    pills: ["Sections automatiques", "Hiérarchie visuelle"],
-    mockup: (
-      <div className="rounded-2xl border border-white/10 shadow-lg p-5 space-y-4 text-left" style={{ background: "#1a1d24" }}>
-        <div className="h-2.5 w-32 rounded-full" style={{ background: "rgba(237,236,232,0.8)" }} />
-        <div className="space-y-2">
-          <div className="h-2 w-full rounded-full" style={{ background: "rgba(255,255,255,0.10)" }} />
-          <div className="h-2 w-5/6 rounded-full" style={{ background: "rgba(255,255,255,0.10)" }} />
-          <div className="h-2 w-4/6 rounded-full" style={{ background: "rgba(255,255,255,0.10)" }} />
-        </div>
-        <div className="h-2.5 w-40 bg-teal-500/70 rounded-full mt-4" />
-        <div className="space-y-2">
-          <div className="h-2 w-full rounded-full" style={{ background: "rgba(255,255,255,0.06)" }} />
-          <div className="h-2 w-5/6 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }} />
-          <div className="h-2 w-3/4 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }} />
-          <div className="h-2 w-full rounded-full" style={{ background: "rgba(255,255,255,0.06)" }} />
-        </div>
-        <div className="h-2.5 w-36 bg-blue-400/70 rounded-full mt-4" />
-        <div className="space-y-2">
-          <div className="h-2 w-full rounded-full" style={{ background: "rgba(255,255,255,0.06)" }} />
-          <div className="h-2 w-4/5 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }} />
-        </div>
-      </div>
-    ),
+    title: "Lance l'enregistrement",
+    body: `Au début du cours, un clic suffit. Le micro de ton ordinateur ou de ton téléphone fait l'affaire. Jusqu'à ${MAX_RECORDING_DURATION_MINUTES} minutes par enregistrement.`,
   },
   {
-    id: "points",
-    label: "Points clés",
-    title: "Les notions essentielles mises en avant",
-    desc: "ECO extrait les concepts importants de ton cours et les structure en points clés avec définitions. Idéal pour une révision rapide avant un exam.",
-    pills: ["Notions définies", "Révision rapide"],
-    mockup: (
-      <div className="rounded-2xl border border-white/10 shadow-lg p-5 space-y-3 text-left" style={{ background: "#1a1d24" }}>
-        {[
-          { color: "rgba(45,212,191,0.10)", dot: "bg-teal-400", w: "w-4/5" },
-          { color: "rgba(96,165,250,0.10)", dot: "bg-blue-400", w: "w-3/4" },
-          { color: "rgba(167,139,250,0.10)", dot: "bg-violet-400", w: "w-5/6" },
-          { color: "rgba(251,191,36,0.10)", dot: "bg-amber-400", w: "w-2/3" },
-          { color: "rgba(251,113,133,0.10)", dot: "bg-rose-400", w: "w-4/5" },
-        ].map((item, i) => (
-          <div key={i} className={`flex items-start gap-3 p-3 rounded-xl`} style={{ background: item.color }}>
-            <div className={`w-2.5 h-2.5 rounded-full ${item.dot} mt-1 shrink-0`} />
-            <div className="space-y-1.5 flex-1">
-              <div className="h-2.5 w-24 rounded-full" style={{ background: "rgba(237,236,232,0.4)" }} />
-              <div className={`h-2 ${item.w} rounded-full`} style={{ background: "rgba(255,255,255,0.15)" }} />
-            </div>
-          </div>
-        ))}
-      </div>
-    ),
+    title: "Ajoute le support du prof",
+    body: "Optionnel : dépose le PDF du cours. ECO s'en sert pour reprendre le vocabulaire exact du prof dans les notions et le quiz.",
   },
   {
-    id: "quiz",
-    label: "Quiz",
-    title: "Teste tes connaissances avec des quiz générés",
-    desc: "ECO génère automatiquement des questions QCM et ouvertes basées sur ton cours. Entraîne-toi, révèle les réponses et mesure ta progression.",
-    pills: ["QCM automatique", "Questions ouvertes"],
-    mockup: (
-      <div className="rounded-2xl border border-white/10 shadow-lg p-5 space-y-4 text-left" style={{ background: "#1a1d24" }}>
-        <div className="h-3 w-3/4 rounded-full" style={{ background: "rgba(237,236,232,0.7)" }} />
-        <div className="space-y-2.5">
-          {["A", "B", "C", "D"].map((letter, i) => (
-            <div
-              key={letter}
-              className={`flex items-center gap-3 p-3 rounded-xl border transition-colors`}
-              style={i === 1
-                ? { background: "rgba(45,212,191,0.10)", borderColor: "rgba(45,212,191,0.30)" }
-                : { background: "rgba(255,255,255,0.04)", borderColor: "rgba(255,255,255,0.10)" }
-              }
-            >
-              <div
-                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                  i === 1 ? "bg-teal-500 text-white" : ""
-                }`}
-                style={i !== 1 ? { background: "rgba(255,255,255,0.10)", color: "#8b8884" } : {}}
-              >
-                {letter}
+    title: "Révise",
+    body: "Quelques minutes après la fin, ta fiche est prête : résumé par thème, notions définies, quiz, flashcards et transcription complète.",
+  },
+];
+
+function HowItWorks() {
+  return (
+    <section id="comment" className="scroll-mt-20 px-5 pt-32 sm:px-8 sm:pt-40">
+      <div className="mx-auto grid max-w-6xl gap-14 lg:grid-cols-[1fr_1.3fr] lg:gap-20">
+        <Reveal>
+          <p className="mk-eyebrow">Comment ça marche</p>
+          <h2 className="mk-display mt-5 text-[42px] sm:text-[56px]">
+            Tu écoutes.
+            <br />
+            <span className="italic" style={{ color: "var(--mk-muted)" }}>
+              ECO prend les notes.
+            </span>
+          </h2>
+          <p className="mt-6 max-w-md text-[16px] leading-relaxed" style={{ color: "var(--mk-muted)" }}>
+            Plus besoin de choisir entre comprendre et recopier. Tu restes concentré sur le cours, la mise au propre se fait sans toi.
+          </p>
+        </Reveal>
+        <ol className="relative">
+          {STEPS.map((s, i) => (
+            <Reveal as="li" key={s.title} delay={i * 90} className="grid grid-cols-[48px_1fr] gap-5 border-t border-[color:var(--mk-line)] py-8 first:border-t-0 first:pt-0 lg:first:pt-2">
+              <span className="mk-display text-[34px] leading-none" style={{ color: "var(--mk-lilac)" }}>
+                {i + 1}
+              </span>
+              <div>
+                <h3 className="text-[18px] font-medium" style={{ color: "var(--mk-text)" }}>
+                  {s.title}
+                </h3>
+                <p className="mt-2 text-[15px] leading-relaxed" style={{ color: "var(--mk-muted)" }}>
+                  {s.body}
+                </p>
               </div>
-              <div
-                className={`h-2 rounded-full ${i === 1 ? "bg-teal-400 w-3/4" : "w-2/3"}`}
-                style={i !== 1 ? { background: "rgba(255,255,255,0.10)" } : {}}
-              />
-            </div>
+            </Reveal>
           ))}
-        </div>
-        <div className="flex gap-2 mt-2">
-          <div className="h-8 flex-1 rounded-xl bg-gradient-to-r from-violet-500 to-teal-500" />
-          <div className="h-8 flex-1 rounded-xl" style={{ background: "rgba(255,255,255,0.08)" }} />
-        </div>
+        </ol>
       </div>
-    ),
+    </section>
+  );
+}
+
+/* ─── Features ──────────────────────────────────────────────────────── */
+
+const FEATURES = [
+  {
+    icon: MonitorSpeaker,
+    title: "Cours en visio aussi",
+    body: "Sur ordinateur, ECO capte directement le son de Zoom, Teams ou Meet. Pas besoin de micro.",
   },
   {
-    id: "transcript",
-    label: "Transcription",
-    title: "La transcription complète de ton cours",
-    desc: "Accède à la retranscription mot pour mot de ton enregistrement. Retrouve une notion précise, une citation, ou relis tout le cours depuis l'app.",
-    pills: ["Mot pour mot", "Copie en 1 clic"],
-    mockup: (
-      <div className="rounded-2xl border border-white/10 shadow-lg p-5 space-y-2 text-left" style={{ background: "#1a1d24" }}>
-        <div className="flex items-center gap-2 mb-4">
-          <FileText className="w-4 h-4 text-[#8b8884]" />
-          <div className="h-2.5 w-28 rounded-full" style={{ background: "rgba(237,236,232,0.25)" }} />
-        </div>
-        {[
-          [1, 0.9, 0.7],
-          [0.8, 1, 0.6],
-          [1, 0.75, 0.85],
-          [0.6, 1, 0.8],
-          [0.9, 0.7, 1],
-          [0.8, 0.95, 0.65],
-        ].map((row, i) => (
-          <div key={i} className="flex gap-2">
-            {row.map((w, j) => (
-              <div
-                key={j}
-                className="h-2 rounded-full"
-                style={{ flex: w, background: "rgba(255,255,255,0.10)" }}
-              />
-            ))}
-          </div>
-        ))}
-        <div className="flex gap-2 mt-4 pt-4 border-t border-white/10">
-          <div className="h-8 w-28 rounded-xl" style={{ background: "rgba(255,255,255,0.08)" }} />
-        </div>
-      </div>
-    ),
+    icon: FileText,
+    title: "Le PDF du prof comme référence",
+    body: "Les définitions et les questions reprennent les termes exacts de ton support de cours.",
+  },
+  {
+    icon: Layers,
+    title: "Révision active",
+    body: "Quiz QCM et questions ouvertes avec réponse modèle, flashcards, export vers Anki.",
+  },
+  {
+    icon: FolderClosed,
+    title: "Rangé par matière",
+    body: "Un dossier par UE et une recherche dans tous tes cours. Tu retrouves une notion en deux secondes.",
+  },
+  {
+    icon: Smartphone,
+    title: "Rien à installer",
+    body: "Tout se passe dans le navigateur, sur ordinateur comme sur téléphone.",
+  },
+  {
+    icon: Lock,
+    title: "Tes cours restent à toi",
+    body: "Tes fiches sont privées. L'audio est supprimé de nos serveurs dès que la transcription est faite.",
   },
 ];
 
 function Features() {
-  const [active, setActive] = useState(0);
-  const tab = TABS[active];
-
   return (
-    <section id="features" className="py-20 px-4">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-14">
-          <h2 className="text-3xl sm:text-4xl font-bold text-[#EDECE8] mb-4">
-            Tout ce dont tu as besoin pour réviser
+    <section className="px-5 pt-32 sm:px-8 sm:pt-40">
+      <div className="mx-auto max-w-6xl">
+        <Reveal className="max-w-2xl">
+          <p className="mk-eyebrow">Les détails qui comptent</p>
+          <h2 className="mk-display mt-5 text-[42px] sm:text-[56px]">
+            Pensé pour la vraie vie d&apos;étudiant.
           </h2>
-          <p className="text-lg text-[#8b8884] max-w-xl mx-auto">
-            Résumé, points clés, quiz, transcription — tout est généré automatiquement depuis ton enregistrement.
-          </p>
-        </div>
-
-        {/* Tabs */}
-        <div className="flex flex-wrap justify-center gap-2 mb-12">
-          {TABS.map((t, i) => (
-            <button
-              key={t.id}
-              onClick={() => setActive(i)}
-              className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all border ${
-                active === i
-                  ? "bg-[#EDECE8] text-[#080A0F] border-transparent shadow-sm"
-                  : "border-white/10 text-[#8b8884] hover:bg-white/8 hover:text-[#EDECE8]"
-              }`}
-              style={active !== i ? { background: "rgba(255,255,255,0.04)" } : {}}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Content */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
-          {/* Left: text */}
-          <div key={tab.id} className="anim-fade-in space-y-5">
-            <h3 className="text-2xl font-bold text-[#EDECE8]">{tab.title}</h3>
-            <p className="text-[#8b8884] leading-relaxed">{tab.desc}</p>
-            <div className="flex flex-wrap gap-2">
-              {tab.pills.map((p) => (
-                <span
-                  key={p}
-                  className="px-3 py-1.5 rounded-lg border border-white/10 text-xs font-semibold text-[#8b8884]"
-                  style={{ background: "rgba(255,255,255,0.04)" }}
-                >
-                  {p}
-                </span>
-              ))}
-            </div>
-            <Link
-              href="/sign-up"
-              className="inline-flex items-center gap-2 text-sm font-semibold text-teal-400 hover:text-teal-300 transition-colors"
-            >
-              Essayer gratuitement <ChevronRight className="w-4 h-4" />
-            </Link>
-          </div>
-
-          {/* Right: mockup */}
-          <div key={`mockup-${tab.id}`} className="anim-fade-in">
-            <div className="border border-white/10 rounded-2xl p-6" style={{ background: "#0D0E14" }}>
-              {tab.mockup}
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-/* ─── Testimonials ─── */
-function Testimonials() {
-  const items = [
-    {
-      name: "Chloé L.",
-      school: "2ème année, EDHEC Business School",
-      stars: 5,
-      text: "J'utilise ECO pour tous mes cours de macro. En 30 secondes j'ai un résumé propre et un quiz pour réviser. J'aurais voulu avoir ça dès la première année.",
-    },
-    {
-      name: "Antoine M.",
-      school: "Master 1, ESCP Europe",
-      stars: 5,
-      text: "Le quiz généré automatiquement est bluffant. Les questions tombent exactement sur les points que le prof a insistés. Parfait pour préparer les partiels.",
-    },
-    {
-      name: "Sofia R.",
-      school: "Bachelor, EDHEC",
-      stars: 5,
-      text: "Je n'écris plus pendant les cours, je me concentre sur ce que dit le prof. ECO s'occupe du reste. La qualité de mes révisions a vraiment changé.",
-    },
-  ];
-
-  return (
-    <section className="py-20 px-4">
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-14">
-          <h2 className="text-3xl sm:text-4xl font-bold text-[#EDECE8] mb-4">
-            Ils utilisent ECO
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {items.map((item, i) => (
-            <div
-              key={i}
-              className="card-hover rounded-2xl p-7 border border-white/10"
-              style={{ background: "#141619" }}
-            >
-              <div className="flex gap-0.5 mb-4">
-                {Array.from({ length: item.stars }).map((_, j) => (
-                  <Star key={j} className="w-4 h-4 fill-amber-400 text-amber-400" />
-                ))}
+        </Reveal>
+        <div
+          className="mt-14 grid overflow-hidden rounded-[22px] border sm:grid-cols-2 lg:grid-cols-3"
+          style={{ borderColor: "var(--mk-line)", background: "var(--mk-line)", gap: "1px" }}
+        >
+          {FEATURES.map((f, i) => (
+            <Reveal key={f.title} delay={(i % 3) * 80} className="bg-[var(--mk-bg)] p-7 sm:p-8">
+              <div className="h-full">
+                <f.icon className="h-5 w-5" strokeWidth={1.6} style={{ color: "var(--mk-lilac)" }} />
+                <h3 className="mt-6 text-[16px] font-medium" style={{ color: "var(--mk-text)" }}>
+                  {f.title}
+                </h3>
+                <p className="mt-2 text-[14.5px] leading-relaxed" style={{ color: "var(--mk-muted)" }}>
+                  {f.body}
+                </p>
               </div>
-              <p className="text-[#8b8884] leading-relaxed text-sm mb-6">&ldquo;{item.text}&rdquo;</p>
-              <div>
-                <div className="font-semibold text-[#EDECE8] text-sm">{item.name}</div>
-                <div className="text-xs text-[#8b8884] mt-0.5">{item.school}</div>
-              </div>
-            </div>
+            </Reveal>
           ))}
         </div>
       </div>
@@ -535,167 +248,277 @@ function Testimonials() {
   );
 }
 
-/* ─── CTA ─── */
-function CTA() {
-  return (
-    <section className="py-20 px-4">
-      <div className="max-w-2xl mx-auto text-center">
-        <div className="rounded-3xl p-12 shadow-2xl border border-white/10" style={{ background: "#141619" }}>
-          <h2 className="text-3xl sm:text-4xl font-bold text-[#EDECE8] mb-4">
-            Prêt à transformer tes cours ?
-          </h2>
-          <p className="text-[#8b8884] text-lg mb-8">
-            Commence gratuitement avec 10 minutes offertes. Sans carte bancaire.
-          </p>
-          <Link
-            href="/sign-up"
-            className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-violet-500 to-teal-500 text-white font-bold text-base hover:from-violet-400 hover:to-teal-400 transition-all shadow-lg shadow-violet-500/20 hover:shadow-violet-500/30 hover:-translate-y-0.5"
-          >
-            Créer mon compte gratuitement
-            <ChevronRight className="w-5 h-5" />
-          </Link>
-          <div className="mt-5">
-            <Link
-              href="/pricing"
-              className="text-sm text-[#8b8884] hover:text-[#EDECE8] transition-colors"
-            >
-              Voir les tarifs →
-            </Link>
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
+/* ─── Testimonials ──────────────────────────────────────────────────── */
 
-/* ─── FAQ ─── */
-const FAQ_ITEMS = [
+const TESTIMONIALS = [
   {
-    q: "ECO fonctionne avec quelle langue ?",
-    a: "ECO transcrit et résume les cours en français. D'autres langues arrivent bientôt.",
+    name: "Chloé L.",
+    school: "2ème année, EDHEC Business School",
+    text: "J'utilise ECO pour tous mes cours de macro. En 30 secondes j'ai un résumé propre et un quiz pour réviser. J'aurais voulu avoir ça dès la première année.",
   },
   {
-    q: "Mes enregistrements sont-ils privés ?",
-    a: "Oui, tes enregistrements et résumés sont 100% privés. Personne d'autre n'y a accès.",
+    name: "Antoine M.",
+    school: "Master 1, ESCP Europe",
+    text: "Le quiz généré automatiquement est bluffant. Les questions tombent exactement sur les points que le prof a insistés. Parfait pour préparer les partiels.",
+  },
+  {
+    name: "Sofia R.",
+    school: "Bachelor, EDHEC",
+    text: "Je n'écris plus pendant les cours, je me concentre sur ce que dit le prof. ECO s'occupe du reste. La qualité de mes révisions a vraiment changé.",
+  },
+];
+
+function Testimonials() {
+  return (
+    <section className="px-5 pt-32 sm:px-8 sm:pt-40">
+      <div className="mx-auto max-w-6xl">
+        <Reveal className="max-w-2xl">
+          <p className="mk-eyebrow">Ils l&apos;utilisent</p>
+          <h2 className="mk-display mt-5 text-[42px] sm:text-[56px]">
+            Moins de recopie,
+            <br />
+            <span className="italic" style={{ color: "var(--mk-muted)" }}>
+              plus de compréhension.
+            </span>
+          </h2>
+        </Reveal>
+        <div className="mt-14 grid gap-5 md:grid-cols-3">
+          {TESTIMONIALS.map((t, i) => (
+            <Reveal key={t.name} delay={i * 90} className="mk-card flex flex-col justify-between p-7">
+              <div>
+                <div className="flex gap-0.5" aria-label="5 étoiles sur 5">
+                  {Array.from({ length: 5 }).map((_, j) => (
+                    <Star key={j} className="h-3.5 w-3.5" fill="#E8D9A8" stroke="none" />
+                  ))}
+                </div>
+                <blockquote className="mt-5 text-[15.5px] leading-relaxed" style={{ color: "#D6D3CD" }}>
+                  «&nbsp;{t.text}&nbsp;»
+                </blockquote>
+              </div>
+              <figcaption className="mt-8 border-t pt-5" style={{ borderColor: "var(--mk-line)" }}>
+                <p className="text-[14px] font-medium" style={{ color: "var(--mk-text)" }}>
+                  {t.name}
+                </p>
+                <p className="mt-0.5 text-[13px]" style={{ color: "var(--mk-faint)" }}>
+                  {t.school}
+                </p>
+              </figcaption>
+            </Reveal>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Pricing teaser ────────────────────────────────────────────────── */
+
+const TEASER_PLANS = [
+  { key: "free" as const, label: "Pour essayer", cta: "Commencer", href: "/sign-up" },
+  { key: "student" as const, label: "Le plus choisi", cta: "Choisir Student", href: "/pricing", highlight: true },
+  { key: "pro" as const, label: "Pour les gros semestres", cta: "Choisir Pro", href: "/pricing" },
+];
+
+function formatHours(minutes: number) {
+  if (minutes < 60) return "de quoi tester sur un cours";
+  return `≈ ${Math.round(minutes / 60)} h de cours / mois`;
+}
+
+function PricingTeaser() {
+  return (
+    <section className="px-5 pt-32 sm:px-8 sm:pt-40">
+      <div className="mx-auto max-w-6xl">
+        <Reveal className="mx-auto max-w-2xl text-center">
+          <p className="mk-eyebrow">Tarifs</p>
+          <h2 className="mk-display mt-5 text-[42px] sm:text-[56px]">Moins cher qu&apos;un cours particulier.</h2>
+          <p className="mt-5 text-[16px]" style={{ color: "var(--mk-muted)" }}>
+            Commence gratuitement. Passe à un abonnement quand ECO fait partie de ta routine.
+          </p>
+        </Reveal>
+        <div className="mt-14 grid gap-5 md:grid-cols-3">
+          {TEASER_PLANS.map((p, i) => {
+            const plan = PLANS[p.key];
+            return (
+              <Reveal
+                key={p.key}
+                delay={i * 90}
+                className="mk-card relative flex flex-col p-7"
+              >
+                {p.highlight && (
+                  <div
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 rounded-[20px]"
+                    style={{ boxShadow: "inset 0 0 0 1px rgba(201,184,255,0.45)", background: "radial-gradient(120% 60% at 50% 0%, rgba(201,184,255,0.08), transparent 70%)" }}
+                  />
+                )}
+                <div className="relative flex items-center justify-between">
+                  <p className="text-[15px] font-medium" style={{ color: "var(--mk-text)" }}>
+                    {plan.name}
+                  </p>
+                  <p className="text-[12px]" style={{ color: p.highlight ? "var(--mk-lilac)" : "var(--mk-faint)" }}>
+                    {p.label}
+                  </p>
+                </div>
+                <p className="relative mt-6 flex items-baseline gap-1.5">
+                  <span className="mk-display text-[52px]" style={{ color: "var(--mk-text)" }}>
+                    {plan.priceMonthly}€
+                  </span>
+                  <span className="text-[14px]" style={{ color: "var(--mk-muted)" }}>
+                    {plan.priceMonthly === 0 ? "" : "/ mois"}
+                  </span>
+                </p>
+                <p className="relative mt-1 text-[14px]" style={{ color: "var(--mk-muted)" }}>
+                  {plan.minutesPerMonth} minutes · {formatHours(plan.minutesPerMonth)}
+                </p>
+                <Link
+                  href={p.href}
+                  className={`mk-btn relative mt-8 w-full ${p.highlight ? "mk-btn-primary" : "mk-btn-ghost"}`}
+                >
+                  {p.cta}
+                </Link>
+              </Reveal>
+            );
+          })}
+        </div>
+        <Reveal className="mt-8 text-center">
+          <Link href="/pricing" className="inline-flex items-center gap-1.5 text-[14px] hover:text-[var(--mk-text)]" style={{ color: "var(--mk-muted)" }}>
+            Voir tous les plans, l&apos;annuel et les packs de minutes <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+/* ─── FAQ ───────────────────────────────────────────────────────────── */
+
+const FAQ_ITEMS = [
+  {
+    q: "Combien de temps faut-il pour obtenir ma fiche ?",
+    a: "Quelques minutes après la fin de l'enregistrement. Le délai dépend de la durée du cours : plus il est long, plus la transcription prend du temps.",
+  },
+  {
+    q: "ECO fonctionne avec quelle langue ?",
+    a: "ECO transcrit et résume les cours en français.",
   },
   {
     q: "Quelle est la durée maximum d'un enregistrement ?",
-    a: "Jusqu'à 60 minutes par enregistrement.",
+    a: `Jusqu'à ${MAX_RECORDING_DURATION_MINUTES} minutes par enregistrement. Pour un cours plus long, lance un second enregistrement à la pause.`,
   },
   {
     q: "Ça marche sur téléphone ?",
-    a: "ECO est accessible depuis n'importe quel navigateur, sur ordinateur comme sur téléphone. Pas besoin d'installer d'application.",
+    a: "Oui. ECO fonctionne dans n'importe quel navigateur, sur ordinateur comme sur téléphone, sans application à installer. Garde l'écran allumé pendant l'enregistrement.",
+  },
+  {
+    q: "Et pour les cours en visio ?",
+    a: "Sur ordinateur (Chrome), choisis l'enregistrement de l'audio système : ECO capte directement le son de Zoom, Teams ou Meet.",
+  },
+  {
+    q: "Mes enregistrements sont-ils privés ?",
+    a: "Oui. Tes fiches ne sont visibles que par toi, et le fichier audio est supprimé de nos serveurs dès que la transcription est terminée.",
+  },
+  {
+    q: "Comment fonctionne le décompte des minutes ?",
+    a: "Chaque minute enregistrée est déduite de ton forfait mensuel. Si tu en manques avant la fin du mois, tu peux acheter un pack de minutes sans changer d'abonnement.",
   },
 ];
 
 function FAQ() {
-  const [open, setOpen] = useState<number | null>(null);
-
   return (
-    <section className="py-20 px-4">
-      <div className="max-w-2xl mx-auto">
-        <h2 className="text-3xl sm:text-4xl font-bold text-[#EDECE8] text-center mb-12">
-          Questions fréquentes
-        </h2>
-        <div className="space-y-3">
-          {FAQ_ITEMS.map((item, i) => (
-            <div
-              key={i}
-              className="border border-white/10 rounded-2xl overflow-hidden"
-              style={{ background: "#141619" }}
-            >
-              <button
-                className="w-full flex items-center justify-between px-6 py-5 text-left"
-                onClick={() => setOpen(open === i ? null : i)}
-              >
-                <span className="font-semibold text-[#EDECE8] text-sm sm:text-base pr-4">
+    <section id="faq" className="scroll-mt-20 px-5 pt-32 sm:px-8 sm:pt-40">
+      <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[1fr_1.4fr] lg:gap-20">
+        <Reveal>
+          <p className="mk-eyebrow">FAQ</p>
+          <h2 className="mk-display mt-5 text-[42px] sm:text-[56px]">Questions fréquentes</h2>
+          <p className="mt-5 text-[15px]" style={{ color: "var(--mk-muted)" }}>
+            Une autre question ? Écris-nous à{" "}
+            <a href="mailto:support@econewapp.com" className="underline decoration-[var(--mk-line-strong)] underline-offset-4 hover:text-[var(--mk-text)]">
+              support@econewapp.com
+            </a>
+            .
+          </p>
+        </Reveal>
+        <Reveal delay={80}>
+          <div className="border-t" style={{ borderColor: "var(--mk-line)" }}>
+            {FAQ_ITEMS.map((item) => (
+              <details key={item.q} className="group border-b" style={{ borderColor: "var(--mk-line)" }}>
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-6 py-5 text-[16px] [&::-webkit-details-marker]:hidden" style={{ color: "var(--mk-text)" }}>
                   {item.q}
-                </span>
-                <ChevronDown
-                  className={`w-5 h-5 text-[#8b8884] shrink-0 transition-transform duration-200 ${
-                    open === i ? "rotate-180" : ""
-                  }`}
-                />
-              </button>
-              {open === i && (
-                <div className="px-6 pb-5 text-[#8b8884] text-sm leading-relaxed border-t border-white/10 pt-4">
+                  <Plus className="h-4 w-4 shrink-0 transition-transform duration-300 group-open:rotate-45" style={{ color: "var(--mk-muted)" }} />
+                </summary>
+                <p className="pb-6 pr-10 text-[15px] leading-relaxed" style={{ color: "var(--mk-muted)" }}>
                   {item.a}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+                </p>
+              </details>
+            ))}
+          </div>
+        </Reveal>
       </div>
     </section>
   );
 }
 
-/* ─── Footer ─── */
-function Footer() {
+/* ─── Final CTA ─────────────────────────────────────────────────────── */
+
+function FinalCTA() {
   return (
-    <footer className="border-t border-white/10 py-12 px-4" style={{ background: "#0D0E14" }}>
-      <div className="max-w-6xl mx-auto">
-        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
-          {/* Logo + tagline */}
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-              <Image src="/logo-eco.png" alt="ECO" width={28} height={28} className="rounded-lg" />
-              <span className="font-bold text-[#EDECE8]">ECO</span>
-            </div>
-            <p className="text-xs text-[#8b8884] max-w-[200px]">
-              Tes cours audio, transformés en notes intelligentes.
-            </p>
-          </div>
-
-          {/* Links */}
-          <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-[#8b8884]">
-            <Link href="/blog" className="hover:text-[#EDECE8] transition-colors">Blog</Link>
-            <Link href="/legal/cgu" className="hover:text-[#EDECE8] transition-colors">CGU</Link>
-            <Link href="/legal/cgv" className="hover:text-[#EDECE8] transition-colors">CGV</Link>
-            <Link href="/legal/confidentialite" className="hover:text-[#EDECE8] transition-colors">Confidentialité</Link>
-            <Link href="/legal/mentions-legales" className="hover:text-[#EDECE8] transition-colors">Mentions légales</Link>
-            <a href="mailto:support@econewapp.com" className="hover:text-[#EDECE8] transition-colors">
-              support@econewapp.com
-            </a>
-          </div>
+    <section className="px-5 pb-28 pt-32 sm:px-8 sm:pb-36 sm:pt-40">
+      <Reveal className="relative mx-auto max-w-6xl overflow-hidden rounded-[28px] border border-[color:var(--mk-line)] px-6 py-20 text-center sm:py-28">
+        <div aria-hidden className="pointer-events-none absolute inset-0" style={{ background: "var(--mk-surface)" }} />
+        <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-[420px] w-[420px] -translate-x-1/2 -translate-y-1/2 opacity-30 blur-[80px]">
+          <Image src="/logo-eco-v2.png" alt="" fill sizes="420px" className="object-contain" />
         </div>
-
-        <div className="mt-8 pt-6 border-t border-white/10 text-center text-xs text-[#8b8884]">
-          © 2026 ECO. Tous droits réservés.
+        <div className="relative">
+          <AudioLines className="mx-auto h-6 w-6" strokeWidth={1.5} style={{ color: "var(--mk-text)" }} />
+          <h2 className="mk-display mx-auto mt-6 max-w-2xl text-[44px] sm:text-[64px]">
+            Ton prochain cours,
+            <br />
+            <span className="italic">déjà révisé.</span>
+          </h2>
+          <p className="mx-auto mt-6 max-w-md text-[16px]" style={{ color: "var(--mk-muted)" }}>
+            Crée ton compte en 30 secondes et teste ECO sur ton prochain cours. 10 minutes offertes, sans carte bancaire.
+          </p>
+          <Link href="/sign-up" className="mk-btn mk-btn-primary mt-9">
+            Commencer gratuitement <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
-      </div>
-    </footer>
+      </Reveal>
+    </section>
   );
 }
 
-/* ─── Page principale ─── */
+/* ─── Page ──────────────────────────────────────────────────────────── */
+
 export default function LandingPage() {
   return (
-    <>
-      <style dangerouslySetInnerHTML={{ __html: ANIM_STYLES }} />
+    <div className="mk min-h-screen">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify({
-          "@context": "https://schema.org",
-          "@type": "FAQPage",
-          "mainEntity": FAQ_ITEMS.map((item) => ({
-            "@type": "Question",
-            "name": item.q,
-            "acceptedAnswer": { "@type": "Answer", "text": item.a },
-          })),
-        }) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            mainEntity: FAQ_ITEMS.map((item) => ({
+              "@type": "Question",
+              name: item.q,
+              acceptedAnswer: { "@type": "Answer", text: item.a },
+            })),
+          }),
+        }}
       />
-      <div className="min-h-screen" style={{ background: "#080A0F" }}>
-        <Nav />
+      <SiteHeader />
+      <main>
         <Hero />
-        <SocialProof />
+        <ProofStrip />
+        <Product />
         <HowItWorks />
         <Features />
         <Testimonials />
-        <CTA />
+        <PricingTeaser />
         <FAQ />
-        <Footer />
-      </div>
-    </>
+        <FinalCTA />
+      </main>
+      <SiteFooter />
+    </div>
   );
 }

@@ -1,11 +1,16 @@
-"use client";
-
 import { SignUp } from "@clerk/nextjs";
+import type { Metadata } from "next";
+import AuthShell from "@/components/marketing/AuthShell";
+
+export const metadata: Metadata = {
+  title: "Créer un compte — ECO",
+  robots: { index: false, follow: true },
+};
 
 export default function SignUpPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center aura-gradient">
+    <AuthShell mode="sign-up">
       <SignUp />
-    </div>
+    </AuthShell>
   );
 }

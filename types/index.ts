@@ -17,6 +17,9 @@ export interface Eco {
   source_type?: "mic" | "screen" | null;
   has_pdf_context?: boolean;
   quiz?: QuizQuestion[] | null;
+  processing_status?: string | null;
+  ai_status?: string | null;
+  processing_error?: string | null;
 }
 
 export interface Folder {

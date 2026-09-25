@@ -55,10 +55,150 @@
 
 body {
   color: var(--text-primary);
-  font-family: 'Inter', system-ui, sans-serif;
+  background-color: var(--bg-base);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================================
+   MARKETING — landing, pricing, auth
+   Palette tirée de l'orbe du logo : lilas + cyan glacé, utilisés
+   avec parcimonie sur un noir chaud.
+   ============================================================ */
+
+.mk {
+  --mk-bg: #09090B;
+  --mk-surface: #111113;
+  --mk-surface-2: #17171A;
+  --mk-line: rgba(255, 255, 255, 0.08);
+  --mk-line-strong: rgba(255, 255, 255, 0.14);
+  --mk-text: #EDECE8;
+  --mk-muted: #9A9893;
+  --mk-faint: #7C7A76;
+  --mk-lilac: #C9B8FF;
+  --mk-ice: #A6ECF5;
+  --mk-rose: #F5C2E7;
+  background: var(--mk-bg);
+  color: var(--mk-text);
+}
+
+.mk ::selection {
+  background: rgba(201, 184, 255, 0.35);
+}
+
+.mk-display {
+  font-family: var(--font-display), Georgia, serif;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.02;
+}
+
+.mk-eyebrow {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mk-faint);
+}
+
+.mk-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 20px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 500;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+  white-space: nowrap;
+}
+
+.mk-btn:active {
+  transform: scale(0.98);
+}
+
+.mk-btn-primary {
+  background: var(--mk-text);
+  color: #0A0A0B;
+}
+
+.mk-btn-primary:hover {
+  background: #FFFFFF;
+}
+
+.mk-btn-ghost {
+  color: var(--mk-text);
+  border: 1px solid var(--mk-line-strong);
+}
+
+.mk-btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.mk-btn:focus-visible,
+.mk a:focus-visible,
+.mk button:focus-visible {
+  outline: 2px solid var(--mk-lilac);
+  outline-offset: 3px;
+}
+
+.mk-card {
+  background: var(--mk-surface);
+  border: 1px solid var(--mk-line);
+  border-radius: 20px;
+}
+
+.mk-iris {
+  background: linear-gradient(100deg, var(--mk-lilac) 0%, var(--mk-rose) 45%, var(--mk-ice) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.mk-grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.mk-reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.mk-reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+@keyframes mk-rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+
+.mk-rise {
+  animation: mk-rise 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes mk-float {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(0, -10px, 0) scale(1.03); }
+}
+
+.mk-float {
+  animation: mk-float 9s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mk-reveal { opacity: 1; transform: none; transition: none; }
+  .mk-rise, .mk-float { animation: none; }
 }
 
 /* ============================================================
@@ -490,3 +630,15 @@ body {
   pointer-events: none;
   z-index: 0;
 }
+
+/* Pages légales : mise en forme éditoriale (le plugin typography n'est pas installé). */
+.legal-doc { color: #A9A6A0; font-size: 16px; line-height: 1.75; }
+.legal-doc h2 { color: #EDECE8; font-size: 20px; font-weight: 600; letter-spacing: -0.01em; margin: 2.2em 0 0.7em; }
+.legal-doc h2:first-child { margin-top: 0; }
+.legal-doc h3 { color: #EDECE8; font-size: 17px; font-weight: 600; margin: 1.6em 0 0.5em; }
+.legal-doc p { margin: 0 0 1em; }
+.legal-doc ul { list-style: disc; padding-left: 1.4em; margin: 0 0 1em; }
+.legal-doc ol { list-style: decimal; padding-left: 1.4em; margin: 0 0 1em; }
+.legal-doc li { margin: 0.35em 0; }
+.legal-doc a { color: #C9B8FF; text-decoration: underline; text-underline-offset: 3px; }
+.legal-doc strong { color: #EDECE8; font-weight: 600; }

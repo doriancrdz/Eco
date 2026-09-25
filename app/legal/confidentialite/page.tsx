@@ -23,9 +23,9 @@ export default function ConfidentialitePage() {
           <h1 className="text-4xl font-bold mb-3 text-white tracking-[-0.03em]">
             Politique de confidentialité
           </h1>
-          <p className="text-sm mb-8 text-[#8b8884]">Dernière mise à jour : février 2026</p>
+          <p className="text-sm mb-8 text-[#8b8884]">Dernière mise à jour : septembre 2026</p>
 
-          <div className="prose prose-invert prose-lg max-w-none prose-headings:text-white/90 prose-headings:font-semibold prose-p:text-[#a1a0a0] prose-p:leading-relaxed prose-a:text-violet-400 prose-a:no-underline hover:prose-a:text-violet-300 prose-strong:text-white/90 prose-li:text-[#a1a0a0]">
+          <div className="legal-doc prose prose-invert prose-lg max-w-none prose-headings:text-white/90 prose-headings:font-semibold prose-p:text-[#a1a0a0] prose-p:leading-relaxed prose-a:text-violet-400 prose-a:no-underline hover:prose-a:text-violet-300 prose-strong:text-white/90 prose-li:text-[#a1a0a0]">
             <p>
               La présente politique décrit comment <strong>ECO</strong> (econewapp.com) collecte et traite vos données
               personnelles, dans le respect du Règlement général sur la protection des données (RGPD) et de la loi
@@ -71,8 +71,9 @@ export default function ConfidentialitePage() {
             <h2>5. Durée de conservation</h2>
             <p>
               Les données de compte et de facturation sont conservées pendant la durée de la relation contractuelle
-              puis pour les obligations légales (ex. comptabilité). Les enregistrements et transcriptions sont
-              conservés tant que vous les conservez dans votre compte ; vous pouvez les supprimer à tout moment.
+              puis pour les obligations légales (ex. comptabilité). Les fichiers audio sont supprimés de nos serveurs
+              dès que leur transcription est terminée. Les transcriptions et les contenus générés (résumés, notions,
+              quiz) sont conservés tant que vous les conservez dans votre compte ; vous pouvez les supprimer à tout moment.
               En cas de suppression de compte, nous supprimons ou anonymisons les données dans un délai raisonnable,
               sauf conservation légale.
             </p>

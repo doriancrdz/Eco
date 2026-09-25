@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Eco, QuizQuestion } from "@/types";
 import { motion } from "framer-motion";
 import { RefreshCw, Copy, Check } from "lucide-react";
@@ -9,6 +9,7 @@ import type { Summary } from "@/lib/transcription";
 import Tabs from "@/components/ui/Tabs";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
+import Flashcards, { buildFlashcards } from "@/components/Flashcards";
 import remarkBreaks from "remark-breaks";
 
 const POLL_INTERVAL_MS = 8000;
@@ -20,18 +21,11 @@ function RelancerButton({ ecoId, onSuccess }: { ecoId: string; onSuccess?: () =>
   const handleClick = async () => {
     setLoading(true);
     try {
-      const summary = await generateSummary(ecoId);
-      if (summary) {
-        const res = await fetch(`/api/ecos/${ecoId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: summary.titre, summary_text: JSON.stringify(summary) }),
-        });
-        if (res.ok) {
-          window.dispatchEvent(new Event("eco-updated"));
-          onSuccess?.();
-        }
-      }
+      await generateSummary(ecoId);
+      window.dispatchEvent(new Event("eco-updated"));
+      onSuccess?.();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "La génération a échoué. Réessaie dans un instant.");
     } finally {
       setLoading(false);
     }
@@ -177,8 +171,6 @@ interface EcoViewProps {
 
 export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
   const [showRetryHint, setShowRetryHint] = useState(false);
-  const [summaryError, setSummaryError] = useState<string | null>(null);
-  const [lastSummaryStatus, setLastSummaryStatus] = useState<number | null>(null);
   const [quizAnswers, setQuizAnswers] = useState<Record<number, string>>({});
   const [revealedOpen, setRevealedOpen] = useState<Set<number>>(new Set());
   const [quizSubmitted, setQuizSubmitted] = useState(false);
@@ -198,26 +190,34 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
     setQuizSubmitted(false);
   }, [eco?.id]);
 
-  const isQuizPending = !!(eco?.summary_text && !eco?.quiz);
+  const [quizTimedOut, setQuizTimedOut] = useState(false);
+  useEffect(() => setQuizTimedOut(false), [eco?.id]);
+  // Le quiz est généré ~20s après le résumé : inutile de poller sur un ancien ECO qui n'en a pas.
+  const isRecentEco = !!eco?.created_at && Date.now() - new Date(eco.created_at).getTime() < 15 * 60 * 1000;
+  const isQuizPending = !!(eco?.summary_text && !eco?.quiz) && isRecentEco && !quizTimedOut;
   useEffect(() => {
     if (!isQuizPending || !eco?.id) return;
     let quizPollCount = 0;
-    const MAX_QUIZ_POLLS = 20;
+    const MAX_QUIZ_POLLS = 8;
     const interval = setInterval(() => {
       quizPollCount++;
-      if (quizPollCount >= MAX_QUIZ_POLLS) { clearInterval(interval); return; }
+      if (quizPollCount >= MAX_QUIZ_POLLS) {
+        clearInterval(interval);
+        setQuizTimedOut(true);
+        return;
+      }
       onRefresh?.();
     }, 15000);
     return () => clearInterval(interval);
   }, [isQuizPending, eco?.id, onRefresh]);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const generateSummaryTriggeredRef = useRef(false);
   const pollCountRef = useRef(0);
 
   const hasTranscription = !!(eco?.transcription_text && eco.transcription_text.length > 0);
   const hasSummary = !!eco?.summary_text;
-  const needsPolling = eco?.id && (!hasTranscription || !hasSummary);
+  const hasFailed = eco?.ai_status === "FAILED" || eco?.processing_status === "ERROR";
+  const needsPolling = eco?.id && (!hasTranscription || !hasSummary) && !hasFailed;
 
   useEffect(() => {
     if (!needsPolling) { setShowRetryHint(false); return; }
@@ -241,7 +241,6 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
 
   useEffect(() => {
     if (!needsPolling || !eco?.id) {
-      generateSummaryTriggeredRef.current = false;
       pollCountRef.current = 0;
       if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
       return;
@@ -273,25 +272,8 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
             updatedAt = e.created_at || null;
             setLastEcoFetch({ url: pollUrl, statusCode: res.status, hasTranscription, transcriptionLen: tLen, hasContent, contentLen: cLen, updatedAt });
 
-            if (hasTranscription && !hasContent && !generateSummaryTriggeredRef.current) {
-              generateSummaryTriggeredRef.current = true;
-              try {
-                const summaryRes = await fetch("/api/generate-summary", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ ecoId }),
-                });
-                setLastSummaryStatus(summaryRes.status);
-                if (!summaryRes.ok) {
-                  const err = await summaryRes.json().catch(() => ({}));
-                  setSummaryError(err?.error || "Erreur lors de la génération du résumé");
-                }
-              } catch {
-                setSummaryError("Erreur lors de la génération du résumé");
-              }
-            }
-
-            if (hasTranscription && hasContent) {
+            const failed = e.ai_status === "FAILED" || e.processing_status === "ERROR";
+            if ((hasTranscription && hasContent) || failed) {
               if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
               onRefresh?.();
               return;
@@ -324,6 +306,17 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
   const transcription = eco?.transcription_text ?? "";
   const isTranscribing = needsPolling && !(eco?.transcription_text && eco.transcription_text.length > 0);
   const isGenerating = needsPolling && !!(eco?.transcription_text && eco.transcription_text.length > 0) && !(eco?.summary_text && eco.summary_text.length > 0);
+
+  const quizKey = JSON.stringify(eco?.quiz ?? null);
+  const flashcards = useMemo(() => {
+    let parsed: Summary | null = null;
+    if (eco?.summary_text) {
+      try { parsed = JSON.parse(eco.summary_text); } catch { /* ancien format texte */ }
+    }
+    const quiz = Array.isArray(eco?.quiz) ? (eco.quiz as QuizQuestion[]) : null;
+    return buildFlashcards(parsed?.notions, quiz);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [eco?.summary_text, quizKey]);
 
   if (!eco) {
     return (
@@ -395,13 +388,17 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
         ) : (
           <div className="space-y-3">
             <p style={{ color: "rgba(237,236,232,0.35)" }}>Aucun résumé disponible</p>
-            {summaryError && (
+            {hasFailed && (
               <>
-                <p className="text-sm" style={{ color: "rgba(239,68,68,0.8)" }}>{summaryError}</p>
-                <RelancerButton ecoId={eco.id} onSuccess={() => { setSummaryError(null); onRefresh?.(); }} />
+                <p className="text-sm" style={{ color: "rgba(239,68,68,0.8)" }}>
+                  {eco.processing_status === "ERROR"
+                    ? eco.processing_error || "Le traitement de l'audio a échoué."
+                    : "La génération du résumé a échoué."}
+                </p>
+                {hasTranscription && <RelancerButton ecoId={eco.id} onSuccess={onRefresh} />}
               </>
             )}
-            {!summaryError && showRetryHint && (
+            {!hasFailed && showRetryHint && (
               <>
                 <p className="text-sm" style={{ color: "rgba(245,158,11,0.8)" }}>Traitement en cours ou échoué.</p>
                 <RelancerButton ecoId={eco.id} onSuccess={onRefresh} />
@@ -479,6 +476,39 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
     typeof (rawQuiz[0] as unknown as Record<string, unknown>)?.question === "string"
       ? (rawQuiz as QuizQuestion[])
       : null;
+
+  /* ── Notions + Flashcards (dérivés du résumé et du quiz déjà générés) ── */
+  const notionList = (summary?.notions ?? [])
+    .map((n) => {
+      if (typeof n === "string") {
+        const idx = n.indexOf(":");
+        return idx > 0 ? { terme: n.slice(0, idx).trim(), definition: n.slice(idx + 1).trim() } : { terme: n.trim(), definition: "" };
+      }
+      return { terme: n.terme?.trim() ?? "", definition: n.definition?.trim() ?? "" };
+    })
+    .filter((n) => n.terme);
+
+  const notionsContent = notionList.length > 0 ? (
+    <dl>
+      {notionList.map((n, i) => (
+        <div
+          key={`${n.terme}-${i}`}
+          className="grid gap-1 py-4 first:pt-0 md:grid-cols-[220px_1fr] md:gap-6"
+          style={{ borderTop: i === 0 ? "none" : "1px solid rgba(255,255,255,0.06)" }}
+        >
+          <dt className="font-medium" style={{ color: "#EDECE8" }}>{n.terme}</dt>
+          <dd className="leading-relaxed" style={{ color: "rgba(237,236,232,0.7)" }}>{n.definition || "—"}</dd>
+        </div>
+      ))}
+    </dl>
+  ) : isGenerating ? (
+    <div className="space-y-3 animate-pulse">
+      <div className="h-4 rounded-lg eco-skeleton w-full" />
+      <div className="h-4 rounded-lg eco-skeleton w-4/5" />
+    </div>
+  ) : (
+    <p style={{ color: "rgba(237,236,232,0.35)" }}>Aucune notion disponible</p>
+  );
   const mcqCount = quizData?.filter((q) => q.type === "mcq").length ?? 0;
   const correctCount = quizSubmitted
     ? (quizData?.filter((q, i) => q.type === "mcq" && quizAnswers[i] === q.answer).length ?? 0)
@@ -671,7 +701,9 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
   const tabs = [
     { id: "summary", label: "Résumé structuré", content: summaryContent },
     { id: "keypoints", label: "Points clés", content: keyPointsContent },
+    { id: "notions", label: "Notions", content: notionsContent },
     { id: "quiz", label: "Quiz", content: quizContent },
+    { id: "flashcards", label: "Flashcards", content: <Flashcards cards={flashcards} title={eco.title} /> },
     { id: "transcription", label: "Transcription", content: transcriptionContent },
   ];
 
@@ -699,7 +731,7 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
             <div className="font-bold mb-2">🔍 DEBUG PANEL</div>
             <div className="space-y-1">
               <div>ecoId: <span className="font-semibold">{eco.id}</span></div>
-              <div>lastSummaryStatus: <span className="font-semibold">{lastSummaryStatus ?? "—"}</span></div>
+              <div>ai_status: <span className="font-semibold">{eco.ai_status ?? "—"}</span></div>
               <div>lastEcoFetch: {lastEcoFetch ? (
                 <span className="font-semibold block mt-1">
                   URL: {lastEcoFetch.url}<br />

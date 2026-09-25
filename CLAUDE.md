@@ -3,7 +3,7 @@
 ## Projet
 SaaS Next.js 15 qui transforme des enregistrements audio en résumés structurés par IA.
 - **Domaine :** econewapp.com
-- **Stack :** Next.js 15, TypeScript, Tailwind, PostgreSQL (Neon), Clerk, Stripe LIVE, OpenAI, Cloudflare R2, Vercel
+- **Stack :** Next.js 14 (App Router), TypeScript, Tailwind, PostgreSQL (Neon), Clerk, Stripe LIVE, OpenAI, Cloudflare R2, Vercel
 
 ## Workflow de développement
 - Modifier le code directement dans les fichiers du projet
@@ -20,17 +20,19 @@ SaaS Next.js 15 qui transforme des enregistrements audio en résumés structuré
 ## Fichiers clés
 ```
 .env.local                                      # Clerk, Stripe, OpenAI, DB, R2
-middleware.ts                                   # Protection routes Clerk
+middleware.ts                                   # Protection routes Clerk (liste des routes publiques)
 prisma/schema.prisma                            # Schéma DB
 lib/billingConfig.ts                            # Quotas et prix centralisés
 app/api/transcribe/route.ts                     # Whisper transcription
 app/api/generate-summary/route.ts               # Résumés IA — PROMPT IMMUABLE
 app/api/billing/checkout/route.ts               # Stripe checkout
-app/api/billing/webhook/route.ts                # Webhook Stripe
+app/api/stripe/webhook/route.ts                 # Webhook Stripe — SEUL endroit qui active un plan après paiement
 app/api/admin/grant-plan/route.ts               # Attribution plans gratuits
 app/api/recordings/[id]/transcribe/route.ts     # Pipeline transcription async
 app/api/recordings/[id]/status/route.ts         # Polling statut
-app/page.tsx                                    # Home + enregistrement + polling
+app/page.tsx                                    # Landing (déconnecté) ou DashboardPage (connecté)
+components/LandingPage.tsx                      # Landing marketing
+components/marketing/                           # Header, footer, design system marketing (.mk dans globals.css)
 app/pricing/page.tsx                            # Plans et pricing
 app/admin/page.tsx                              # Admin panel
 ```
@@ -74,11 +76,11 @@ Coût API : ~1 centime/minute — marge 58-60%
 
 ## Pipeline audio (1–60 min) — Architecture actuelle
 1. Enregistrement micro → upload direct R2 (presigned URL, bypass limite Vercel 4.5MB)
-2. Bitrate MediaRecorder : 48kbps → 60 min ≈ 21.6MB (sous limite Whisper 25MB)
+2. Bitrate MediaRecorder : 16kbps → 60 min ≈ 7.2MB (sous limite Whisper 25MB)
 3. `/api/recordings/[id]/transcribe` répond immédiatement `{ status: "PROCESSING" }`
 4. `waitUntil()` (@vercel/functions) garantit que le background process n'est pas tué
-5. Whisper → DB `TRANSCRIBED` → generate-summary → DB `DONE`
-6. Frontend poll `/api/recordings/[id]/status` toutes les 3s jusqu'à `DONE`
+5. Whisper → DB `TRANSCRIBED` → suppression de l'audio dans R2 → generate-summary (verrou atomique aiStatus) → DB `DONE`
+6. Frontend poll `/api/recordings/[id]/status` toutes les 8s jusqu'à `DONE`
 7. Rechargement `/api/ecos/${recordingId}` → affichage complet
 
 Timeouts Vercel configurés :
@@ -88,6 +90,7 @@ Timeouts Vercel configurés :
 - `recordings/init` + `recordings/[id]/complete` → `maxDuration = 60`
 
 ## Sécurité
+- `middleware.ts` : toute route absente de `isPublicRoute` renvoie 404 aux visiteurs non connectés — y compris Stripe (webhook), Google (blog, légal, sitemap). Toute nouvelle page publique ou tout nouveau webhook DOIT y être ajouté.
 - Admin : `cdorian654@yahoo.com` uniquement → `/admin`
 - Rate limiting sur toutes les routes sensibles
 - Clerk auth sur toutes les routes API

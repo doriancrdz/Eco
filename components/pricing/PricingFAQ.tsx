@@ -1,97 +1,67 @@
-"use client";
-
-import { memo, useState } from "react";
-import { ChevronDown } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { Plus } from "lucide-react";
+import { MAX_RECORDING_DURATION_MINUTES } from "@/lib/billingConfig";
 
 const faqs = [
   {
     question: "Les minutes sont-elles cumulables d'un mois sur l'autre ?",
-    answer: "Les minutes incluses dans ton plan se réinitialisent 1 mois après la date de souscription (pas le 1er du mois). Par exemple, si tu t'abonnes le 15 février, tes minutes se réinitialisent le 15 mars. Les packs de minutes supplémentaires que tu achètes sont permanents : ils s'ajoutent à ton compteur et ne se réinitialisent jamais. Tu peux les utiliser quand tu le souhaites, sans limite de temps.",
+    answer:
+      "Les minutes incluses dans ton plan se réinitialisent un mois après ta date de souscription (et non le 1er du mois). Par exemple, si tu t'abonnes le 15 février, elles se réinitialisent le 15 mars. Les minutes des packs, elles, sont permanentes : elles s'ajoutent à ton compteur et n'expirent jamais.",
   },
   {
-    question: "Puis-je acheter des packs même avec le plan Free ?",
-    answer: "Oui, absolument ! Les packs de minutes sont disponibles pour tous les utilisateurs, y compris ceux sur le plan Free. C'est idéal si tu as besoin de quelques minutes supplémentaires ponctuellement.",
+    question: "Puis-je acheter des packs avec le plan Free ?",
+    answer: "Oui. Les packs de minutes sont disponibles pour tous, y compris sur le plan Free. C'est pratique si tu as besoin de minutes ponctuellement sans t'abonner.",
   },
   {
     question: "Y a-t-il une limite de durée par enregistrement ?",
-    answer: "Oui, chaque enregistrement est limité à 60 minutes maximum. Cette limite s'applique à tous les plans pour garantir une qualité optimale de transcription.",
+    answer: `Oui, chaque enregistrement est limité à ${MAX_RECORDING_DURATION_MINUTES} minutes, quel que soit le plan. Pour un cours plus long, lance un second enregistrement à la pause.`,
   },
   {
-    question: "Puis-je changer de plan à tout moment ?",
-    answer: "Oui, tu peux mettre à jour ton plan à tout moment depuis la page Paramètres. Le changement prend effet immédiatement et les minutes de ton nouveau plan sont disponibles dès la mise à jour.",
+    question: "Comment fonctionne l'annuel ?",
+    answer:
+      "Deux options : payer l'année en une fois, ou payer chaque mois au tarif annuel avec un engagement de 12 mois. Dans les deux cas, le prix mensuel est plus bas qu'en mensuel sans engagement.",
   },
   {
-    question: "Les données sont-elles sécurisées ?",
-    answer: "Oui, tous tes enregistrements et transcriptions sont stockés de manière sécurisée. Nous utilisons un chiffrement de bout en bout pour protéger tes données. Ta vie privée est notre priorité.",
+    question: "Puis-je changer de plan ou résilier ?",
+    answer:
+      "Oui, depuis la page Paramètres. Un changement de plan prend effet immédiatement. Les abonnements mensuels sans engagement se résilient à tout moment.",
+  },
+  {
+    question: "Que deviennent mes données ?",
+    answer:
+      "Tes fiches ne sont visibles que par toi. Les échanges sont chiffrés en HTTPS et nos hébergeurs chiffrent les données stockées. Pour produire la transcription et le résumé, l'audio puis le texte sont traités par l'API d'OpenAI. Le fichier audio est supprimé de nos serveurs dès que la transcription est terminée.",
   },
 ];
 
-function PricingFAQ() {
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
-
+export default function PricingFAQ() {
   return (
-    <div className="max-w-3xl mx-auto">
-      <h2
-        className="text-3xl md:text-4xl font-semibold mb-12 text-center tracking-[-0.02em]"
-        style={{ color: "#EDECE8" }}
-      >
-        Questions fréquentes
-      </h2>
-      <div className="space-y-3">
-        {faqs.map((faq, index) => (
-          <div
-            key={index}
-            className="rounded-2xl overflow-hidden transition-all duration-300"
-            style={{
-              background: "#141619",
-              border: openIndex === index ? "1px solid rgba(139,92,246,0.25)" : "1px solid rgba(255,255,255,0.08)",
-            }}
-          >
-            <button
-              onClick={() => setOpenIndex(openIndex === index ? null : index)}
-              className="w-full px-6 py-5 flex items-center justify-between text-left transition-colors group"
-              onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.04)")}
-              onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+    <div className="grid gap-12 lg:grid-cols-[1fr_1.4fr] lg:gap-20">
+      <div>
+        <p className="mk-eyebrow">FAQ</p>
+        <h2 className="mk-display mt-5 text-[42px] sm:text-[52px]">Questions sur les tarifs</h2>
+        <p className="mt-5 text-[15px]" style={{ color: "var(--mk-muted)" }}>
+          Une autre question ? Écris-nous à{" "}
+          <a href="mailto:support@econewapp.com" className="underline decoration-[var(--mk-line-strong)] underline-offset-4 hover:text-[var(--mk-text)]">
+            support@econewapp.com
+          </a>
+          .
+        </p>
+      </div>
+      <div className="border-t" style={{ borderColor: "var(--mk-line)" }}>
+        {faqs.map((faq) => (
+          <details key={faq.question} className="group border-b" style={{ borderColor: "var(--mk-line)" }}>
+            <summary
+              className="flex cursor-pointer list-none items-center justify-between gap-6 py-5 text-[16px] [&::-webkit-details-marker]:hidden"
+              style={{ color: "var(--mk-text)" }}
             >
-              <span className="font-semibold pr-4 text-sm md:text-base" style={{ color: "#EDECE8" }}>
-                {faq.question}
-              </span>
-              <div
-                className={`flex-shrink-0 transition-transform duration-300 ${openIndex === index ? "rotate-180" : ""}`}
-              >
-                <ChevronDown
-                  className="w-5 h-5"
-                  style={{ color: openIndex === index ? "#A78BFA" : "rgba(237,236,232,0.35)" }}
-                />
-              </div>
-            </button>
-            <AnimatePresence>
-              {openIndex === index && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-                  className="overflow-hidden"
-                >
-                  <div
-                    className="px-6 pb-5 text-sm leading-relaxed pt-4"
-                    style={{
-                      color: "rgba(237,236,232,0.6)",
-                      borderTop: "1px solid rgba(255,255,255,0.06)",
-                    }}
-                  >
-                    {faq.answer}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+              {faq.question}
+              <Plus className="h-4 w-4 shrink-0 transition-transform duration-300 group-open:rotate-45" style={{ color: "var(--mk-muted)" }} />
+            </summary>
+            <p className="pb-6 pr-10 text-[15px] leading-relaxed" style={{ color: "var(--mk-muted)" }}>
+              {faq.answer}
+            </p>
+          </details>
         ))}
       </div>
     </div>
   );
 }
-
-export default memo(PricingFAQ);

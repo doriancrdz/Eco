@@ -25,7 +25,7 @@ export default function MentionsLegalesPage() {
           </h1>
           <p className="text-sm mb-8 text-[#8b8884]">Dernière mise à jour : février 2026</p>
 
-          <div className="prose prose-invert prose-lg max-w-none prose-headings:text-white/90 prose-headings:font-semibold prose-p:text-[#a1a0a0] prose-p:leading-relaxed prose-a:text-violet-400 prose-a:no-underline hover:prose-a:text-violet-300 prose-strong:text-white/90 prose-li:text-[#a1a0a0]">
+          <div className="legal-doc prose prose-invert prose-lg max-w-none prose-headings:text-white/90 prose-headings:font-semibold prose-p:text-[#a1a0a0] prose-p:leading-relaxed prose-a:text-violet-400 prose-a:no-underline hover:prose-a:text-violet-300 prose-strong:text-white/90 prose-li:text-[#a1a0a0]">
             <p>
               Conformément aux dispositions de la loi n° 2004-575 du 21 juin 2004 pour la confiance dans l&apos;économie
               numérique (LCEN), sont indiquées ci-après les informations relatives à l&apos;éditeur et à l&apos;hébergement

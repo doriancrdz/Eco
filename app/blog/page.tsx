@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import SiteFooter from "@/components/marketing/SiteFooter";
 import Image from "next/image";
 import { ChevronLeft, Clock, ArrowRight } from "lucide-react";
 import { articles, formatDate } from "@/lib/blog/articles";
@@ -7,7 +8,7 @@ import { articles, formatDate } from "@/lib/blog/articles";
 export const metadata: Metadata = {
   title: "Blog — ECO | Conseils pour mieux réviser",
   description: "Conseils, méthodes et guides pour mieux enregistrer tes cours et réviser plus efficacement grâce à l'IA.",
-  alternates: { canonical: "https://econewapp.com/blog" },
+  alternates: { canonical: "/blog" },
   robots: { index: true, follow: true },
 };
 
@@ -89,6 +90,7 @@ export default function BlogPage() {
           </div>
         )}
       </main>
+      <SiteFooter />
     </div>
   );
 }

@@ -98,85 +98,68 @@ const testimonials: Testimonial[] = [
   },
 ];
 
+function initials(name: string) {
+  return name
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
+
 function TestimonialCard({ testimonial }: { testimonial: Testimonial }) {
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
   return (
-    <div className="flex-shrink-0 w-[380px] md:w-[420px]">
-      <div className="testimonial-card-glass relative rounded-card p-6 hover:border-white/70 hover:shadow-xl transition-all duration-300 h-full flex flex-col">
-        <div className="flex items-start gap-4 mb-4 relative z-10">
-          {/* Avatar */}
-          <div className="flex-shrink-0">
-            {testimonial.avatarSrc ? (
-              <div className="relative w-12 h-12 rounded-full overflow-hidden border-2 border-white/50">
-                <Image
-                  src={testimonial.avatarSrc}
-                  alt={testimonial.name}
-                  width={48}
-                  height={48}
-                  className="rounded-full object-cover object-center"
-                  sizes="48px"
-                  priority={false}
-                />
-              </div>
-            ) : (
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-aura-emerald/30 via-aura-blue/30 to-aura-sand/30 border-2 border-white/50 flex items-center justify-center backdrop-blur-sm">
-                <span className="text-sm font-semibold text-gray-700">
-                  {getInitials(testimonial.name)}
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Nom et étoiles */}
-          <div className="flex-1 min-w-0 relative z-10">
-            <h4 className="font-semibold text-gray-900 mb-1.5 text-base">
-              {testimonial.name}
-            </h4>
-            <div className="flex items-center gap-0.5">
-              {[...Array(5)].map((_, i) => (
-                <Star
-                  key={i}
-                  className={`w-4 h-4 ${
-                    i < testimonial.stars
-                      ? "text-pink-500 fill-pink-500"
-                      : "text-gray-300"
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Texte de l'avis */}
-        <p className="text-gray-700 text-sm leading-relaxed flex-1 relative z-10">
-          {testimonial.text}
-        </p>
+    <figure className="mk-card flex h-full w-[340px] shrink-0 flex-col p-6 md:w-[400px]">
+      <div className="flex gap-0.5" aria-label={`${testimonial.stars} étoiles sur 5`}>
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Star
+            key={i}
+            className="h-3.5 w-3.5"
+            fill={i < testimonial.stars ? "#E8D9A8" : "transparent"}
+            stroke={i < testimonial.stars ? "none" : "#4A4845"}
+          />
+        ))}
       </div>
-    </div>
+      <blockquote className="mt-4 flex-1 text-[14.5px] leading-relaxed" style={{ color: "#C9C6C0" }}>
+        «&nbsp;{testimonial.text}&nbsp;»
+      </blockquote>
+      <figcaption className="mt-6 flex items-center gap-3">
+        {testimonial.avatarSrc ? (
+          <Image
+            src={testimonial.avatarSrc}
+            alt=""
+            width={32}
+            height={32}
+            className="h-8 w-8 rounded-full object-cover"
+            sizes="32px"
+          />
+        ) : (
+          <span className="flex h-8 w-8 items-center justify-center rounded-full text-[12px]" style={{ background: "var(--mk-surface-2)", color: "var(--mk-muted)" }}>
+            {initials(testimonial.name)}
+          </span>
+        )}
+        <span className="text-[14px] font-medium" style={{ color: "var(--mk-text)" }}>
+          {testimonial.name}
+        </span>
+      </figcaption>
+    </figure>
   );
 }
 
 export default function TestimonialsMarquee() {
-  // Dupliquer les testimonials pour créer un loop infini sans saut
-  // On duplique 2 fois pour garantir un défilement fluide
-  const duplicatedTestimonials = [...testimonials, ...testimonials];
-
+  const loop = [...testimonials, ...testimonials];
   return (
-    <div className="w-full overflow-hidden py-8">
-      <div className="relative">
-        <div className="flex gap-6 marquee-container" style={{ width: "fit-content" }}>
-          {duplicatedTestimonials.map((testimonial, index) => (
-            <TestimonialCard key={`${testimonial.id}-${index}`} testimonial={testimonial} />
-          ))}
-        </div>
+    <div
+      className="w-full overflow-hidden py-2"
+      style={{
+        maskImage: "linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent)",
+        WebkitMaskImage: "linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent)",
+      }}
+    >
+      <div className="marquee-container flex items-stretch gap-5" style={{ width: "fit-content" }}>
+        {loop.map((t, i) => (
+          <TestimonialCard key={`${t.id}-${i}`} testimonial={t} />
+        ))}
       </div>
     </div>
   );

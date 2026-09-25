@@ -60,7 +60,7 @@ export async function GET(
 
     const recording = await prisma.recording.findUnique({
       where: { id: eco.id },
-      select: { durationMs: true, durationSeconds: true },
+      select: { durationMs: true, durationSeconds: true, status: true, aiStatus: true, errorMessage: true },
     });
     const durationSeconds =
       recording?.durationMs != null ? recording.durationMs / 1000 : recording?.durationSeconds ?? null;
@@ -89,6 +89,9 @@ export async function GET(
       created_at: eco.createdAt.toISOString(),
       duration_seconds: durationSeconds,
       quiz: eco.quiz ?? null,
+      processing_status: recording?.status ?? null,
+      ai_status: recording?.aiStatus ?? null,
+      processing_error: recording?.errorMessage ?? null,
     };
 
     return NextResponse.json({ eco: formattedEco });

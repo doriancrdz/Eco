@@ -3,54 +3,17 @@
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
-import dynamic from "next/dynamic";
-import PricingTopbar from "@/components/pricing/PricingTopbar";
+import SiteHeader from "@/components/marketing/SiteHeader";
+import SiteFooter from "@/components/marketing/SiteFooter";
 import PricingToggle from "@/components/pricing/PricingToggle";
 import PlanCard from "@/components/pricing/PlanCard";
 import PackCard from "@/components/pricing/PackCard";
 import PricingComparison from "@/components/pricing/PricingComparison";
 import TrustLine from "@/components/pricing/TrustLine";
+import PricingFAQ from "@/components/pricing/PricingFAQ";
+import TestimonialsMarquee from "@/components/pricing/TestimonialsMarquee";
 import AnnualChoiceModal, { type AnnualBillingChoice } from "@/components/pricing/AnnualChoiceModal";
 import { PLANS, PACKS, PlanType } from "@/lib/billingConfig";
-import { Mic, FileText, List, Percent } from "lucide-react";
-
-// Skeletons légers pour les sections non critiques
-function TestimonialsSkeleton() {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-pulse">
-      {[1, 2].map((i) => (
-        <div key={i} className="h-48 bg-white/40 rounded-3xl" />
-      ))}
-    </div>
-  );
-}
-
-function FAQSkeleton() {
-  return (
-    <div className="space-y-4 animate-pulse">
-      {[1, 2, 3].map((i) => (
-        <div key={i} className="h-16 bg-white/40 rounded-xl" />
-      ))}
-    </div>
-  );
-}
-
-// Lazy load des composants non critiques
-const PricingFAQ = dynamic(
-  () => import("@/components/pricing/PricingFAQ"),
-  {
-    loading: () => <FAQSkeleton />,
-    ssr: false,
-  }
-);
-
-const TestimonialsMarquee = dynamic(
-  () => import("@/components/pricing/TestimonialsMarquee"),
-  {
-    loading: () => <TestimonialsSkeleton />,
-    ssr: false,
-  }
-);
 
 type BillingData = {
   plan: PlanType;
@@ -170,8 +133,12 @@ export default function PricingPage() {
   };
 
   const handlePlanSelect = (planKey: PlanType) => {
+    if (planKey === "free") {
+      router.push(isSignedIn ? "/" : "/sign-up");
+      return;
+    }
     if (!isSignedIn) {
-      router.push(`/sign-in?redirect_url=/pricing`);
+      router.push(`/sign-up?redirect_url=/pricing`);
       return;
     }
 
@@ -179,13 +146,9 @@ export default function PricingPage() {
     if (currentPlan !== "free" && planKey === currentPlan) {
       return;
     }
-    if (isYearly && planKey !== "free") {
-      try {
-        setSelectedPlanForModal(planKey);
-        setAnnualModalOpen(true);
-      } catch (error) {
-        setError("Impossible d'ouvrir le modal de sélection. Merci de réessayer.");
-      }
+    if (isYearly) {
+      setSelectedPlanForModal(planKey);
+      setAnnualModalOpen(true);
       return;
     }
     doCheckout(planKey);
@@ -250,83 +213,41 @@ export default function PricingPage() {
   };
 
   return (
-    <div className="min-h-screen eco-bg relative">
-      {/* Ambient glows */}
-      <div className="fixed inset-0 pointer-events-none -z-10" aria-hidden>
-        <div className="absolute top-0 left-1/3 w-[500px] h-[500px]" style={{ background: "radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 70%)" }} />
-        <div className="absolute top-1/3 right-1/4 w-96 h-96" style={{ background: "radial-gradient(circle, rgba(6,182,212,0.06) 0%, transparent 70%)" }} />
-      </div>
-
-      <div className="relative z-10">
-        {/* Topbar */}
-        <PricingTopbar />
-
-        {/* Header */}
-        <div className="pt-12 pb-12 px-4 text-center">
-          <h1
-            className="text-4xl md:text-5xl lg:text-6xl font-semibold mb-6 tracking-[-0.02em]"
-            style={{ color: "#EDECE8" }}
-          >
-            Choisis ton plan
-          </h1>
-          <p
-            className="text-lg md:text-xl lg:text-2xl max-w-2xl mx-auto leading-relaxed mb-8"
-            style={{ color: "rgba(237,236,232,0.5)" }}
-          >
-            Transforme ta voix en connaissance structurée. Plans flexibles pour tous tes besoins.
-          </p>
-
-          {/* Chips */}
-          <div className="flex flex-wrap items-center justify-center gap-2 md:gap-3 max-w-3xl mx-auto">
-            {[
-              { icon: FileText, label: "Résumé structuré" },
-              { icon: List, label: "Points clés / notions importantes" },
-              { icon: Mic, label: "Transcription réelle" },
-              { icon: Percent, label: "Économise 17% en payant annuellement" },
-            ].map((chip, idx) => {
-              const Icon = chip.icon;
-              return (
-                <div
-                  key={idx}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs md:text-sm font-medium transition-all duration-200"
-                  style={{
-                    background: "rgba(255,255,255,0.06)",
-                    border: "1px solid rgba(255,255,255,0.10)",
-                    color: "rgba(237,236,232,0.65)",
-                  }}
-                >
-                  <Icon className="w-3.5 h-3.5" />
-                  <span>{chip.label}</span>
-                </div>
-              );
-            })}
+    <div className="mk min-h-screen">
+      <SiteHeader />
+      <main>
+        <section className="relative overflow-hidden px-5 pt-32 sm:px-8 sm:pt-40">
+          <div className="mk-grain" aria-hidden />
+          <div className="relative mx-auto max-w-3xl text-center">
+            <p className="mk-rise mk-eyebrow">Tarifs</p>
+            <h1 className="mk-display mk-rise mt-6 text-[48px] sm:text-[72px]" style={{ animationDelay: "80ms" }}>
+              Un prix simple.
+              <br />
+              <span className="italic" style={{ color: "var(--mk-muted)" }}>
+                Toutes les fonctionnalités.
+              </span>
+            </h1>
+            <p className="mk-rise mx-auto mt-6 max-w-xl text-[17px] leading-relaxed" style={{ color: "var(--mk-muted)", animationDelay: "160ms" }}>
+              Les plans ne diffèrent que par le nombre de minutes d&apos;enregistrement. Commence gratuitement, passe à un abonnement quand ECO fait partie de ta routine.
+            </p>
           </div>
-        </div>
+          <div className="mk-rise relative mt-10" style={{ animationDelay: "220ms" }}>
+            <PricingToggle isYearly={isYearly} onToggle={setIsYearly} />
+          </div>
+        </section>
 
-        {/* Toggle Mensuel/Annuel */}
-        <div className="px-4">
-          <PricingToggle isYearly={isYearly} onToggle={setIsYearly} />
-        </div>
-
-        {/* Message d'erreur */}
         {error && (
-          <div className="max-w-4xl mx-auto px-4 mb-8">
-            <div
-              className="px-4 py-3 rounded-xl text-sm flex items-center gap-2"
-              style={{ background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.2)", color: "#FCD34D" }}
-            >
+          <div className="mx-auto mt-8 max-w-4xl px-5" role="alert">
+            <div className="rounded-xl border px-4 py-3 text-[14px]" style={{ background: "rgba(245,158,11,0.08)", borderColor: "rgba(245,158,11,0.25)", color: "#FCD34D" }}>
               {error}
             </div>
           </div>
         )}
 
-        {/* Plans */}
-        <div className="max-w-7xl mx-auto px-4 mb-16">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 items-stretch">
+        <section className="mx-auto mt-12 max-w-6xl px-5 sm:px-8" aria-label="Plans">
+          <div className="grid items-stretch gap-5 md:grid-cols-2 lg:grid-cols-4">
             {plansEntries.map(([planKey, plan], index) => {
               const typedKey = planKey as PlanType;
-              const isCurrentPlan = currentPlan !== "free" && typedKey === currentPlan;
-
               return (
                 <PlanCard
                   key={planKey}
@@ -337,12 +258,12 @@ export default function PricingPage() {
                   onSelect={() => handlePlanSelect(typedKey)}
                   isLoading={loadingPlan === planKey}
                   index={index}
-                  isCurrentPlan={isCurrentPlan}
+                  isCurrentPlan={currentPlan !== "free" && typedKey === currentPlan}
                 />
               );
             })}
           </div>
-        </div>
+        </section>
 
         <AnnualChoiceModal
           isOpen={annualModalOpen}
@@ -358,36 +279,26 @@ export default function PricingPage() {
           isLoading={!!loadingPlan}
         />
 
-        {/* Comparaison rapide */}
-        <div className="max-w-6xl mx-auto px-4 mb-16">
-          <div className="mb-8 text-center">
-            <h2 className="text-2xl md:text-3xl font-semibold mb-2 tracking-[-0.02em]" style={{ color: "#EDECE8" }}>
-              Comparaison rapide
-            </h2>
-            <p className="text-sm md:text-base" style={{ color: "rgba(237,236,232,0.5)" }}>
-              Tous les détails en un coup d&apos;œil
-            </p>
-          </div>
+        <section className="mx-auto mt-6 max-w-6xl space-y-6 px-5 sm:px-8">
           <PricingComparison />
-        </div>
-
-        {/* Trust line */}
-        <div className="max-w-5xl mx-auto px-4 mb-16">
           <TrustLine />
-        </div>
+        </section>
 
-        {/* Packs de minutes */}
-        <div id="packs" className="max-w-6xl mx-auto px-4 mb-24 scroll-mt-20">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-semibold mb-4 tracking-[-0.02em]" style={{ color: "#EDECE8" }}>
-              Packs de minutes supplémentaires
+        <section id="packs" className="mx-auto max-w-6xl scroll-mt-24 px-5 pt-32 sm:px-8">
+          <div className="max-w-2xl">
+            <p className="mk-eyebrow">Packs de minutes</p>
+            <h2 className="mk-display mt-5 text-[42px] sm:text-[52px]">
+              Un partiel qui approche ?
+              <br />
+              <span className="italic" style={{ color: "var(--mk-muted)" }}>
+                Ajoute des minutes.
+              </span>
             </h2>
-            <p className="text-lg max-w-2xl mx-auto" style={{ color: "rgba(237,236,232,0.5)" }}>
-              Achète un pack pour bénéficier de minutes supplémentaires.
+            <p className="mt-5 text-[16px]" style={{ color: "var(--mk-muted)" }}>
+              Des minutes en plus, sans changer d&apos;abonnement. Elles s&apos;ajoutent immédiatement à ton compteur et n&apos;expirent jamais.
             </p>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+          <div className="mt-12 grid gap-5 md:grid-cols-3">
             {packsArray.map((pack, index) => (
               <PackCard
                 key={index}
@@ -399,18 +310,23 @@ export default function PricingPage() {
               />
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* Testimonials Marquee */}
-        <div className="max-w-full mx-auto px-4 mb-24">
-          <TestimonialsMarquee />
-        </div>
+        <section className="pt-32">
+          <div className="mx-auto max-w-6xl px-5 sm:px-8">
+            <p className="mk-eyebrow">Avis</p>
+            <h2 className="mk-display mt-5 text-[42px] sm:text-[52px]">Ce qu&apos;en disent les utilisateurs</h2>
+          </div>
+          <div className="mt-12">
+            <TestimonialsMarquee />
+          </div>
+        </section>
 
-        {/* FAQ */}
-        <div className="max-w-6xl mx-auto px-4 pb-20">
+        <section className="mx-auto max-w-6xl px-5 pb-32 pt-32 sm:px-8">
           <PricingFAQ />
-        </div>
-      </div>
+        </section>
+      </main>
+      <SiteFooter />
     </div>
   );
 }

@@ -1,67 +1,54 @@
 "use client";
 
 import { memo } from "react";
-import { Sparkles } from "lucide-react";
+import { PLANS } from "@/lib/billingConfig";
 
 interface PricingToggleProps {
   isYearly: boolean;
   onToggle: (yearly: boolean) => void;
 }
 
+const MAX_SAVING = Math.max(
+  ...Object.values(PLANS)
+    .filter((p) => p.priceMonthly > 0)
+    .map((p) => Math.round(((p.priceMonthly * 12 - p.priceYearly) / (p.priceMonthly * 12)) * 100))
+);
+
 function PricingToggle({ isYearly, onToggle }: PricingToggleProps) {
+  const option = (active: boolean) =>
+    `relative rounded-full px-5 py-2 text-[14px] font-medium transition-colors ${active ? "" : "hover:text-[var(--mk-text)]"}`;
   return (
-    <div className="flex items-center justify-center gap-5 mb-16">
-      <span
-        className="text-base font-semibold transition-colors duration-200"
-        style={{ color: !isYearly ? "#EDECE8" : "rgba(237,236,232,0.35)" }}
+    <div className="flex flex-col items-center gap-3">
+      <div
+        role="radiogroup"
+        aria-label="Période de facturation"
+        className="inline-flex rounded-full border p-1"
+        style={{ borderColor: "var(--mk-line-strong)", background: "var(--mk-surface)" }}
       >
-        Mensuel
-      </span>
-
-      <button
-        onClick={() => onToggle(!isYearly)}
-        className="relative w-16 h-8 rounded-full p-1 transition-all duration-300 focus:outline-none"
-        style={{
-          background: isYearly
-            ? "linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%)"
-            : "rgba(255,255,255,0.12)",
-          boxShadow: isYearly ? "0 0 20px rgba(139,92,246,0.3)" : "none",
-        }}
-      >
-        <div
-          className="w-6 h-6 rounded-full flex items-center justify-center transition-transform duration-300"
-          style={{
-            background: "#EDECE8",
-            transform: isYearly ? "translateX(32px)" : "translateX(0)",
-          }}
+        <button
+          type="button"
+          role="radio"
+          aria-checked={!isYearly}
+          onClick={() => onToggle(false)}
+          className={option(!isYearly)}
+          style={!isYearly ? { background: "var(--mk-text)", color: "#0A0A0B" } : { color: "var(--mk-muted)" }}
         >
-          {isYearly && <Sparkles className="w-3 h-3" style={{ color: "#8B5CF6" }} />}
-        </div>
-      </button>
-
-      <div className="flex flex-col items-start gap-1">
-        <div className="flex items-center gap-2">
-          <span
-            className="text-base font-semibold transition-colors duration-200"
-            style={{ color: isYearly ? "#EDECE8" : "rgba(237,236,232,0.35)" }}
-          >
-            Annuel
-          </span>
-          {isYearly && (
-            <span
-              className="px-2.5 py-0.5 text-xs font-bold rounded-full"
-              style={{ background: "linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%)", color: "white" }}
-            >
-              -17%
-            </span>
-          )}
-        </div>
-        {isYearly && (
-          <p className="text-xs" style={{ color: "rgba(237,236,232,0.4)" }}>
-            Facturé annuellement
-          </p>
-        )}
+          Mensuel
+        </button>
+        <button
+          type="button"
+          role="radio"
+          aria-checked={isYearly}
+          onClick={() => onToggle(true)}
+          className={option(isYearly)}
+          style={isYearly ? { background: "var(--mk-text)", color: "#0A0A0B" } : { color: "var(--mk-muted)" }}
+        >
+          Annuel
+        </button>
       </div>
+      <p className="text-[13px]" style={{ color: isYearly ? "#A7F3D0" : "var(--mk-faint)" }}>
+        Jusqu&apos;à {MAX_SAVING} % d&apos;économie avec l&apos;annuel
+      </p>
     </div>
   );
 }
