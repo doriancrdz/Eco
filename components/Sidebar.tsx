@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import { CreditCard, Home, Library, LogOut, MoreHorizontal, PanelLeftClose, Plus, Settings, X } from "lucide-react";
+import { CreditCard, Gem, Home, Library, LogOut, MoreHorizontal, PanelLeftClose, Plus, Settings, X } from "lucide-react";
 import { useClerk } from "@clerk/nextjs";
 import FolderList from "./FolderList";
 import EcoHistory from "./EcoHistory";
@@ -30,6 +30,7 @@ interface SidebarProps {
   onNewRecording: () => void;
   onViewAll: () => void;
   onNavigatePricing: () => void;
+  onManageSubscription: () => void;
   onNavigateSettings: () => void;
   onUpgrade: (packs: boolean) => void;
   recentEcos: Eco[];
@@ -60,7 +61,17 @@ function NavRow({
   );
 }
 
-function UsageCard({ billing, loading, onUpgrade }: { billing: SidebarBilling | null; loading: boolean; onUpgrade: (packs: boolean) => void }) {
+function UsageCard({
+  billing,
+  loading,
+  onUpgrade,
+  onManage,
+}: {
+  billing: SidebarBilling | null;
+  loading: boolean;
+  onUpgrade: (packs: boolean) => void;
+  onManage: () => void;
+}) {
   if (!billing) {
     return loading ? <div className="mx-2 h-[64px] rounded-xl eco-skeleton" /> : null;
   }
@@ -72,15 +83,17 @@ function UsageCard({ billing, loading, onUpgrade }: { billing: SidebarBilling | 
 
   return (
     <div className="mx-2 rounded-xl border p-3" style={{ borderColor: "var(--mk-line)", background: "rgba(255,255,255,0.02)" }}>
-      <div className="flex items-center justify-between text-[12.5px]">
-        <span style={{ color: "var(--mk-text)" }}>{PLAN_LABEL[billing.plan] ?? billing.plan}</span>
-        <span className="tabular-nums" style={{ color: low ? "#FCD34D" : "var(--mk-muted)" }}>
-          {left} min restantes
+      <button type="button" onClick={onManage} className="block w-full text-left" aria-label="Gérer mon abonnement et mes minutes">
+        <span className="flex items-center justify-between text-[12.5px]">
+          <span style={{ color: "var(--mk-text)" }}>{PLAN_LABEL[billing.plan] ?? billing.plan}</span>
+          <span className="tabular-nums" style={{ color: low ? "#FCD34D" : "var(--mk-muted)" }}>
+            {left} min restantes
+          </span>
         </span>
-      </div>
-      <div className="mt-2 h-1 overflow-hidden rounded-full" style={{ background: "rgba(255,255,255,0.07)" }}>
-        <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${pct}%`, background: low ? "#FCD34D" : "var(--mk-lilac)" }} />
-      </div>
+        <span className="mt-2 block h-1 overflow-hidden rounded-full" style={{ background: "rgba(255,255,255,0.07)" }}>
+          <span className="block h-full rounded-full transition-[width] duration-500" style={{ width: `${pct}%`, background: low ? "#FCD34D" : "var(--mk-lilac)" }} />
+        </span>
+      </button>
       {(isFree || low) && (
         <button
           type="button"
@@ -106,6 +119,7 @@ export default function Sidebar({
   onNewRecording,
   onViewAll,
   onNavigatePricing,
+  onManageSubscription,
   onNavigateSettings,
   onUpgrade,
   recentEcos,
@@ -182,6 +196,7 @@ export default function Sidebar({
             </button>
             <NavRow icon={Home} label="Accueil" active={activeView === "home"} onClick={run(onNavigateHome)} />
             <NavRow icon={Library} label="Tous mes cours" active={activeView === "all"} onClick={run(onViewAll)} />
+            <NavRow icon={Gem} label="Abonnement" onClick={run(onNavigatePricing)} />
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-4 scrollbar-hide">
@@ -190,7 +205,7 @@ export default function Sidebar({
           </div>
 
           <div className="shrink-0 space-y-2 border-t pb-3 pt-3" style={{ borderColor: "var(--mk-line)" }}>
-            <UsageCard billing={billing} loading={billingLoading} onUpgrade={(packs) => { onUpgrade(packs); closeOnMobile(); }} />
+            <UsageCard billing={billing} loading={billingLoading} onManage={run(onManageSubscription)} onUpgrade={(packs) => { onUpgrade(packs); closeOnMobile(); }} />
             <div className="px-2">
               <DropdownMenu
                 align="left"
@@ -198,7 +213,7 @@ export default function Sidebar({
                 triggerLabel="Menu du compte"
                 items={[
                   { label: "Paramètres", onClick: run(onNavigateSettings), icon: <Settings className="h-4 w-4" /> },
-                  { label: "Abonnement et minutes", onClick: run(onNavigatePricing), icon: <CreditCard className="h-4 w-4" /> },
+                  { label: "Gérer mon abonnement", onClick: run(onManageSubscription), icon: <CreditCard className="h-4 w-4" /> },
                   { label: "Se déconnecter", onClick: () => setShowLogoutConfirm(true), danger: true, icon: <LogOut className="h-4 w-4" /> },
                 ]}
               >

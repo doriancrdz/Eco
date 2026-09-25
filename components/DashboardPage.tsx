@@ -1344,9 +1344,13 @@ export default function DashboardPage() {
         selectedEco={selectedEco}
         onSelectEco={handleEcoClick}
         onNavigateHome={() => goHome("sidebar")}
-        onNewRecording={() => goHome("sidebar")}
+        onNewRecording={() => {
+          goHome("sidebar");
+          handleStartRecording();
+        }}
         onViewAll={openAll}
-        onNavigatePricing={() => router.push("/settings")}
+        onNavigatePricing={() => router.push("/pricing")}
+        onManageSubscription={() => router.push("/settings")}
         onNavigateSettings={() => router.push("/settings/preferences")}
         onUpgrade={(packs) => router.push(packs ? "/pricing#packs" : "/pricing")}
         recentEcos={ecos}
