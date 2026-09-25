@@ -1,361 +1,226 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Home, CreditCard, Settings, LogOut, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
-import { useAuth, useClerk } from "@clerk/nextjs";
+import { AnimatePresence, motion } from "framer-motion";
+import { CreditCard, Home, Library, LogOut, MoreHorizontal, PanelLeftClose, Plus, Settings, X } from "lucide-react";
+import { useClerk } from "@clerk/nextjs";
 import FolderList from "./FolderList";
 import EcoHistory from "./EcoHistory";
 import UserAvatar from "./UserAvatar";
+import DropdownMenu from "./ui/DropdownMenu";
+import Dialog from "./ui/Dialog";
+import type { Eco } from "@/types";
 
-interface SidebarProps {
-  selectedFolder: string | null;
-  onSelectFolder: (folderId: string | null) => void;
-  selectedEco: string | null;
-  onSelectEco: (ecoId: string | null) => void;
-  onClose?: () => void;
-  isOpen?: boolean;
-  onNavigateHome?: (from?: "back" | "logo" | "sidebar") => void;
-  onNavigatePricing?: () => void;
-  onNavigateSettings?: () => void;
-  onSignOut?: () => void;
-  onOpenProfile?: () => void;
-  userName?: string;
-  userImageUrl?: string;
-  refreshKey?: number;
+export interface SidebarBilling {
+  plan: string;
+  minutesPerMonth: number;
+  availableMinutes: number;
+  bonusMinutes: number;
 }
 
-const navItems = [
-  { icon: Home, label: "Accueil", key: "home" },
-  { icon: CreditCard, label: "Abonnement", key: "pricing" },
-  { icon: Settings, label: "Paramètres", key: "settings" },
-];
+interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+  activeView: "home" | "all" | "detail" | "other";
+  selectedFolder: string | null;
+  selectedEco: string | null;
+  onSelectEco: (eco: Eco) => void;
+  onNavigateHome: () => void;
+  onNewRecording: () => void;
+  onViewAll: () => void;
+  onNavigatePricing: () => void;
+  onNavigateSettings: () => void;
+  onUpgrade: (packs: boolean) => void;
+  recentEcos: Eco[];
+  isEcosLoading: boolean;
+  billing: SidebarBilling | null;
+  billingLoading: boolean;
+  userName?: string;
+}
+
+const PLAN_LABEL: Record<string, string> = { free: "Offre gratuite", student: "Student", pro: "Pro", business: "Business" };
+
+function NavRow({
+  icon: Icon,
+  label,
+  active,
+  onClick,
+}: {
+  icon: typeof Home;
+  label: string;
+  active?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button type="button" onClick={onClick} className={`app-row ${active ? "is-active" : ""}`} aria-current={active ? "page" : undefined}>
+      <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
+      <span className="truncate">{label}</span>
+    </button>
+  );
+}
+
+function UsageCard({ billing, loading, onUpgrade }: { billing: SidebarBilling | null; loading: boolean; onUpgrade: (packs: boolean) => void }) {
+  if (!billing) {
+    return loading ? <div className="mx-2 h-[64px] rounded-xl eco-skeleton" /> : null;
+  }
+  const total = Math.max(1, billing.minutesPerMonth + billing.bonusMinutes);
+  const left = Math.max(0, Math.floor(billing.availableMinutes));
+  const pct = Math.min(100, Math.round((left / total) * 100));
+  const isFree = billing.plan === "free";
+  const low = pct <= 15;
+
+  return (
+    <div className="mx-2 rounded-xl border p-3" style={{ borderColor: "var(--mk-line)", background: "rgba(255,255,255,0.02)" }}>
+      <div className="flex items-center justify-between text-[12.5px]">
+        <span style={{ color: "var(--mk-text)" }}>{PLAN_LABEL[billing.plan] ?? billing.plan}</span>
+        <span className="tabular-nums" style={{ color: low ? "#FCD34D" : "var(--mk-muted)" }}>
+          {left} min restantes
+        </span>
+      </div>
+      <div className="mt-2 h-1 overflow-hidden rounded-full" style={{ background: "rgba(255,255,255,0.07)" }}>
+        <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${pct}%`, background: low ? "#FCD34D" : "var(--mk-lilac)" }} />
+      </div>
+      {(isFree || low) && (
+        <button
+          type="button"
+          onClick={() => onUpgrade(!isFree)}
+          className="mt-3 w-full rounded-lg py-1.5 text-[12.5px] font-medium transition-opacity hover:opacity-90"
+          style={{ background: "var(--mk-text)", color: "#0A0A0B" }}
+        >
+          {isFree ? "Passer à Student" : "Ajouter des minutes"}
+        </button>
+      )}
+    </div>
+  );
+}
 
 export default function Sidebar({
+  isOpen,
+  onClose,
+  activeView,
   selectedFolder,
-  onSelectFolder,
   selectedEco,
   onSelectEco,
-  onClose,
-  isOpen = false,
   onNavigateHome,
+  onNewRecording,
+  onViewAll,
   onNavigatePricing,
   onNavigateSettings,
-  onSignOut,
-  onOpenProfile,
+  onUpgrade,
+  recentEcos,
+  isEcosLoading,
+  billing,
+  billingLoading,
   userName,
-  userImageUrl,
-  refreshKey = 0,
 }: SidebarProps) {
-  const { isSignedIn } = useAuth();
   const { signOut } = useClerk();
-  const [, setRefresh] = useState(0);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
-    const handleStorageChange = () => setRefresh((r) => r + 1);
-    window.addEventListener("storage", handleStorageChange);
-    window.addEventListener("eco-updated", handleStorageChange);
-    return () => {
-      window.removeEventListener("storage", handleStorageChange);
-      window.removeEventListener("eco-updated", handleStorageChange);
-    };
-  }, []);
-
-  const handleEcoClick = (eco: { id: string; folder: string }) => {
-    onSelectEco(eco.id);
-    onSelectFolder(eco.folder && eco.folder !== "" ? eco.folder : null);
-    onClose?.();
-  };
-
-  useEffect(() => {
-    if (isOpen && typeof window !== "undefined" && window.innerWidth < 1024) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
+    const mobile = typeof window !== "undefined" && window.innerWidth < 1024;
+    document.body.style.overflow = isOpen && mobile ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
   }, [isOpen]);
 
+  const closeOnMobile = () => {
+    if (typeof window !== "undefined" && window.innerWidth < 1024) onClose();
+  };
+  const run = (fn: () => void) => () => {
+    fn();
+    closeOnMobile();
+  };
+  const selectEco = (e: Eco) => {
+    onSelectEco(e);
+    closeOnMobile();
+  };
+
   return (
     <>
-      {/* Mobile overlay */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 lg:hidden"
+            className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm lg:hidden"
             onClick={onClose}
             aria-hidden
           />
         )}
       </AnimatePresence>
 
-      {/* Sidebar */}
-      <motion.div
-        className="shrink-0 h-full flex flex-col fixed lg:static inset-y-0 left-0 z-40 lg:z-auto overflow-hidden"
+      <motion.aside
+        className="fixed inset-y-0 left-0 z-40 h-full shrink-0 overflow-hidden lg:static lg:z-auto"
+        initial={false}
         animate={{ width: isOpen ? 264 : 0 }}
-        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+        aria-label="Navigation de l'application"
       >
-        <div
-          className="w-[264px] max-w-[85vw] h-full flex flex-col relative overflow-hidden"
-          style={{
-            minWidth: 264,
-            background: "#0D0E14",
-            borderRight: "1px solid rgba(255,255,255,0.06)",
-          }}
-        >
-          <AnimatePresence mode="wait">
-            {isOpen && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                className="flex flex-col h-full min-w-[264px] min-h-0"
+        <div className="flex h-full w-[264px] max-w-[85vw] flex-col border-r" style={{ background: "#0E0E10", borderColor: "var(--mk-line)" }}>
+          <div className="flex h-[52px] shrink-0 items-center justify-between pl-4 pr-2">
+            <button type="button" onClick={run(onNavigateHome)} className="flex items-center gap-2" aria-label="Accueil ECO">
+              <Image src="/logo-eco-v2.png" alt="" width={22} height={22} className="rounded-full" />
+              <span className="text-[15px] font-semibold tracking-[-0.01em]" style={{ color: "var(--mk-text)" }}>
+                ECO
+              </span>
+            </button>
+            <button type="button" onClick={onClose} className="app-icon-btn" aria-label="Masquer la barre latérale">
+              <PanelLeftClose className="hidden h-4 w-4 lg:block" strokeWidth={1.75} />
+              <X className="h-4 w-4 lg:hidden" strokeWidth={1.75} />
+            </button>
+          </div>
+
+          <div className="shrink-0 space-y-0.5 px-2 pb-2 pt-1">
+            <button type="button" onClick={run(onNewRecording)} className="app-row app-row-strong">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full" style={{ background: "var(--mk-text)", color: "#0A0A0B" }}>
+                <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
+              </span>
+              Nouvel enregistrement
+            </button>
+            <NavRow icon={Home} label="Accueil" active={activeView === "home"} onClick={run(onNavigateHome)} />
+            <NavRow icon={Library} label="Tous mes cours" active={activeView === "all"} onClick={run(onViewAll)} />
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden pb-4 scrollbar-hide">
+            <FolderList onSelectEco={selectEco} selectedEcoId={selectedEco} expandFolderId={selectedFolder} />
+            <EcoHistory ecos={recentEcos} isLoading={isEcosLoading} selectedEcoId={selectedEco} onSelectEco={selectEco} />
+          </div>
+
+          <div className="shrink-0 space-y-2 border-t pb-3 pt-3" style={{ borderColor: "var(--mk-line)" }}>
+            <UsageCard billing={billing} loading={billingLoading} onUpgrade={(packs) => { onUpgrade(packs); closeOnMobile(); }} />
+            <div className="px-2">
+              <DropdownMenu
+                align="left"
+                triggerClassName="app-row"
+                triggerLabel="Menu du compte"
+                items={[
+                  { label: "Paramètres", onClick: run(onNavigateSettings), icon: <Settings className="h-4 w-4" /> },
+                  { label: "Abonnement et minutes", onClick: run(onNavigatePricing), icon: <CreditCard className="h-4 w-4" /> },
+                  { label: "Se déconnecter", onClick: () => setShowLogoutConfirm(true), danger: true, icon: <LogOut className="h-4 w-4" /> },
+                ]}
               >
-                {/* Glow accent top */}
-                <div
-                  className="absolute top-0 left-0 w-48 h-48 pointer-events-none"
-                  style={{
-                    background: "radial-gradient(circle, rgba(139,92,246,0.08) 0%, transparent 70%)",
-                    transform: "translate(-30%, -30%)",
-                  }}
-                />
-
-                {/* Mobile header */}
-                {isSignedIn && (
-                  <div className="lg:hidden flex-shrink-0 relative px-4 py-5 border-b" style={{ borderColor: "rgba(255,255,255,0.06)" }}>
-                    <button
-                      type="button"
-                      onClick={onClose}
-                      className="absolute top-4 right-4 p-1.5 rounded-lg transition-colors z-10"
-                      style={{ color: "rgba(237,236,232,0.4)" }}
-                      onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
-                      onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                      aria-label="Fermer le menu"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                    <div className="flex items-center gap-3">
-                      <UserAvatar size="md" />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold truncate" style={{ color: "#EDECE8", fontSize: 14 }}>
-                          {userName || "Utilisateur"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Logo */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    onNavigateHome?.("logo");
-                    onClose?.();
-                  }}
-                  className="w-full px-4 py-4 flex items-center gap-2.5 shrink-0 bg-transparent border-0 cursor-pointer hover:opacity-90 transition-opacity text-left focus:outline-none"
-                  aria-label="Retour à l'accueil"
-                >
-                  <Image
-                    src="/logo-eco-v2.png"
-                    alt=""
-                    width={22}
-                    height={22}
-                    unoptimized
-                    className="bg-transparent block object-contain pointer-events-none"
-                  />
-                  <span className="font-bold pointer-events-none" style={{ color: "#EDECE8", fontSize: 15, letterSpacing: "-0.02em" }}>ECO</span>
-                </button>
-
-                {/* Nav */}
-                <div className="px-2 space-y-0.5 shrink-0">
-                  {onNavigateHome && (
-                    <motion.button
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() => { onNavigateHome("sidebar"); onClose?.(); }}
-                      className="eco-nav-item"
-                    >
-                      <Home style={{ width: 16, height: 16, flexShrink: 0 }} />
-                      Accueil
-                    </motion.button>
-                  )}
-                  {onNavigatePricing && (
-                    <motion.button
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() => { onNavigatePricing(); onClose?.(); }}
-                      className="eco-nav-item"
-                    >
-                      <CreditCard style={{ width: 16, height: 16, flexShrink: 0 }} />
-                      Abonnement
-                    </motion.button>
-                  )}
-                  {isSignedIn && onNavigateSettings && (
-                    <motion.button
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() => { onNavigateSettings(); onClose?.(); }}
-                      className="eco-nav-item"
-                    >
-                      <Settings style={{ width: 16, height: 16, flexShrink: 0 }} />
-                      Paramètres
-                    </motion.button>
-                  )}
-                </div>
-
-                {/* Divider nav → dossiers */}
-                <div className="mx-4 mt-3 mb-2 flex-shrink-0" style={{ height: 1, background: "rgba(255,255,255,0.06)" }} />
-
-                {/* Dossiers — zone fixe (ne scroll pas) */}
-                <div className="flex-shrink-0">
-                  <FolderList
-                    onSelectEco={handleEcoClick}
-                    onClose={onClose}
-                    selectedEcoId={selectedEco}
-                    expandFolderId={selectedFolder}
-                  />
-                </div>
-
-                {/* MES ECOS — seule zone scrollable */}
-                <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-hide">
-                  <EcoHistory
-                    selectedEcoId={selectedEco}
-                    onSelectEco={handleEcoClick}
-                    onClose={onClose}
-                    refreshKey={refreshKey}
-                  />
-                </div>
-
-                {/* Bottom — desktop */}
-                {isSignedIn && (
-                  <div
-                    className="hidden lg:flex flex-col shrink-0 pt-2 pb-3 px-2"
-                    style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
-                  >
-                    {onOpenProfile && (
-                      <motion.button
-                        whileTap={{ scale: 0.97 }}
-                        onClick={() => { onOpenProfile(); onClose?.(); }}
-                        className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all cursor-pointer"
-                        style={{ color: "rgba(237,236,232,0.6)" }}
-                        onMouseEnter={e => {
-                          e.currentTarget.style.background = "rgba(255,255,255,0.06)";
-                          e.currentTarget.style.color = "#EDECE8";
-                        }}
-                        onMouseLeave={e => {
-                          e.currentTarget.style.background = "transparent";
-                          e.currentTarget.style.color = "rgba(237,236,232,0.6)";
-                        }}
-                      >
-                        <UserAvatar size="sm" />
-                        <span className="text-sm font-medium truncate flex-1">
-                          {userName || "Utilisateur"}
-                        </span>
-                      </motion.button>
-                    )}
-                    <motion.button
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() => setShowLogoutConfirm(true)}
-                      className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer"
-                      style={{ color: "rgba(237,236,232,0.4)" }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.background = "rgba(239,68,68,0.08)";
-                        e.currentTarget.style.color = "rgba(239,68,68,0.8)";
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.background = "transparent";
-                        e.currentTarget.style.color = "rgba(237,236,232,0.4)";
-                      }}
-                    >
-                      <LogOut style={{ width: 15, height: 15, flexShrink: 0 }} />
-                      Déconnexion
-                    </motion.button>
-                  </div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
+                <UserAvatar size="sm" />
+                <span className="flex-1 truncate text-left">{userName || "Mon compte"}</span>
+                <MoreHorizontal className="h-4 w-4 shrink-0 opacity-60" />
+              </DropdownMenu>
+            </div>
+          </div>
         </div>
-      </motion.div>
+      </motion.aside>
 
-      {/* Logout confirm modal */}
-      <AnimatePresence>
-        {showLogoutConfirm && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setShowLogoutConfirm(false)}
-            className="fixed inset-0 min-h-[100dvh] z-[100] flex items-center justify-center p-4"
-            style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(8px)" }}
-            aria-hidden="true"
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.92, y: 8 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.92, y: 8 }}
-              transition={{ type: "spring", damping: 28, stiffness: 320 }}
-              onClick={(e) => e.stopPropagation()}
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="logout-confirm-title-sidebar"
-              className="w-full max-w-sm rounded-2xl p-6"
-              style={{
-                background: "#141619",
-                border: "1px solid rgba(255,255,255,0.10)",
-                boxShadow: "0 32px 64px rgba(0,0,0,0.6)",
-              }}
-            >
-              <h3
-                id="logout-confirm-title-sidebar"
-                className="text-lg font-bold mb-1.5"
-                style={{ color: "#EDECE8" }}
-              >
-                Déconnexion
-              </h3>
-              <p className="text-sm mb-6" style={{ color: "rgba(237,236,232,0.5)" }}>
-                Êtes-vous sûr de vouloir vous déconnecter ?
-              </p>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setShowLogoutConfirm(false)}
-                  className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors"
-                  style={{
-                    background: "rgba(255,255,255,0.06)",
-                    border: "1px solid rgba(255,255,255,0.10)",
-                    color: "rgba(237,236,232,0.7)",
-                  }}
-                >
-                  Annuler
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    await signOut({ redirectUrl: "/sign-in" });
-                    onClose?.();
-                  }}
-                  className="flex-1 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all"
-                  style={{
-                    background: "rgba(239,68,68,0.15)",
-                    border: "1px solid rgba(239,68,68,0.25)",
-                    color: "#EF4444",
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.background = "rgba(239,68,68,0.25)")}
-                  onMouseLeave={e => (e.currentTarget.style.background = "rgba(239,68,68,0.15)")}
-                >
-                  Se déconnecter
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <Dialog open={showLogoutConfirm} onOpenChange={setShowLogoutConfirm} title="Se déconnecter ?" description="Tu pourras te reconnecter à tout moment.">
+        <div className="mt-6 flex justify-end gap-2">
+          <button type="button" onClick={() => setShowLogoutConfirm(false)} className="app-btn app-btn-ghost">
+            Annuler
+          </button>
+          <button type="button" onClick={() => signOut({ redirectUrl: "/" })} className="app-btn app-btn-primary">
+            Se déconnecter
+          </button>
+        </div>
+      </Dialog>
     </>
   );
 }

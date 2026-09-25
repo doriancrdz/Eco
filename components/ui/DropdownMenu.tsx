@@ -19,9 +19,17 @@ interface DropdownMenuProps {
   items: DropdownMenuItem[];
   children: React.ReactNode;
   align?: "left" | "right";
+  triggerClassName?: string;
+  triggerLabel?: string;
 }
 
-export default function DropdownMenu({ items, children, align = "right" }: DropdownMenuProps) {
+export default function DropdownMenu({
+  items,
+  children,
+  align = "right",
+  triggerClassName = "app-icon-btn",
+  triggerLabel = "Menu d'actions",
+}: DropdownMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [submenuOpen, setSubmenuOpen] = useState<number | null>(null);
   const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
@@ -33,7 +41,7 @@ export default function DropdownMenu({ items, children, align = "right" }: Dropd
   const calculateMenuPosition = () => {
     if (!triggerRef.current) return null;
     const rect = triggerRef.current.getBoundingClientRect();
-    const menuWidth = 220;
+    const menuWidth = 230;
     const menuHeight = items.length * 40 + 16;
     const gap = 8;
     let left: number;
@@ -136,7 +144,7 @@ export default function DropdownMenu({ items, children, align = "right" }: Dropd
     if (subItem.onClick) {
       try {
         await subItem.onClick();
-        if (!subItem.label.includes("Nouveau dossier")) handleClose();
+        if (!subItem.label.includes("Nouvelle matière")) handleClose();
       } catch { /* silent */ }
     } else {
       handleClose();
@@ -144,14 +152,14 @@ export default function DropdownMenu({ items, children, align = "right" }: Dropd
   };
 
   const menuPanelStyle = {
-    background: "#141619",
-    border: "1px solid rgba(255,255,255,0.10)",
-    boxShadow: "0 16px 48px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04)",
-    borderRadius: 14,
+    background: "#161618",
+    border: "1px solid rgba(255,255,255,0.09)",
+    boxShadow: "0 18px 50px rgba(0,0,0,0.55)",
+    borderRadius: 12,
     overflow: "hidden",
   };
 
-  const itemBase = "w-full text-left px-4 py-2 text-sm transition-colors focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed";
+  const itemBase = "mx-1 flex w-[calc(100%-8px)] items-center gap-2.5 rounded-lg px-3 py-2 text-left text-[13.5px] transition-colors focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed";
 
   return (
     <>
@@ -167,8 +175,8 @@ export default function DropdownMenu({ items, children, align = "right" }: Dropd
             if (isOpen) handleClose(); else handleOpen();
           }
         }}
-        className="focus:outline-none rounded-lg p-1"
-        aria-label="Menu d'actions"
+        className={triggerClassName}
+        aria-label={triggerLabel}
         aria-expanded={isOpen}
         aria-haspopup="true"
       >
@@ -187,11 +195,11 @@ export default function DropdownMenu({ items, children, align = "right" }: Dropd
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: -6 }}
                   transition={{ duration: 0.14 }}
-                  className="fixed z-[9999] min-w-[220px] pointer-events-auto"
+                  className="fixed z-[9999] min-w-[230px] pointer-events-auto"
                   style={{ top: `${menuPosition.top}px`, left: `${menuPosition.left}px` }}
                 >
                   <div style={menuPanelStyle}>
-                    <div className="py-1.5">
+                    <div className="py-1">
                       {items.map((item, index) => (
                         <div key={index}>
                           {item.submenu ? (
@@ -212,7 +220,7 @@ export default function DropdownMenu({ items, children, align = "right" }: Dropd
                             >
                               <button
                                 onClick={(e) => { e.stopPropagation(); handleSubmenuOpen(index); }}
-                                className={`${itemBase} flex items-center justify-between`}
+                                className={`${itemBase} justify-between`}
                                 style={{ color: "rgba(237,236,232,0.75)" }}
                                 onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.07)")}
                                 onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
@@ -233,6 +241,7 @@ export default function DropdownMenu({ items, children, align = "right" }: Dropd
                               onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                               disabled={item.disabled}
                             >
+                              {item.icon && <span className="shrink-0 opacity-70">{item.icon}</span>}
                               {item.label}
                             </button>
                           )}
@@ -261,7 +270,7 @@ export default function DropdownMenu({ items, children, align = "right" }: Dropd
                     }}
                   >
                     <div style={menuPanelStyle}>
-                      <div className="py-1.5">
+                      <div className="py-1">
                         {items[submenuOpen].submenu!.map((subItem, subIndex) => {
                           if (subItem.customContent) {
                             return (
@@ -274,7 +283,7 @@ export default function DropdownMenu({ items, children, align = "right" }: Dropd
                             <button
                               key={subIndex}
                               onClick={(e) => { e.stopPropagation(); handleSubmenuItemClick(subItem); }}
-                              className={`${itemBase} flex items-center gap-2`}
+                              className={itemBase}
                               style={{
                                 color: subItem.danger ? "rgba(239,68,68,0.8)" : "rgba(237,236,232,0.75)",
                               }}

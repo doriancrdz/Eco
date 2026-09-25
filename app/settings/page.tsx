@@ -103,7 +103,7 @@ export default function SettingsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen eco-bg flex items-center justify-center">
+      <div className="mk min-h-screen flex items-center justify-center">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -161,28 +161,22 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen eco-bg relative">
-      {/* Ambient glows */}
-      <div className="fixed inset-0 pointer-events-none -z-10" aria-hidden>
-        <div className="absolute top-0 left-1/4 w-96 h-96" style={{ background: "radial-gradient(circle, rgba(139,92,246,0.07) 0%, transparent 70%)" }} />
-        <div className="absolute bottom-0 right-1/4 w-80 h-80" style={{ background: "radial-gradient(circle, rgba(20,184,166,0.05) 0%, transparent 70%)" }} />
-      </div>
-
+    <div className="mk min-h-screen relative">
       <div className="relative z-10 max-w-3xl mx-auto px-4 py-12">
 
         {/* Back link */}
         <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <Link
-            href="/"
+            href="/app"
             className="inline-flex items-center gap-2 mb-6 group transition-colors"
             style={{ color: "rgba(237,236,232,0.4)" }}
             onMouseEnter={e => (e.currentTarget.style.color = "rgba(237,236,232,0.8)")}
             onMouseLeave={e => (e.currentTarget.style.color = "rgba(237,236,232,0.4)")}
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-            <span className="text-sm font-medium">Retour à l&apos;accueil</span>
+            <span className="text-sm font-medium">Retour à l&apos;app</span>
           </Link>
-          <h1 className="text-4xl md:text-5xl font-semibold mb-2 tracking-[-0.02em]" style={{ color: "#EDECE8" }}>
+          <h1 className="mk-display mb-2 text-[44px] md:text-[52px]">
             Paramètres
           </h1>
           <p className="text-sm" style={{ color: "rgba(237,236,232,0.45)" }}>
@@ -227,13 +221,13 @@ export default function SettingsPage() {
           {/* Plan actuel */}
           <div className="mb-7">
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: "#EDECE8" }}>
-              <CreditCard className="w-4.5 h-4.5" style={{ width: 18, height: 18, color: "#A78BFA" }} />
+              <CreditCard className="w-4.5 h-4.5" style={{ width: 18, height: 18, color: "#C9B8FF" }} />
               Plan actuel
             </h2>
             <div className="flex items-center gap-3">
               <div
                 className="px-4 py-2 rounded-xl"
-                style={{ background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.2)" }}
+                style={{ background: "rgba(201,184,255,0.12)", border: "1px solid rgba(201,184,255,0.2)" }}
               >
                 <span className="text-2xl font-bold" style={{ color: "#EDECE8" }}>
                   {billingData?.planName || "Free"}
@@ -254,7 +248,7 @@ export default function SettingsPage() {
           {/* Quotas */}
           <div className="mb-7">
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2" style={{ color: "#EDECE8" }}>
-              <Clock className="w-4.5 h-4.5" style={{ width: 18, height: 18, color: "#5EEAD4" }} />
+              <Clock className="w-4.5 h-4.5" style={{ width: 18, height: 18, color: "#C9B8FF" }} />
               Minutes disponibles
             </h2>
 
@@ -276,10 +270,10 @@ export default function SettingsPage() {
                   className="h-full rounded-full"
                   style={{
                     background: usagePercent > 80
-                      ? "linear-gradient(90deg, #F59E0B 0%, #EF4444 100%)"
+                      ? "#FCD34D"
                       : usagePercent > 50
-                      ? "linear-gradient(90deg, #8B5CF6 0%, #06B6D4 100%)"
-                      : "linear-gradient(90deg, #8B5CF6 0%, #14B8A6 100%)",
+                      ? "#C9B8FF"
+                      : "#C9B8FF",
                   }}
                 />
               </div>
@@ -323,7 +317,7 @@ export default function SettingsPage() {
                 whileTap={{ scale: 0.98 }}
                 onClick={() => router.push("/pricing")}
                 className="flex-1 flex items-center justify-center gap-2 px-6 py-3 min-h-[44px] text-sm font-semibold rounded-xl transition-all"
-                style={{ background: "linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%)", color: "white" }}
+                style={{ background: "#EDECE8", color: "#0A0A0B" }}
               >
                 <CreditCard className="w-4 h-4" />
                 Passer au forfait supérieur
@@ -412,7 +406,7 @@ export default function SettingsPage() {
               <p className="text-xs uppercase tracking-wide mb-2 font-semibold" style={{ color: "rgba(237,236,232,0.3)" }}>Plan</p>
               <span
                 className="inline-block px-4 py-1.5 rounded-xl text-sm font-bold"
-                style={{ background: "linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%)", color: "white" }}
+                style={{ background: "#EDECE8", color: "#0A0A0B" }}
               >
                 {billingData?.planName || "Free"}
               </span>

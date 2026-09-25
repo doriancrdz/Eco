@@ -6,7 +6,7 @@ const INCLUDED = [
   { icon: Layers, label: "Quiz, flashcards et export Anki" },
   { icon: ScrollText, label: "Transcription complète" },
   { icon: FileText, label: "PDF du prof comme contexte" },
-  { icon: MonitorSpeaker, label: "Audio de Zoom, Teams et Meet" },
+  { icon: MonitorSpeaker, label: "Son d'un onglet (visio dans Chrome)" },
   { icon: FolderClosed, label: "Dossiers par matière et recherche" },
   { icon: AudioLines, label: "Enregistrement depuis le navigateur" },
 ];

@@ -97,6 +97,9 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
           <ClerkProvider
+            signInFallbackRedirectUrl="/app"
+            signUpFallbackRedirectUrl="/app"
+            afterSignOutUrl="/"
             appearance={{
               variables: {
                 colorPrimary: "#EDECE8",

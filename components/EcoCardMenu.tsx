@@ -2,10 +2,11 @@
 
 import { useState, useRef, useEffect } from "react";
 import { MoreHorizontal, FolderPlus } from "lucide-react";
-import { Eco, Folder as FolderType } from "@/types";
+import { Eco } from "@/types";
 import DropdownMenu from "./ui/DropdownMenu";
 import Dialog from "./ui/Dialog";
 import { toast } from "sonner";
+import { useFolders } from "@/hooks/useFolders";
 
 interface EcoCardMenuProps {
   eco: Eco;
@@ -14,6 +15,7 @@ interface EcoCardMenuProps {
 }
 
 export default function EcoCardMenu({ eco, onUpdate, onDelete }: EcoCardMenuProps) {
+  const { folders } = useFolders();
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(eco.title);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -21,24 +23,8 @@ export default function EcoCardMenu({ eco, onUpdate, onDelete }: EcoCardMenuProp
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
-  const [folders, setFolders] = useState<FolderType[]>([]);
   const renameInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    const loadFolders = async () => {
-      try {
-        const response = await fetch("/api/folders");
-        if (response.ok) {
-          const data = await response.json();
-          setFolders(data.folders || []);
-        }
-      } catch { /* ignore */ }
-    };
-    loadFolders();
-    window.addEventListener("folders-updated", loadFolders);
-    return () => window.removeEventListener("folders-updated", loadFolders);
-  }, []);
 
   useEffect(() => {
     if (isRenaming && renameInputRef.current) {
@@ -91,7 +77,7 @@ export default function EcoCardMenu({ eco, onUpdate, onDelete }: EcoCardMenuProp
       window.dispatchEvent(new Event("eco-updated"));
       onUpdate();
       const folderName = folderId ? folders.find((f) => f.id === folderId)?.name : null;
-      toast.success(folderName ? `Déplacé vers ${folderName}` : "Retiré du dossier");
+      toast.success(folderName ? `Déplacé vers ${folderName}` : "Retiré de la matière");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erreur lors du déplacement de l'ECO.");
     }
@@ -107,7 +93,7 @@ export default function EcoCardMenu({ eco, onUpdate, onDelete }: EcoCardMenuProp
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: trimmed }),
       });
-      if (!folderRes.ok) throw new Error("Erreur lors de la création du dossier");
+      if (!folderRes.ok) throw new Error("Erreur lors de la création de la matière");
       const newFolder = await folderRes.json();
       const moveRes = await fetch(`/api/ecos/${eco.id}`, {
         method: "PATCH",
@@ -122,7 +108,7 @@ export default function EcoCardMenu({ eco, onUpdate, onDelete }: EcoCardMenuProp
       onUpdate();
       toast.success("Dossier créé");
     } catch {
-      toast.error("Erreur lors de la création du dossier.");
+      toast.error("Erreur lors de la création de la matière.");
     } finally {
       setIsCreating(false);
     }
@@ -170,7 +156,7 @@ export default function EcoCardMenu({ eco, onUpdate, onDelete }: EcoCardMenuProp
                       }
                     }, 200);
                   }}
-                  placeholder="Nom du dossier"
+                  placeholder="Nom de la matière"
                   disabled={isCreating}
                   className="flex-1 rounded-lg px-2 py-1 text-sm outline-none disabled:opacity-50"
                   style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#EDECE8" }}
@@ -185,12 +171,12 @@ export default function EcoCardMenu({ eco, onUpdate, onDelete }: EcoCardMenuProp
         ]
       : [
           {
-            label: "Nouveau dossier…",
+            label: "Nouvelle matière…",
             onClick: async () => { setIsCreatingFolder(true); },
             icon: <FolderPlus className="w-4 h-4" />,
           },
         ]),
-    ...(eco.folder ? [{ label: "Aucun dossier", onClick: () => handleMoveToFolder(null) }] : []),
+    ...(eco.folder ? [{ label: "Sans matière", onClick: () => handleMoveToFolder(null) }] : []),
     ...folders
       .filter((f) => f.id !== eco.folder)
       .map((folder) => ({
@@ -233,27 +219,19 @@ export default function EcoCardMenu({ eco, onUpdate, onDelete }: EcoCardMenuProp
               else if (e.key === "Escape") { setRenameValue(eco.title); setIsRenaming(false); }
             }}
             className="w-full font-bold rounded-xl px-3 py-1.5 text-sm outline-none shadow-sm"
-            style={{ background: "#1A1C22", border: "1px solid rgba(139,92,246,0.3)", color: "#EDECE8" }}
+            style={{ background: "#1A1A1D", border: "1px solid rgba(201,184,255,0.4)", color: "#EDECE8" }}
             onClick={(e) => e.stopPropagation()}
           />
         </div>
       )}
 
       <div
-        className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity z-10"
+        className="absolute right-3 top-3 z-10 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
         onClick={(e) => e.stopPropagation()}
       >
-        <DropdownMenu items={menuItems} align="right">
-          <button
-            className="p-1.5 rounded-xl transition-all focus:outline-none"
-            style={{ background: "rgba(20,22,25,0.8)", border: "1px solid rgba(255,255,255,0.10)", backdropFilter: "blur(8px)" }}
-            onMouseEnter={e => (e.currentTarget.style.background = "rgba(30,32,38,0.9)")}
-            onMouseLeave={e => (e.currentTarget.style.background = "rgba(20,22,25,0.8)")}
-            aria-label="Menu d'actions"
-          >
-            <MoreHorizontal className="w-4 h-4" style={{ color: "rgba(237,236,232,0.5)" }} />
-          </button>
-        </DropdownMenu>
+        <DropdownMenu items={menuItems} align="right" triggerClassName="app-icon-btn app-icon-btn-solid">
+            <MoreHorizontal className="h-4 w-4" />
+          </DropdownMenu>
       </div>
 
       <Dialog

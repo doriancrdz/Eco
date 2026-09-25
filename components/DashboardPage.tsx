@@ -3,13 +3,14 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
+import Image from "next/image";
 import Header from "@/components/Header";
+import Sidebar from "@/components/Sidebar";
 import Logo from "@/components/Logo";
-import { Sparkles, ArrowRight, Settings, ArrowLeft, Mic, Monitor, FileText, Loader2, LogIn, Search, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, FileText, Loader2, Mic, MonitorSpeaker, Paperclip, Search, X } from "lucide-react";
 import EcoCardMenu from "@/components/EcoCardMenu";
-import { useUser, useClerk } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
 import EcoView from "@/components/EcoView";
-import RecordButton from "@/components/RecordButton";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { Eco } from "@/types";
 import { getEcos } from "@/lib/storage";
@@ -39,25 +40,24 @@ const FocusMode = dynamic(() => import("@/components/FocusMode"), {
   ssr: false,
 });
 
-const Sidebar = dynamic(() => import("@/components/Sidebar"), {
-  loading: () => null,
-  ssr: false,
-});
 
-const ProfileView = dynamic(() => import("@/components/ProfileView"), {
-  loading: () => null,
-  ssr: false,
-});
 
 export type CurrentView = "home" | "recording" | "generating" | "detail" | "pricing" | "list";
 
 export default function DashboardPage() {
   const router = useRouter();
   const { user, isSignedIn, isLoaded } = useUser();
-  const { signOut } = useClerk();
+  const [greeting, setGreeting] = useState("Bonjour");
+  const [canCaptureTab, setCanCaptureTab] = useState(false);
+  useEffect(() => {
+    const h = new Date().getHours();
+    setGreeting(h >= 18 || h < 5 ? "Bonsoir" : "Bonjour");
+    // Aucun navigateur mobile ne permet de capturer le son d'un onglet.
+    const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    setCanCaptureTab(!mobile && typeof navigator.mediaDevices?.getDisplayMedia === "function");
+  }, []);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const sidebarInitialized = useRef(false);
-  const [showProfile, setShowProfile] = useState(false);
   const [userPlan, setUserPlan] = useState<string>(() => {
     if (typeof window === "undefined") return "free";
     return sessionStorage.getItem("eco_billing_plan") || "free";
@@ -74,7 +74,6 @@ export default function DashboardPage() {
     bonusMinutes: number;
     paymentBlocked: boolean;
   } | null>(null);
-  const [upgradeHovered, setUpgradeHovered] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [showStopConfirm, setShowStopConfirm] = useState(false);
@@ -481,8 +480,9 @@ export default function DashboardPage() {
 
       if (mode === "screen") {
         // === AUDIO SYSTÈME (getDisplayMedia) ===
+        // displaySurface "browser" ouvre le sélecteur de Chrome sur l'onglet des onglets : c'est là que le son est capturable partout.
         const displayStream = await navigator.mediaDevices.getDisplayMedia({
-          video: true,
+          video: { displaySurface: "browser" } as MediaTrackConstraints,
           audio: {
             echoCancellation: false,
             noiseSuppression: false,
@@ -798,7 +798,7 @@ export default function DashboardPage() {
       const errMsg = error instanceof Error && error.message === "MICRO_NOT_DETECTED"
         ? "Micro non détecté. Vérifie tes permissions Chrome dans Préférences Système → Confidentialité → Microphone."
         : error instanceof Error && error.message === "SCREEN_AUDIO_NONE"
-        ? "Aucun audio système capté. Dans la popup Chrome, cochez 'Partager l'audio système' avant de valider."
+        ? "Aucun son capté. Dans la fenêtre de partage, choisis l'onglet du cours et coche « Partager l'audio de l'onglet ». Fonctionne avec Chrome ou Edge sur ordinateur."
         : (error instanceof Error && (error.name === "NotAllowedError" || error.name === "AbortError"))
         ? null // User cancelled the picker — no alert needed
         : "Impossible d'accéder au microphone. Autorise l'accès dans les paramètres.";
@@ -1258,8 +1258,7 @@ export default function DashboardPage() {
     setIsProcessing(false);
     setShowStopConfirm(false);
     setCurrentEco(null);
-    setSidebarOpen(false);
-    setShowProfile(false);
+    if (typeof window !== "undefined" && window.innerWidth < 1024) setSidebarOpen(false);
     setRefreshKey((prev) => prev + 1);
     currentEcoCacheRef.current = null;
     if (mediaRecorderRef.current) {
@@ -1316,851 +1315,394 @@ export default function DashboardPage() {
   }
 
   // ── Recherche ────────────────────────────────────────────────────
-  const normalize = (s: string) =>
-    s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-
-  const filteredEcos = debouncedQuery.trim()
-    ? ecos.filter((eco) => {
-        const q = normalize(debouncedQuery);
-        if (normalize(eco.title).includes(q)) return true;
-        if (eco.transcription_text && normalize(eco.transcription_text).includes(q)) return true;
-        if (eco.summary_text) {
-          try {
-            const p = JSON.parse(eco.summary_text);
-            if (normalize(p?.titre ?? "").includes(q)) return true;
-            if (normalize(p?.resume ?? "").includes(q)) return true;
-            if (Array.isArray(p?.points_cles) && normalize(p.points_cles.join(" ")).includes(q)) return true;
-          } catch {
-            if (normalize(eco.summary_text).includes(q)) return true;
-          }
-        }
-        return false;
-      })
-    : ecos;
-
+  const filteredEcos = debouncedQuery.trim() ? ecos.filter((eco) => ecoMatches(eco, debouncedQuery)) : ecos;
   const isSearchActive = debouncedQuery.trim().length > 0;
 
-  // Surligner le terme dans le titre (insensible à la casse)
-  function HighlightTitle({ text, query }: { text: string; query: string }) {
-    if (!query.trim()) return <>{text}</>;
-    const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const regex = new RegExp(`(${escaped})`, "gi");
-    const parts = text.split(regex);
-    return (
-      <>
-        {parts.map((part, i) =>
-          part.toLowerCase() === query.toLowerCase() ? (
-            <mark key={i} className="rounded px-0.5 not-italic" style={{ background: "rgba(139,92,246,0.25)", color: "#EDECE8" }}>{part}</mark>
-          ) : (
-            <span key={i}>{part}</span>
-          )
-        )}
-      </>
-    );
-  }
-  // ─────────────────────────────────────────────────────────────────
+  const firstName = user?.firstName ?? "";
+  const displayName = user?.firstName ? `${user.firstName}${user?.lastName ? " " + user.lastName : ""}` : user?.username || undefined;
+  const isFree = !isBillingLoading && userPlan === "free";
+  const minutesLeft = billingInfo ? Math.max(0, Math.floor(billingInfo.availableMinutes)) : null;
+  const minutesTotal = billingInfo ? billingInfo.minutesPerMonth + billingInfo.bonusMinutes : 0;
+  const lowOnMinutes = !!billingInfo && !isFree && minutesTotal > 0 && (minutesLeft ?? 0) / minutesTotal <= 0.15;
+
+  const view: "home" | "all" | "detail" | "processing" =
+    isProcessing || processingError ? "processing" : selectedEco ? "detail" : viewAllEcos ? "all" : "home";
+
+  const openAll = () => {
+    setSelectedEco(null);
+    setSelectedFolder(null);
+    setViewAllEcos(true);
+  };
 
   return (
-    <div className="h-screen flex relative overflow-hidden" style={{ color: "#EDECE8" }}>
-      {/* Background */}
-      <div className="fixed inset-0 -z-10 eco-bg" aria-hidden />
-      {/* Ambient glow spots */}
-      <div className="eco-glow-purple -z-10" style={{ top: "10%", left: "60%", position: "fixed" }} aria-hidden />
-      <div className="eco-glow-teal -z-10" style={{ bottom: "20%", left: "30%", position: "fixed" }} aria-hidden />
+    <div className="mk flex h-screen overflow-hidden">
+      <Sidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        activeView={view === "processing" ? "other" : view}
+        selectedFolder={selectedFolder}
+        selectedEco={selectedEco}
+        onSelectEco={handleEcoClick}
+        onNavigateHome={() => goHome("sidebar")}
+        onNewRecording={() => goHome("sidebar")}
+        onViewAll={openAll}
+        onNavigatePricing={() => router.push("/settings")}
+        onNavigateSettings={() => router.push("/settings/preferences")}
+        onUpgrade={(packs) => router.push(packs ? "/pricing#packs" : "/pricing")}
+        recentEcos={ecos}
+        isEcosLoading={isEcosLoading}
+        billing={billingInfo}
+        billingLoading={isBillingLoading}
+        userName={displayName}
+      />
 
-      <>
-        {/* Desktop: Sidebar fixe à gauche. Mobile/Tablet: drawer */}
-        <Sidebar
-          selectedFolder={selectedFolder}
-          onSelectFolder={setSelectedFolder}
-          selectedEco={selectedEco}
-          onSelectEco={setSelectedEco}
-          onClose={() => setSidebarOpen(false)}
-          isOpen={sidebarOpen}
-          refreshKey={refreshKey}
-          onNavigateHome={goHome}
-          onNavigatePricing={() => router.push("/pricing")}
-          onNavigateSettings={isSignedIn ? () => router.push("/settings/preferences") : undefined}
-          onSignOut={isSignedIn ? () => signOut() : undefined}
-          onOpenProfile={isSignedIn ? () => setShowProfile(true) : undefined}
-          userName={user?.firstName ? `${user.firstName}${user?.lastName ? " " + user.lastName : ""}` : user?.username || undefined}
-          userImageUrl={user?.imageUrl}
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <Header
+          sidebarOpen={sidebarOpen}
+          onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
+          title={view === "detail" ? currentEco?.title : view === "all" ? "Tous mes cours" : undefined}
+          onBack={view === "detail" || view === "all" ? () => goHome("back") : undefined}
+          showUpgrade={isFree}
+          onUpgrade={() => router.push("/pricing")}
         />
 
-        {/* Contenu principal */}
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0 lg:min-w-0">
-          {!isFocusMode && (
-            <Header
-              onGoHome={goHome}
-              onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
-              isDetailView={!!selectedEco || isProcessing}
-              onShare={selectedEco ? async () => {
-                const url = window.location.href;
-                if (navigator.share) {
-                  try {
-                    await navigator.share({
-                      title: "ECO",
-                      url,
-                      text: "Découvrez mon Eco",
-                    });
-                  } catch {
-                    await navigator.clipboard.writeText(url);
-                    toast.success("Lien copié !");
+        <main className="flex-1 overflow-y-auto overflow-x-hidden">
+          <AnimatePresence mode="wait">
+            {view === "home" && (
+              <motion.div
+                key="home"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                className="mx-auto w-full max-w-[760px] px-5 pb-24 pt-10 md:pt-16"
+              >
+                {paymentBlocked && (
+                  <div className="mb-8 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 text-[14px]" style={{ borderColor: "rgba(252,165,165,0.3)", background: "rgba(252,165,165,0.06)", color: "#FECACA" }}>
+                    <span>Ton dernier paiement a échoué : l&apos;enregistrement est suspendu.</span>
+                    <button type="button" onClick={() => router.push("/settings")} className="app-btn app-btn-primary !h-8 !text-[13px]">
+                      Régler le paiement
+                    </button>
+                  </div>
+                )}
+
+                <div className="flex flex-col items-center text-center">
+                  <Image src="/logo-eco-v2.png" alt="" width={44} height={44} className="rounded-full" priority />
+                  <h1 className="mk-display mt-5 text-[40px] sm:text-[52px]">
+                    {greeting}
+                    {firstName ? (
+                      <>
+                        , <span className="italic mk-iris">{firstName}</span>
+                      </>
+                    ) : null}
+                  </h1>
+                  <p className="mt-2 text-[15px]" style={{ color: "var(--mk-muted)" }}>
+                    Qu&apos;est-ce qu&apos;on enregistre aujourd&apos;hui ?
+                  </p>
+                </div>
+
+                <div className="app-card mt-9 p-2">
+                  <div className="flex flex-col sm:flex-row">
+                    <button
+                      type="button"
+                      onClick={handleStartRecording}
+                      disabled={paymentBlocked}
+                      className="group flex flex-1 items-center gap-4 rounded-xl p-4 text-left transition-colors hover:bg-white/[0.03] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-transform group-hover:scale-105" style={{ background: "var(--mk-text)", color: "#0A0A0B" }}>
+                        <Mic className="h-5 w-5" />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-[15px] font-medium" style={{ color: "var(--mk-text)" }}>
+                          Enregistrer un cours
+                        </span>
+                        <span className="block text-[13px]" style={{ color: "var(--mk-muted)" }}>
+                          Avec le micro de ton appareil
+                        </span>
+                      </span>
+                    </button>
+                    {canCaptureTab && (
+                    <>
+                    <div className="mx-4 h-px sm:mx-0 sm:my-4 sm:h-auto sm:w-px" style={{ background: "var(--mk-line)" }} />
+                    <button
+                      type="button"
+                      onClick={handleStartSystemAudioRecording}
+                      disabled={paymentBlocked}
+                      className="group flex flex-1 items-center gap-4 rounded-xl p-4 text-left transition-colors hover:bg-white/[0.03] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-transform group-hover:scale-105" style={{ borderColor: "var(--mk-line-strong)", color: "var(--mk-text)" }}>
+                        <MonitorSpeaker className="h-5 w-5" strokeWidth={1.75} />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-[15px] font-medium" style={{ color: "var(--mk-text)" }}>
+                          Son d&apos;un onglet
+                        </span>
+                        <span className="block text-[13px]" style={{ color: "var(--mk-muted)" }}>
+                          Cours sur Teams, Meet ou Zoom dans Chrome ou Edge
+                        </span>
+                      </span>
+                    </button>
+                    </>
+                    )}
+                  </div>
+
+                  <div className="mt-1 flex flex-wrap items-center justify-between gap-2 border-t px-2 pb-1 pt-2" style={{ borderColor: "var(--mk-line)" }}>
+                    <input ref={pdfInputRef} type="file" accept=".pdf" className="hidden" onChange={(e) => handlePdfSelect(e.target.files)} />
+                    {pdfFiles.length > 0 ? (
+                      <span className="inline-flex max-w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px]" style={{ background: "rgba(201,184,255,0.1)", color: "#DDD3FF" }}>
+                        <FileText className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">{pdfFiles[0].name}</span>
+                        <button type="button" onClick={() => removePdf(0)} className="shrink-0 opacity-70 hover:opacity-100" aria-label="Retirer le PDF">
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => pdfInputRef.current?.click()}
+                        disabled={isPdfExtracting}
+                        className="app-btn app-btn-quiet !h-8 !px-2.5 !text-[13px]"
+                        title="Le support du prof aide ECO à reprendre son vocabulaire dans les notions et le quiz."
+                      >
+                        {isPdfExtracting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Paperclip className="h-3.5 w-3.5" />}
+                        {isPdfExtracting ? "Lecture du PDF…" : "Joindre le PDF du cours"}
+                      </button>
+                    )}
+                    <span className="px-2 text-[12.5px]" style={{ color: "var(--mk-faint)" }}>
+                      Jusqu&apos;à {MAX_RECORDING_DURATION_MINUTES} min · fiche prête en quelques minutes
+                    </span>
+                  </div>
+                </div>
+                {pdfError && (
+                  <p className="mt-3 text-center text-[13px]" style={{ color: "#FCA5A5" }}>
+                    {pdfError}
+                  </p>
+                )}
+
+                {isFree && (
+                  <div className="mt-5 flex flex-col gap-4 rounded-2xl border p-5 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: "rgba(201,184,255,0.25)", background: "radial-gradient(120% 140% at 0% 0%, rgba(201,184,255,0.08), transparent 60%)" }}>
+                    <div>
+                      <p className="text-[14.5px] font-medium" style={{ color: "var(--mk-text)" }}>
+                        {minutesLeft !== null ? `Il te reste ${minutesLeft} min sur l'offre gratuite` : "Tu es sur l'offre gratuite"}
+                      </p>
+                      <p className="mt-1 text-[13.5px]" style={{ color: "var(--mk-muted)" }}>
+                        Avec Student : 800 min par mois, soit environ 13 h de cours, pour 19 € par mois sans engagement.
+                      </p>
+                    </div>
+                    <button type="button" onClick={() => router.push("/pricing")} className="app-btn app-btn-primary shrink-0">
+                      Voir les offres <ArrowRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+                {lowOnMinutes && (
+                  <div className="mt-5 flex flex-col gap-4 rounded-2xl border p-5 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: "rgba(252,211,77,0.25)", background: "rgba(252,211,77,0.04)" }}>
+                    <p className="text-[14px]" style={{ color: "var(--mk-text)" }}>
+                      Plus que {minutesLeft} min ce mois-ci. Un pack de minutes s&apos;ajoute immédiatement et n&apos;expire jamais.
+                    </p>
+                    <button type="button" onClick={() => router.push("/pricing#packs")} className="app-btn app-btn-ghost shrink-0">
+                      Ajouter des minutes
+                    </button>
+                  </div>
+                )}
+
+                <section className="mt-14" aria-labelledby="recents-title">
+                  <div className="mb-4 flex items-center justify-between">
+                    <h2 id="recents-title" className="text-[15px] font-medium" style={{ color: "var(--mk-text)" }}>
+                      Récents
+                    </h2>
+                    {ecos.length > 0 && (
+                      <button type="button" onClick={openAll} className="app-btn app-btn-quiet !h-8 !px-2.5 !text-[13px]">
+                        Tout voir <ArrowRight className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  {isEcosLoading ? (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {[0, 1, 2, 3].map((i) => (
+                        <div key={i} className="app-card h-[132px] p-5">
+                          <div className="h-4 w-3/4 rounded eco-skeleton" />
+                          <div className="mt-4 h-3 w-full rounded eco-skeleton" />
+                          <div className="mt-2 h-3 w-2/3 rounded eco-skeleton" />
+                        </div>
+                      ))}
+                    </div>
+                  ) : ecos.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed px-6 py-12 text-center" style={{ borderColor: "var(--mk-line-strong)" }}>
+                      <p className="text-[15px] font-medium" style={{ color: "var(--mk-text)" }}>
+                        Ton premier cours t&apos;attend
+                      </p>
+                      <p className="mx-auto mt-2 max-w-sm text-[13.5px] leading-relaxed" style={{ color: "var(--mk-muted)" }}>
+                        Lance un enregistrement au début de ton prochain cours. Quelques minutes après la fin, ta fiche apparaîtra ici.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      {ecos.slice(0, 6).map((eco) => (
+                        <EcoCard key={eco.id} eco={eco} query="" onOpen={handleEcoClick} onChanged={loadEcos} />
+                      ))}
+                    </div>
+                  )}
+                </section>
+              </motion.div>
+            )}
+
+            {view === "all" && (
+              <motion.div
+                key="all"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                className="mx-auto w-full max-w-[860px] px-5 pb-24 pt-10"
+              >
+                <h1 className="mk-display text-[40px]">Tous mes cours</h1>
+                <p className="mt-1 text-[14px]" style={{ color: "var(--mk-muted)" }}>
+                  {ecos.length} cours enregistré{ecos.length > 1 ? "s" : ""}
+                </p>
+                <div className="relative mt-6">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2" style={{ color: "var(--mk-faint)" }} />
+                  <input
+                    type="search"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Rechercher un titre, une notion, un mot du cours…"
+                    className="app-input"
+                    autoFocus
+                  />
+                  {searchQuery && (
+                    <button type="button" onClick={() => setSearchQuery("")} className="app-icon-btn app-icon-btn-sm absolute right-2 top-1/2 -translate-y-1/2" aria-label="Effacer la recherche">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {filteredEcos.length > 0 ? (
+                  <ul className="mt-4 divide-y border-y" style={{ borderColor: "var(--mk-line)" }}>
+                    {filteredEcos.map((eco) => (
+                      <EcoRow key={eco.id} eco={eco} query={debouncedQuery} onOpen={handleEcoClick} onChanged={loadEcos} />
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="py-16 text-center">
+                    <p className="text-[14.5px]" style={{ color: "var(--mk-muted)" }}>
+                      {isSearchActive ? <>Aucun cours ne correspond à « {debouncedQuery} ».</> : "Aucun cours pour l'instant."}
+                    </p>
+                    {isSearchActive && (
+                      <button type="button" onClick={() => setSearchQuery("")} className="app-btn app-btn-quiet mt-3">
+                        Effacer la recherche
+                      </button>
+                    )}
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {view === "detail" && (
+              <motion.div key="detail" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}>
+                <EcoView
+                  eco={
+                    currentEco ??
+                    (selectedEco
+                      ? ({
+                          id: selectedEco,
+                          title: "Chargement…",
+                          audio_url: "",
+                          transcription_text: "",
+                          summary_text: null,
+                          folder: "",
+                          created_at: new Date().toISOString(),
+                        } satisfies Eco)
+                      : null)
                   }
-                } else {
-                  await navigator.clipboard.writeText(url);
-                  toast.success("Lien copié !");
-                }
-              } : undefined}
-              onAvatarClick={isSignedIn ? () => setShowProfile(true) : undefined}
-              userImageUrl={user?.imageUrl}
-              userName={user?.firstName ? `${user.firstName}${user?.lastName ? " " + user.lastName : ""}` : user?.username || undefined}
-            />
-          )}
-
-          <main className="flex-1 overflow-y-auto overflow-x-hidden pt-6">
-            <div className={`${(!selectedEco && !isProcessing && !viewAllEcos) ? "max-w-3xl" : "max-w-5xl"} mx-auto px-4 md:px-6 lg:px-8`}>
-              <AnimatePresence mode="wait">
-                  {(() => {
-                    const conditionHome = !selectedEco && !isFocusMode && !viewAllEcos && !isProcessing;
-                    const conditionList = viewAllEcos && !selectedEco && !isFocusMode && !isProcessing;
-                    const conditionDetail = selectedEco && !isFocusMode && !viewAllEcos && !isProcessing;
-                    const conditionGenerating = isProcessing;
-                    const noViewMatched = !conditionHome && !conditionList && !conditionDetail && !conditionGenerating;
-                    const showHome = conditionHome || noViewMatched;
-                    return showHome;
-                  })() && (
-                    <motion.div
-                      key="home"
-                      initial={{ opacity: 0, y: 16 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -16 }}
-                      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                      className="flex-1 flex flex-col items-center justify-center min-h-[60vh] p-4 md:p-8"
-                    >
-                      {/* Halo derrière le logo */}
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none -z-10">
-                        <div className="bg-gradient-radial from-white/20 to-transparent blur-3xl w-96 h-96" />
-                      </div>
-
-                      {paymentBlocked && (
-                        <motion.div
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="mb-4 px-4 py-3 rounded-xl text-center text-sm font-medium max-w-md"
-                          style={{
-                            background: "rgba(239,68,68,0.10)",
-                            border: "1px solid rgba(239,68,68,0.25)",
-                            color: "#FCA5A5",
-                          }}
-                        >
-                          Paiement échoué — accès suspendu
-                        </motion.div>
-                      )}
-                      <motion.div
-                        initial={{ opacity: 0, y: 4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2, duration: 0.4, ease: "easeOut" }}
-                        className="relative bg-transparent"
-                      >
-                        <Logo
-                          state="idle"
-                          size={160}
-                          onClick={handleStartRecording}
-                          isClickable={!paymentBlocked}
-                          showMicroWarning={false}
-                        />
-                      </motion.div>
-
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1, duration: 0.6, ease: [0.4, 0, 0.2, 1] }}
-                        className="mt-3 text-center"
-                      >
-                        <h1 className="text-4xl md:text-5xl font-bold tracking-[-0.05em]" style={{ color: "#EDECE8" }}>
-                          Bonjour,{" "}
-                          {user?.firstName
-                            ? <><span className="italic" style={{ color: "#A78BFA" }}>{user.firstName}</span>.</>
-                            : "!"}
-                        </h1>
-                        <p className="text-sm font-normal mt-2.5" style={{ color: "rgba(237,236,232,0.38)" }}>
-                          Prêt à transformer ton prochain cours ?
-                        </p>
-                      </motion.div>
-                      <motion.div
-                        initial={{ opacity: 0, y: 4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.15, duration: 0.4, ease: "easeOut" }}
-                        className="flex flex-col sm:flex-row gap-3 mt-8"
-                      >
-                        <motion.button
-                          whileHover={{ scale: 1.03, y: -2 }}
-                          whileTap={{ scale: 0.97 }}
-                          onClick={handleStartRecording}
-                          disabled={paymentBlocked}
-                          className="eco-btn-primary disabled:opacity-40"
-                        >
-                          <Mic className="w-4 h-4" />
-                          Enregistrer
-                        </motion.button>
-                        <motion.button
-                          whileHover={{ scale: 1.03, y: -2 }}
-                          whileTap={{ scale: 0.97 }}
-                          onClick={handleStartSystemAudioRecording}
-                          disabled={paymentBlocked}
-                          className="eco-btn-secondary disabled:opacity-40"
-                        >
-                          <Monitor className="w-4 h-4" style={{ color: "rgba(237,236,232,0.5)" }} />
-                          Capturer l&apos;audio
-                        </motion.button>
-                      </motion.div>
-
-                      {/* Lien PDF de contexte + liste des PDFs sélectionnés */}
-                      <div className="mt-4 flex flex-col items-center gap-2">
-                        {/* Input caché */}
-                        <input
-                          ref={pdfInputRef}
-                          type="file"
-                          accept=".pdf"
-                          multiple
-                          className="hidden"
-                          onChange={(e) => handlePdfSelect(e.target.files)}
-                        />
-
-                        {/* Lien discret + popover */}
-                        {pdfFiles.length < 1 && (
-                          <div className="relative">
-                            <button
-                              onClick={() => !isPdfExtracting && setShowPdfPopover(true)}
-                              disabled={isPdfExtracting}
-                              className="text-sm transition-colors duration-200 flex items-center gap-1 disabled:opacity-50"
-                              style={{ color: "rgba(237,236,232,0.35)" }}
-                              onMouseEnter={e => (e.currentTarget.style.color = "rgba(237,236,232,0.6)")}
-                              onMouseLeave={e => (e.currentTarget.style.color = "rgba(237,236,232,0.35)")}
-                            >
-                              {isPdfExtracting ? (
-                                <>
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                                  Lecture du PDF en cours...
-                                </>
-                              ) : (
-                                <>
-                                  <FileText className="w-4 h-4" />
-                                  Ajouter un PDF de contexte
-                                </>
-                              )}
-                            </button>
-
-                            {/* Popover explicatif */}
-                            {showPdfPopover && (
-                              <>
-                                {/* Overlay pour fermer au clic extérieur */}
-                                <div
-                                  className="fixed inset-0 z-40"
-                                  onClick={() => setShowPdfPopover(false)}
-                                />
-                                <motion.div
-                                  initial={{ opacity: 0, y: 6 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  exit={{ opacity: 0, y: 6 }}
-                                  transition={{ duration: 0.18, ease: "easeOut" }}
-                                  className="absolute z-50 left-1/2 -translate-x-1/2 mt-3 w-[300px] sm:w-[320px] rounded-2xl p-5 flex flex-col gap-4"
-                                  style={{
-                                    background: "#141619",
-                                    border: "1px solid rgba(255,255,255,0.10)",
-                                    boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
-                                  }}
-                                >
-                                  <div>
-                                    <p className="font-semibold text-sm mb-2" style={{ color: "#EDECE8" }}>📄 PDF de contexte</p>
-                                    <p className="text-xs leading-relaxed" style={{ color: "rgba(237,236,232,0.5)" }}>
-                                      Ajoute un document de cours avant d&apos;enregistrer. L&apos;IA s&apos;appuiera dessus pour mieux comprendre le vocabulaire et les notions de ton cours — le résumé, les points clés et le quiz seront plus précis et adaptés à ton contenu.
-                                    </p>
-                                  </div>
-                                  <div className="flex flex-col gap-2">
-                                    <button
-                                      onClick={() => {
-                                        setShowPdfPopover(false);
-                                        pdfInputRef.current?.click();
-                                      }}
-                                      className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all"
-                                      style={{
-                                        background: "linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%)",
-                                        color: "white",
-                                      }}
-                                    >
-                                      Ajouter un PDF
-                                    </button>
-                                    <button
-                                      onClick={() => setShowPdfPopover(false)}
-                                      className="text-xs transition-colors text-center py-1"
-                                      style={{ color: "rgba(237,236,232,0.3)" }}
-                                    >
-                                      Annuler
-                                    </button>
-                                  </div>
-                                </motion.div>
-                              </>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Erreur extraction */}
-                        {pdfError && (
-                          <p className="text-xs text-red-500 max-w-xs text-center">{pdfError}</p>
-                        )}
-
-                        {/* Liste des PDFs + badge */}
-                        {pdfFiles.length > 0 && (
-                          <div className="flex flex-col items-center gap-1 mt-1">
-                            <span className="text-xs font-semibold flex items-center gap-1" style={{ color: "rgba(237,236,232,0.5)" }}>
-                              <FileText className="w-3.5 h-3.5" style={{ color: "#A78BFA" }} />
-                              PDF de contexte ajouté
-                            </span>
-                            {pdfFiles.map((pdf, i) => (
-                              <div
-                                key={i}
-                                className="flex items-center gap-2 text-xs rounded-full px-3 py-1"
-                                style={{
-                                  background: "rgba(139,92,246,0.08)",
-                                  border: "1px solid rgba(139,92,246,0.2)",
-                                  color: "rgba(237,236,232,0.6)",
-                                }}
-                              >
-                                <span className="truncate max-w-[180px]">{pdf.name}</span>
-                                <button
-                                  onClick={() => removePdf(i)}
-                                  className="transition-colors font-bold leading-none"
-                                  style={{ color: "rgba(237,236,232,0.35)" }}
-                                  onMouseEnter={e => (e.currentTarget.style.color = "rgba(239,68,68,0.8)")}
-                                  onMouseLeave={e => (e.currentTarget.style.color = "rgba(237,236,232,0.35)")}
-                                  aria-label="Supprimer"
-                                >
-                                  ×
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {isBillingLoading ? (
-                        <div
-                          className="mt-6 px-7 py-3 rounded-xl flex items-center gap-2 animate-pulse"
-                          style={{ minHeight: 44, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.06)" }}
-                        >
-                          <div className="w-4 h-4 rounded eco-skeleton shrink-0" />
-                          <div className="h-4 w-40 rounded eco-skeleton" />
-                        </div>
-                      ) : userPlan === "free" ? (
-                        <motion.button
-                          whileHover={{ scale: 1.03, y: -2 }}
-                          whileTap={{ scale: 0.97 }}
-                          onClick={() => router.push("/pricing")}
-                          onHoverStart={() => setUpgradeHovered(true)}
-                          onHoverEnd={() => setUpgradeHovered(false)}
-                          className="relative mt-6 px-6 py-3 rounded-xl font-semibold text-sm flex items-center gap-2 transition-all duration-300 overflow-hidden"
-                          style={{
-                            background: "rgba(139,92,246,0.12)",
-                            border: "1px solid rgba(139,92,246,0.3)",
-                            color: "#C4B5FD",
-                          }}
-                        >
-                          <Sparkles className="w-4 h-4 shrink-0" />
-                          <span>Passer à Student — dès 19€/mois</span>
-                          <ArrowRight className="w-4 h-4 shrink-0" />
-                          <motion.div
-                            className="absolute inset-0 pointer-events-none"
-                            style={{ background: "linear-gradient(90deg, transparent, rgba(139,92,246,0.15), transparent)" }}
-                            animate={{ x: upgradeHovered ? "100%" : "-100%" }}
-                            transition={{ duration: 0.8 }}
-                          />
-                        </motion.button>
-                      ) : null}
-
-                      {/* Section Vos derniers ECOs */}
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.3, duration: 0.4 }}
-                        className="mt-10 w-full max-w-4xl space-y-4"
-                      >
-                        <div className="flex items-center justify-between">
-                          <h2 className="text-lg font-semibold tracking-[-0.03em]" style={{ color: "#EDECE8" }}>
-                            Tes derniers <em style={{ color: "#A78BFA", fontStyle: "italic" }}>ECOs</em>
-                          </h2>
-                          {ecos.length > 0 && !isSearchActive && (
-                            <button
-                              onClick={() => setViewAllEcos(true)}
-                              className="text-xs font-medium transition-colors px-3 py-1.5 rounded-lg"
-                              style={{ color: "rgba(237,236,232,0.35)", background: "rgba(255,255,255,0.04)" }}
-                              onMouseEnter={e => {
-                                e.currentTarget.style.color = "rgba(237,236,232,0.7)";
-                                e.currentTarget.style.background = "rgba(255,255,255,0.08)";
-                              }}
-                              onMouseLeave={e => {
-                                e.currentTarget.style.color = "rgba(237,236,232,0.35)";
-                                e.currentTarget.style.background = "rgba(255,255,255,0.04)";
-                              }}
-                            >
-                              Voir tout →
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Barre de recherche */}
-                        {ecos.length > 0 && (
-                          <div className="relative">
-                            <Search
-                              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
-                              style={{ color: "rgba(237,236,232,0.3)" }}
-                            />
-                            <input
-                              type="text"
-                              value={searchQuery}
-                              onChange={(e) => setSearchQuery(e.target.value)}
-                              placeholder="Rechercher dans tes ECOs..."
-                              className="eco-input"
-                              style={{ paddingLeft: 36 }}
-                            />
-                            {searchQuery && (
-                              <button
-                                onClick={() => setSearchQuery("")}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
-                                style={{ color: "rgba(237,236,232,0.3)" }}
-                                onMouseEnter={e => (e.currentTarget.style.color = "rgba(237,236,232,0.7)")}
-                                onMouseLeave={e => (e.currentTarget.style.color = "rgba(237,236,232,0.3)")}
-                              >
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Skeleton loaders */}
-                        {isEcosLoading && (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {[0, 1, 2].map((i) => (
-                              <div
-                                key={i}
-                                className="rounded-2xl p-5"
-                                style={{
-                                  background: "#0D0E14",
-                                  border: "1px solid rgba(255,255,255,0.06)",
-                                }}
-                              >
-                                <div className="flex items-center gap-3 mb-3">
-                                  <div className="w-7 h-7 rounded-lg eco-skeleton shrink-0" />
-                                  <div className="h-4 eco-skeleton rounded-lg flex-1" />
-                                </div>
-                                <div className="h-3 eco-skeleton rounded-lg w-28" />
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Liste des ECOs */}
-                        {!isEcosLoading && ecos.length > 0 && filteredEcos.length > 0 && (
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                            {(isSearchActive ? filteredEcos : filteredEcos.slice(0, 6))
-                              .map((eco, index) => {
-                                const SourceIcon = eco.source_type === "screen" ? Monitor : Mic;
-                                const wordCount = (() => {
-                                  if (!eco.summary_text) return 0;
-                                  try { const p = JSON.parse(eco.summary_text); return p?.resume?.trim().split(/\s+/).filter(Boolean).length ?? 0; } catch { return 0; }
-                                })();
-                                return (
-                                  <motion.div
-                                    key={eco.id}
-                                    initial={{ opacity: 0, y: 16 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: index * 0.06, duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
-                                    whileHover={{ y: -3 }}
-                                    whileTap={{ scale: 0.98 }}
-                                    className="group relative text-left cursor-pointer eco-card rounded-2xl overflow-hidden"
-                                  >
-                                    {/* Accent line on hover */}
-                                    <div
-                                      className="absolute left-0 top-0 bottom-0 w-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                                      style={{ background: "linear-gradient(180deg, #8B5CF6, #06B6D4)" }}
-                                    />
-                                    <div
-                                      className="p-5 pl-6"
-                                      onClick={() => handleEcoClick(eco)}
-                                    >
-                                      <div className="flex items-center gap-3 mb-2.5 pr-6">
-                                        <div
-                                          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                                          style={{ background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.2)" }}
-                                        >
-                                          <SourceIcon className="w-4 h-4 shrink-0" style={{ color: "#A78BFA" }} />
-                                        </div>
-                                        <span className="font-semibold text-sm truncate" style={{ color: "#EDECE8" }}>
-                                          <HighlightTitle text={eco.title} query={debouncedQuery} />
-                                        </span>
-                                      </div>
-                                      <div className="flex items-center gap-1.5 text-xs flex-wrap" style={{ color: "rgba(237,236,232,0.35)" }}>
-                                        <span>
-                                          {new Date(eco.created_at).toLocaleDateString("fr-FR", {
-                                            day: "numeric",
-                                            month: "short",
-                                            year: "numeric",
-                                          })}
-                                        </span>
-                                        {eco.duration_seconds != null && eco.duration_seconds > 0 && (
-                                          <>
-                                            <span style={{ color: "rgba(237,236,232,0.15)" }}>·</span>
-                                            <span>{Math.max(1, Math.round(eco.duration_seconds / 60))} min</span>
-                                          </>
-                                        )}
-                                        {wordCount > 0 && (
-                                          <>
-                                            <span style={{ color: "rgba(237,236,232,0.15)" }}>·</span>
-                                            <span>{wordCount} mots</span>
-                                          </>
-                                        )}
-                                        {eco.has_pdf_context && (
-                                          <>
-                                            <span style={{ color: "rgba(237,236,232,0.15)" }}>·</span>
-                                            <FileText className="w-3 h-3 shrink-0" />
-                                          </>
-                                        )}
-                                      </div>
-                                    </div>
-                                    <EcoCardMenu eco={eco} onUpdate={loadEcos} onDelete={loadEcos} />
-                                  </motion.div>
-                                );
-                              })}
-                          </div>
-                        )}
-
-                        {/* Aucun résultat */}
-                        {!isEcosLoading && isSearchActive && filteredEcos.length === 0 && (
-                          <div className="flex flex-col items-center justify-center py-16 gap-3">
-                            <Search className="w-10 h-10" style={{ color: "rgba(237,236,232,0.1)" }} />
-                            <p className="font-medium text-sm" style={{ color: "rgba(237,236,232,0.4)" }}>Aucun ECO trouvé pour &quot;{debouncedQuery}&quot;</p>
-                            <button
-                              onClick={() => setSearchQuery("")}
-                              className="text-xs transition-colors"
-                              style={{ color: "rgba(237,236,232,0.25)" }}
-                              onMouseEnter={e => (e.currentTarget.style.color = "rgba(237,236,232,0.5)")}
-                              onMouseLeave={e => (e.currentTarget.style.color = "rgba(237,236,232,0.25)")}
-                            >
-                              Effacer la recherche
-                            </button>
-                          </div>
-                        )}
-
-                        {/* Empty state */}
-                        {!isEcosLoading && ecos.length === 0 && (
-                          <div className="flex flex-col items-center justify-center py-16 gap-3">
-                            <Mic className="w-12 h-12" style={{ color: "rgba(139,92,246,0.2)" }} />
-                            <p className="font-semibold text-base" style={{ color: "rgba(237,236,232,0.5)" }}>Ton premier ECO t&apos;attend</p>
-                            <p className="text-sm" style={{ color: "rgba(237,236,232,0.25)" }}>Lance un enregistrement pour commencer</p>
-                          </div>
-                        )}
-                      </motion.div>
-                    </motion.div>
-                  )}
-                  {viewAllEcos && !selectedEco && !isFocusMode && !isProcessing && (
-                    <motion.div
-                      key="list"
-                      initial={{ opacity: 0, y: 16 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -16 }}
-                      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                      className="p-4 md:p-8"
-                    >
-                      <div className="flex items-center gap-4 mb-6">
-                        <motion.button
-                          whileHover={{ x: -3 }}
-                          whileTap={{ scale: 0.97 }}
-                          onClick={() => goHome("sidebar")}
-                          className="flex items-center gap-2 shrink-0 transition-colors"
-                          style={{ color: "rgba(237,236,232,0.5)" }}
-                          onMouseEnter={e => (e.currentTarget.style.color = "#EDECE8")}
-                          onMouseLeave={e => (e.currentTarget.style.color = "rgba(237,236,232,0.5)")}
-                        >
-                          <ArrowLeft className="w-4 h-4" />
-                          <span className="font-semibold text-sm">Retour</span>
-                        </motion.button>
-                        <div className="relative flex-1">
-                          <Search
-                            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none"
-                            style={{ color: "rgba(237,236,232,0.3)" }}
-                          />
-                          <input
-                            type="text"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Rechercher dans tes ECOs..."
-                            className="eco-input"
-                            style={{ paddingLeft: 36 }}
-                          />
-                          {searchQuery && (
-                            <button
-                              onClick={() => setSearchQuery("")}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
-                              style={{ color: "rgba(237,236,232,0.3)" }}
-                              onMouseEnter={e => (e.currentTarget.style.color = "rgba(237,236,232,0.7)")}
-                              onMouseLeave={e => (e.currentTarget.style.color = "rgba(237,236,232,0.3)")}
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      {filteredEcos.length > 0 ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                          {filteredEcos.map((eco, index) => {
-                            const SourceIcon = eco.source_type === "screen" ? Monitor : Mic;
-                            const wordCount = (() => {
-                              if (!eco.summary_text) return 0;
-                              try { const p = JSON.parse(eco.summary_text); return p?.resume?.trim().split(/\s+/).filter(Boolean).length ?? 0; } catch { return 0; }
-                            })();
-                            return (
-                              <motion.div
-                                key={eco.id}
-                                initial={{ opacity: 0, y: 8 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: index * 0.04 }}
-                                whileHover={{ y: -3 }}
-                                whileTap={{ scale: 0.98 }}
-                                className="group relative text-left cursor-pointer eco-card rounded-2xl overflow-hidden"
-                              >
-                                <div
-                                  className="absolute left-0 top-0 bottom-0 w-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                                  style={{ background: "linear-gradient(180deg, #8B5CF6, #06B6D4)" }}
-                                />
-                                <div
-                                  className="p-5 pl-6"
-                                  onClick={() => handleEcoClick(eco)}
-                                >
-                                  <div className="flex items-center gap-3 mb-2.5 pr-6">
-                                    <div
-                                      className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-                                      style={{ background: "rgba(139,92,246,0.12)", border: "1px solid rgba(139,92,246,0.2)" }}
-                                    >
-                                      <SourceIcon className="w-4 h-4 shrink-0" style={{ color: "#A78BFA" }} />
-                                    </div>
-                                    <span className="font-semibold text-sm truncate" style={{ color: "#EDECE8" }}>
-                                      <HighlightTitle text={eco.title} query={debouncedQuery} />
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-1.5 text-xs flex-wrap" style={{ color: "rgba(237,236,232,0.35)" }}>
-                                    <span>
-                                      {new Date(eco.created_at).toLocaleDateString("fr-FR", {
-                                        day: "numeric",
-                                        month: "short",
-                                        year: "numeric",
-                                      })}
-                                    </span>
-                                    {eco.duration_seconds != null && eco.duration_seconds > 0 && (
-                                      <>
-                                        <span style={{ color: "rgba(237,236,232,0.15)" }}>·</span>
-                                        <span>{Math.max(1, Math.round(eco.duration_seconds / 60))} min</span>
-                                      </>
-                                    )}
-                                    {wordCount > 0 && (
-                                      <>
-                                        <span style={{ color: "rgba(237,236,232,0.15)" }}>·</span>
-                                        <span>{wordCount} mots</span>
-                                      </>
-                                    )}
-                                    {eco.has_pdf_context && (
-                                      <>
-                                        <span style={{ color: "rgba(237,236,232,0.15)" }}>·</span>
-                                        <FileText className="w-3 h-3 shrink-0" />
-                                      </>
-                                    )}
-                                  </div>
-                                </div>
-                                <EcoCardMenu eco={eco} onUpdate={loadEcos} onDelete={loadEcos} />
-                              </motion.div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center justify-center py-16 gap-3">
-                          <Search className="w-10 h-10" style={{ color: "rgba(237,236,232,0.1)" }} />
-                          <p className="font-medium text-sm" style={{ color: "rgba(237,236,232,0.4)" }}>Aucun ECO trouvé pour &quot;{debouncedQuery}&quot;</p>
-                          <button
-                            onClick={() => setSearchQuery("")}
-                            className="text-xs transition-colors"
-                            style={{ color: "rgba(237,236,232,0.25)" }}
-                            onMouseEnter={e => (e.currentTarget.style.color = "rgba(237,236,232,0.5)")}
-                            onMouseLeave={e => (e.currentTarget.style.color = "rgba(237,236,232,0.25)")}
-                          >
-                            Effacer la recherche
-                          </button>
-                        </div>
-                      )}
-                    </motion.div>
-                  )}
-                  {selectedEco && !isFocusMode && !viewAllEcos && !isProcessing && (
-                    <motion.div
-                      key="detail"
-                      initial={{ opacity: 0, y: 16 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -16 }}
-                      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                    >
-                      <EcoView
-                        eco={
-                          currentEco ??
-                          (selectedEco
-                            ? ({
-                                id: selectedEco,
-                                title: "Chargement…",
-                                audio_url: "",
-                                transcription_text: "",
-                                summary_text: null,
-                                folder: "",
-                                created_at: new Date().toISOString(),
-                              } satisfies Eco)
-                            : null)
+                  onBack={resetToHome}
+                  onRefresh={() => {
+                    if (!selectedEco) return;
+                    currentEcoCacheRef.current = null;
+                    fetch(`/api/ecos/${selectedEco}`, { cache: "no-store" })
+                      .then((res) => (res.ok ? res.json() : null))
+                      .then((data) => {
+                        if (data?.eco && !isNavigatingHomeRef.current) {
+                          setCurrentEco(data.eco);
+                          currentEcoCacheRef.current = { id: selectedEco, data: data.eco, timestamp: Date.now() };
                         }
-                        onBack={resetToHome}
-                        onRefresh={() => {
-                          if (selectedEco) {
-                            // Invalider le cache
-                            currentEcoCacheRef.current = null;
-                            
-                            const url = `/api/ecos/${selectedEco}`;
-                            const t0 = performance.now();
-                            if (process.env.NODE_ENV !== "production") {
-                              console.log("[DEBUG EcoView.onRefresh] Refresh", { url, recordingId: selectedEco, ecoId: selectedEco });
-                            }
-                            if (process.env.NODE_ENV === "development") {
-                              console.log(`[EcoView.onRefresh] Refresh ${selectedEco}`);
-                            }
-                            fetch(url, { cache: "no-store" })
-                              .then((res) => {
-                                const duration = performance.now() - t0;
-                                if (process.env.NODE_ENV !== "production") {
-                                  console.log("[DEBUG EcoView.onRefresh] ✅ Réponse", { url, status: res.status, recordingId: selectedEco, ecoId: selectedEco });
-                                }
-                                if (res.ok) {
-                                  return res.json();
-                                }
-                                if (process.env.NODE_ENV === "development") {
-                                  console.log(`[EcoView.onRefresh] Erreur ${res.status} - ${duration.toFixed(0)}ms`);
-                                }
-                                if (process.env.NODE_ENV !== "production") {
-                                  console.log("[DEBUG EcoView.onRefresh] ❌ Erreur", { url, status: res.status, recordingId: selectedEco, ecoId: selectedEco });
-                                }
-                                return null;
-                              })
-                              .then((data) => {
-                                if (data?.eco && !isNavigatingHomeRef.current) {
-                                  setCurrentEco(data.eco);
-                                  // Mettre en cache
-                                  currentEcoCacheRef.current = { id: selectedEco, data: data.eco, timestamp: Date.now() };
-                                  // Déclencher eco-updated une seule fois (debounced)
-                                  window.dispatchEvent(new Event("eco-updated"));
-                                }
-                              })
-                              .catch((error) => {
-                                if (process.env.NODE_ENV === "development") {
-                                  console.error("[EcoView.onRefresh] Exception", error);
-                                }
-                                if (process.env.NODE_ENV !== "production") {
-                                  console.log("[DEBUG EcoView.onRefresh] ❌ Exception", { url, recordingId: selectedEco, ecoId: selectedEco, error });
-                                }
-                              });
-                            setRefreshKey((prev) => prev + 1);
-                          }
-                        }}
-                      />
-                    </motion.div>
-                  )}
-                  {(isProcessing || processingError) && (
-                    <motion.div
-                      key="generating"
-                      initial={{ opacity: 0, y: 16 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -16 }}
-                      transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-                      className="flex-1 flex flex-col items-center justify-center min-h-[60vh] gap-6"
-                    >
-                      {processingError ? (
-                        <>
-                          <div className="flex flex-col items-center gap-4 text-center max-w-sm">
-                            <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.25)" }}>
-                              <span className="text-xl" style={{ color: "#EF4444" }}>✕</span>
-                            </div>
-                            <p className="text-lg font-semibold" style={{ color: "#EDECE8" }}>Traitement échoué</p>
-                            <p className="text-sm" style={{ color: "rgba(237,236,232,0.5)" }}>{processingError}</p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => { setProcessingError(null); goHome(); }}
-                            className="flex items-center gap-1.5 text-sm font-medium transition-colors"
-                            style={{ color: "rgba(237,236,232,0.4)" }}
-                            onMouseEnter={e => (e.currentTarget.style.color = "rgba(237,236,232,0.8)")}
-                            onMouseLeave={e => (e.currentTarget.style.color = "rgba(237,236,232,0.4)")}
-                          >
-                            <ArrowLeft className="w-4 h-4" />
-                            <span>Retour à l&apos;accueil</span>
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <Logo state="generating" size={120} showMicroWarning={false} />
-                          <AnimatePresence mode="wait">
-                            <motion.div
-                              key={processingStep}
-                              initial={{ opacity: 0, y: 6 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              exit={{ opacity: 0, y: -6 }}
-                              transition={{ duration: 0.3 }}
-                              className="flex flex-col items-center gap-2 text-center"
-                            >
-                              <p className="text-xl font-bold" style={{ color: "#EDECE8" }}>
-                                {processingStep === "uploading" && "Envoi de l\u2019enregistrement\u2026"}
-                                {processingStep === "transcribing" && "Transcription en cours\u2026"}
-                                {processingStep === "summarizing" && "G\u00e9n\u00e9ration du r\u00e9sum\u00e9\u2026"}
-                              </p>
-                            </motion.div>
-                          </AnimatePresence>
-                          {/* Étapes visuelles */}
-                          <div className="flex items-center gap-3 mt-2">
-                            {(["uploading", "transcribing", "summarizing"] as const).map((step, i) => {
-                              const steps = ["uploading", "transcribing", "summarizing"];
-                              const currentIdx = steps.indexOf(processingStep);
-                              const isDone = i < currentIdx;
-                              const isActive = i === currentIdx;
-                              return (
-                                <span key={step} className="flex items-center gap-3">
-                                  <span className={`w-2.5 h-2.5 rounded-full transition-all duration-500 ${isActive ? "animate-pulse" : ""}`} style={{ background: isDone ? "rgba(139,92,246,0.7)" : isActive ? "#8B5CF6" : "rgba(255,255,255,0.15)" }} />
-                                  {i < 2 && <span className="w-8 h-px block transition-all duration-500" style={{ background: isDone ? "rgba(139,92,246,0.4)" : "rgba(255,255,255,0.10)" }} />}
-                                </span>
-                              );
-                            })}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => goHome()}
-                            className="flex items-center gap-1.5 text-sm mt-2 transition-colors"
-                            style={{ color: "rgba(237,236,232,0.3)" }}
-                            onMouseEnter={e => (e.currentTarget.style.color = "rgba(237,236,232,0.6)")}
-                            onMouseLeave={e => (e.currentTarget.style.color = "rgba(237,236,232,0.3)")}
-                          >
-                            <ArrowLeft className="w-4 h-4" />
-                            <span>Retour à l&apos;accueil</span>
-                          </button>
-                        </>
-                      )}
-                    </motion.div>
-                  )}
-              </AnimatePresence>
-            </div>
-          </main>
-        </div>
-      </>
+                      })
+                      .catch(() => {});
+                  }}
+                />
+              </motion.div>
+            )}
 
-      {/* FocusMode overlay mobile uniquement */}
+            {view === "processing" && (
+              <motion.div
+                key="processing"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                className="mx-auto flex w-full max-w-[480px] flex-col items-center px-5 pb-24 pt-14 text-center"
+              >
+                {processingError ? (
+                  <span className="flex h-14 w-14 items-center justify-center rounded-full border" style={{ borderColor: "rgba(252,165,165,0.35)", color: "#FCA5A5" }}>
+                    <X className="h-6 w-6" />
+                  </span>
+                ) : (
+                  <Logo state="generating" size={96} showMicroWarning={false} />
+                )}
+                <h1 className="mk-display mt-6 text-[36px]">{processingError ? "Le traitement a échoué" : "On prépare ta fiche"}</h1>
+                <p className="mt-2 text-[14.5px] leading-relaxed" style={{ color: "var(--mk-muted)" }}>
+                  {processingError ??
+                    "Tu peux quitter cette page : ton cours apparaîtra dans Récents dès qu'il sera prêt."}
+                </p>
+
+                {!processingError && (
+                  <ol className="app-card mt-8 w-full space-y-4 p-5 text-left">
+                    {PROCESSING_STEPS.map((step, i) => {
+                      const current = PROCESSING_STEPS.findIndex((s) => s.key === processingStep);
+                      const state = i < current ? "done" : i === current ? "active" : "todo";
+                      return (
+                        <li key={step.key} className="flex items-start gap-3">
+                          <span
+                            className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border"
+                            style={{
+                              borderColor: state === "todo" ? "var(--mk-line-strong)" : "transparent",
+                              background: state === "done" ? "var(--mk-text)" : "transparent",
+                              color: "#0A0A0B",
+                            }}
+                          >
+                            {state === "done" && <Check className="h-3 w-3" strokeWidth={3} />}
+                            {state === "active" && <Loader2 className="h-4 w-4 animate-spin" style={{ color: "var(--mk-lilac)" }} />}
+                          </span>
+                          <span>
+                            <span className="block text-[14px]" style={{ color: state === "todo" ? "var(--mk-faint)" : "var(--mk-text)" }}>
+                              {step.label}
+                            </span>
+                            <span className="block text-[12.5px]" style={{ color: "var(--mk-faint)" }}>
+                              {step.hint}
+                            </span>
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProcessingError(null);
+                    goHome();
+                  }}
+                  className="app-btn app-btn-ghost mt-8"
+                >
+                  <ArrowLeft className="h-4 w-4" /> Retour à l&apos;accueil
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </main>
+      </div>
+
       {!isDesktop && (
         <FocusMode
           isActive={isFocusMode}
@@ -2179,14 +1721,6 @@ export default function DashboardPage() {
         />
       )}
 
-      <ProfileView
-        isOpen={showProfile}
-        onClose={() => setShowProfile(false)}
-        userImageUrl={user?.imageUrl}
-        userName={user?.firstName ? `${user.firstName}${user?.lastName ? " " + user.lastName : ""}` : user?.username || undefined}
-      />
-
-      {/* Modal connexion requise (utilisateur non authentifié) */}
       <AnimatePresence>
         {showAuthModal && (
           <motion.div
@@ -2194,79 +1728,146 @@ export default function DashboardPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setShowAuthModal(false)}
-            className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-            aria-hidden="true"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
           >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.93, y: 8 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.93, y: 8 }}
-              transition={{ type: "spring", damping: 28, stiffness: 320 }}
-              onClick={(e) => e.stopPropagation()}
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="auth-modal-title"
-              className="w-full max-w-md rounded-2xl p-6"
-              style={{
-                background: "#141619",
-                border: "1px solid rgba(255,255,255,0.10)",
-                boxShadow: "0 32px 64px rgba(0,0,0,0.7)",
-              }}
-            >
-              <div
-                className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center"
-                style={{ background: "linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%)" }}
-              >
-                <LogIn className="w-8 h-8 text-white" />
-              </div>
-              <h3 id="auth-modal-title" className="text-2xl font-bold text-center mb-2" style={{ color: "#EDECE8" }}>
-                Connexion requise
-              </h3>
-              <p className="text-center mb-6" style={{ color: "rgba(237,236,232,0.5)" }}>
-                Tu dois être connecté pour lancer un enregistrement.
-                Crée un compte gratuitement en quelques secondes !
+            <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" className="app-card w-full max-w-sm p-6 text-center">
+              <p className="text-[17px] font-medium" style={{ color: "var(--mk-text)" }}>
+                Connecte-toi pour enregistrer
               </p>
-              <div className="flex flex-col gap-3">
-                <button
-                  type="button"
-                  onClick={() => router.push("/sign-in")}
-                  className="w-full px-6 py-3 min-h-[44px] font-bold rounded-xl transition-all"
-                  style={{ background: "linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%)", color: "white" }}
-                >
-                  Se connecter / S&apos;inscrire
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowAuthModal(false)}
-                  className="w-full px-6 py-3 min-h-[44px] font-medium rounded-xl transition-all"
-                  style={{
-                    background: "rgba(255,255,255,0.06)",
-                    border: "1px solid rgba(255,255,255,0.10)",
-                    color: "rgba(237,236,232,0.6)",
-                  }}
-                >
+              <p className="mt-2 text-[14px]" style={{ color: "var(--mk-muted)" }}>
+                Crée un compte gratuit : 10 minutes offertes, sans carte bancaire.
+              </p>
+              <div className="mt-6 flex justify-center gap-2">
+                <button type="button" onClick={() => setShowAuthModal(false)} className="app-btn app-btn-ghost">
                   Annuler
                 </button>
+                <button type="button" onClick={() => router.push("/sign-in?redirect_url=/app")} className="app-btn app-btn-primary">
+                  Se connecter
+                </button>
               </div>
-            </motion.div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Debug overlay (dev only) */}
-      {process.env.NODE_ENV !== "production" && (
-        <div
-          className="fixed bottom-4 right-4 z-[100] rounded-lg bg-black/80 text-white text-xs font-mono p-3 max-w-[280px] shadow-xl border border-white/20"
-          aria-hidden
-        >
-          <div className="font-bold text-amber-300 mb-1">[NAV] state</div>
-          <div>selectedEco: {selectedEco ?? "null"}</div>
-          <div>isProcessing: {String(isProcessing)}</div>
-          <div>isFocusMode: {String(isFocusMode)}</div>
-          <div>viewAllEcos: {String(viewAllEcos)}</div>
-          <div>overlays: sidebar={String(sidebarOpen)} profile={String(showProfile)} stopConfirm={String(showStopConfirm)}</div>
-        </div>
-      )}
     </div>
+  );
+}
+
+/* ─── Sous-composants de présentation ───────────────────────────────── */
+
+const PROCESSING_STEPS = [
+  { key: "uploading", label: "Envoi de l'enregistrement", hint: "Quelques secondes" },
+  { key: "transcribing", label: "Transcription du cours", hint: "L'étape la plus longue, selon la durée du cours" },
+  { key: "summarizing", label: "Rédaction de la fiche", hint: "Résumé, points clés, notions puis quiz" },
+] as const;
+
+function normalizeText(s: string) {
+  return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
+function ecoMatches(eco: Eco, query: string) {
+  const q = normalizeText(query.trim());
+  if (normalizeText(eco.title).includes(q)) return true;
+  if (eco.transcription_text && normalizeText(eco.transcription_text).includes(q)) return true;
+  if (eco.summary_text && normalizeText(eco.summary_text).includes(q)) return true;
+  return false;
+}
+
+function summarySnippet(eco: Eco): string {
+  if (!eco.summary_text) return "";
+  try {
+    const parsed = JSON.parse(eco.summary_text) as { resume?: string };
+    const text = (parsed.resume ?? "")
+      .replace(/\*\*[^*]+\*\*/g, " ")
+      .replace(/^(Introduction|Contenu|Conclusion):/gm, " ")
+      .replace(/^\s*[-\d.]+\s+/gm, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    return text.length > 160 ? `${text.slice(0, 160).replace(/\s+\S*$/, "")}…` : text;
+  } catch {
+    return "";
+  }
+}
+
+function formatEcoMeta(eco: Eco) {
+  const date = new Date(eco.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+  const minutes = eco.duration_seconds ? Math.max(1, Math.round(eco.duration_seconds / 60)) : null;
+  return minutes ? `${date} · ${minutes} min` : date;
+}
+
+function Highlight({ text, query }: { text: string; query: string }) {
+  if (!query.trim()) return <>{text}</>;
+  const escaped = query.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const parts = text.split(new RegExp(`(${escaped})`, "gi"));
+  return (
+    <>
+      {parts.map((part, i) =>
+        part.toLowerCase() === query.trim().toLowerCase() ? (
+          <mark key={i} className="rounded px-0.5" style={{ background: "rgba(201,184,255,0.25)", color: "#EDECE8" }}>
+            {part}
+          </mark>
+        ) : (
+          <span key={i}>{part}</span>
+        )
+      )}
+    </>
+  );
+}
+
+interface EcoTileProps {
+  eco: Eco;
+  query: string;
+  onOpen: (eco: Eco) => void;
+  onChanged: () => void;
+}
+
+function EcoCard({ eco, query, onOpen, onChanged }: EcoTileProps) {
+  const snippet = summarySnippet(eco);
+  const SourceIcon = eco.source_type === "screen" ? MonitorSpeaker : Mic;
+  return (
+    <div className="group relative">
+      <button
+        type="button"
+        onClick={() => onOpen(eco)}
+        className="app-card flex h-full w-full flex-col p-5 text-left transition-colors hover:border-white/[0.14] hover:bg-[#141416]"
+      >
+        <span className="line-clamp-2 pr-8 text-[15px] font-medium leading-snug" style={{ color: "var(--mk-text)" }}>
+          <Highlight text={eco.title} query={query} />
+        </span>
+        <span className="mt-2 line-clamp-2 flex-1 text-[13.5px] leading-relaxed" style={{ color: "var(--mk-muted)" }}>
+          {snippet || (eco.summary_text ? "" : "Fiche en cours de préparation…")}
+        </span>
+        <span className="mt-4 flex items-center gap-2 text-[12.5px]" style={{ color: "var(--mk-faint)" }}>
+          <SourceIcon className="h-3.5 w-3.5" strokeWidth={1.75} />
+          {formatEcoMeta(eco)}
+          {eco.has_pdf_context && <FileText className="h-3.5 w-3.5" strokeWidth={1.75} />}
+        </span>
+      </button>
+      <EcoCardMenu eco={eco} onUpdate={onChanged} onDelete={onChanged} />
+    </div>
+  );
+}
+
+function EcoRow({ eco, query, onOpen, onChanged }: EcoTileProps) {
+  const snippet = summarySnippet(eco);
+  return (
+    <li className="group relative" style={{ borderColor: "var(--mk-line)" }}>
+      <button type="button" onClick={() => onOpen(eco)} className="flex w-full items-start gap-6 px-2 py-4 text-left transition-colors hover:bg-white/[0.025]">
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[15px] font-medium" style={{ color: "var(--mk-text)" }}>
+            <Highlight text={eco.title} query={query} />
+          </span>
+          {snippet && (
+            <span className="mt-1 block truncate text-[13.5px]" style={{ color: "var(--mk-muted)" }}>
+              {snippet}
+            </span>
+          )}
+        </span>
+        <span className="shrink-0 pr-10 pt-0.5 text-[13px] tabular-nums" style={{ color: "var(--mk-faint)" }}>
+          {formatEcoMeta(eco)}
+        </span>
+      </button>
+      <EcoCardMenu eco={eco} onUpdate={onChanged} onDelete={onChanged} />
+    </li>
   );
 }

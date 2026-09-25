@@ -114,26 +114,21 @@ export default function PreferencesPage() {
   );
 
   return (
-    <div className="min-h-screen eco-bg relative">
-      {/* Glows */}
-      <div className="fixed inset-0 pointer-events-none -z-10" aria-hidden>
-        <div className="absolute top-0 right-1/4 w-96 h-96" style={{ background: "radial-gradient(circle, rgba(139,92,246,0.06) 0%, transparent 70%)" }} />
-      </div>
-
+    <div className="mk min-h-screen relative">
       <div className="relative z-10 max-w-5xl mx-auto px-4 py-8">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: -12 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <Link
-            href="/"
+            href="/app"
             className="inline-flex items-center gap-2 mb-6 group transition-colors text-sm font-medium"
             style={{ color: "rgba(237,236,232,0.4)" }}
             onMouseEnter={e => (e.currentTarget.style.color = "rgba(237,236,232,0.8)")}
             onMouseLeave={e => (e.currentTarget.style.color = "rgba(237,236,232,0.4)")}
           >
             <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-            Retour à l&apos;accueil
+            Retour à l&apos;app
           </Link>
-          <h1 className="text-3xl font-extrabold mb-2 tracking-[-0.02em]" style={{ color: "#EDECE8" }}>Paramètres</h1>
+          <h1 className="mk-display mb-2 text-[44px]">Paramètres</h1>
         </motion.div>
 
         {/* Layout */}
@@ -146,7 +141,7 @@ export default function PreferencesPage() {
                 onClick={() => setActiveTab(tab.id)}
                 className="w-full text-left px-4 py-2.5 rounded-xl text-sm font-medium transition-all"
                 style={{
-                  background: activeTab === tab.id ? "rgba(139,92,246,0.14)" : "transparent",
+                  background: activeTab === tab.id ? "rgba(201,184,255,0.14)" : "transparent",
                   color: activeTab === tab.id ? "#EDECE8" : "rgba(237,236,232,0.5)",
                   fontWeight: activeTab === tab.id ? 600 : 500,
                 }}
@@ -279,13 +274,13 @@ export default function PreferencesPage() {
                           whileTap={{ scale: 0.98 }}
                           onClick={() => router.push("/pricing")}
                           className="px-6 py-3 rounded-xl font-bold text-sm"
-                          style={{ background: "linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%)", color: "white" }}
+                          style={{ background: "#EDECE8", color: "#0A0A0B" }}
                         >
                           Passer au forfait supérieur
                         </motion.button>
                       </div>
                     ) : (
-                      <span className="inline-block px-4 py-1.5 rounded-xl text-sm font-bold" style={{ background: "linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%)", color: "white" }}>
+                      <span className="inline-block px-4 py-1.5 rounded-xl text-sm font-bold" style={{ background: "#EDECE8", color: "#0A0A0B" }}>
                         {planName}
                       </span>
                     )}

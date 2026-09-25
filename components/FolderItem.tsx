@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from "react";
 import { MoreHorizontal, Folder, ChevronRight } from "lucide-react";
-import { motion } from "framer-motion";
 import { Folder as FolderType } from "@/types";
 import DropdownMenu from "./ui/DropdownMenu";
 import Dialog from "./ui/Dialog";
@@ -56,7 +55,7 @@ export default function FolderItem({
       window.dispatchEvent(new Event("folders-updated"));
       onUpdate?.();
       setIsRenaming(false);
-      toast.success("Dossier renommé");
+      toast.success("Matière renommée");
     } catch {
       setRenameValue(folder.name);
       setIsRenaming(false);
@@ -82,7 +81,7 @@ export default function FolderItem({
       onUpdate?.();
       setShowDeleteDialog(false);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erreur lors de la suppression du dossier.");
+      toast.error(error instanceof Error ? error.message : "Erreur lors de la suppression de la matière.");
     } finally {
       setIsDeleting(false);
     }
@@ -95,29 +94,13 @@ export default function FolderItem({
 
   return (
     <>
-      <motion.div
-        whileHover={{ x: 2 }}
-        whileTap={{ scale: 0.98 }}
-        className="group relative w-full text-left flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer"
-        style={{ color: "rgba(237,236,232,0.65)" }}
-        onMouseEnter={e => {
-          (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.05)";
-          (e.currentTarget as HTMLElement).style.color = "rgba(237,236,232,0.9)";
-        }}
-        onMouseLeave={e => {
-          (e.currentTarget as HTMLElement).style.background = "transparent";
-          (e.currentTarget as HTMLElement).style.color = "rgba(237,236,232,0.65)";
-        }}
-      >
-        <div className="flex-1 flex items-center gap-2 min-w-0" onClick={onToggle}>
-          <motion.span
-            animate={{ rotate: isExpanded ? 90 : 0 }}
-            transition={{ duration: 0.2 }}
-            className="shrink-0"
-          >
-            <ChevronRight className="w-3.5 h-3.5" style={{ color: "rgba(237,236,232,0.3)" }} />
-          </motion.span>
-          <Folder className="w-4 h-4 shrink-0" style={{ color: "rgba(237,236,232,0.4)" }} />
+      <div className="group app-row !py-0 pr-1" style={{ minHeight: 32 }}>
+        <button type="button" className="flex min-w-0 flex-1 items-center gap-2 py-1.5 text-left" onClick={onToggle} aria-expanded={isExpanded}>
+          <ChevronRight
+            className="h-3.5 w-3.5 shrink-0 transition-transform duration-200"
+            style={{ transform: isExpanded ? "rotate(90deg)" : "none", color: "#6E6C68" }}
+          />
+          <Folder className="h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "#8A8782" }} />
           {isRenaming ? (
             <input
               ref={renameInputRef}
@@ -127,52 +110,30 @@ export default function FolderItem({
               onBlur={handleRename}
               onKeyDown={handleRenameKeyDown}
               onClick={(e) => e.stopPropagation()}
-              className="flex-1 rounded-lg px-2 py-0.5 text-sm outline-none"
-              style={{
-                background: "rgba(255,255,255,0.06)",
-                border: "1px solid rgba(139,92,246,0.3)",
-                color: "#EDECE8",
-              }}
+              className="min-w-0 flex-1 rounded-md px-2 py-0.5 text-[13.5px] outline-none"
+              style={{ background: "#1A1A1D", border: "1px solid rgba(201,184,255,0.4)", color: "#EDECE8" }}
             />
           ) : (
-            <span className="truncate flex-1">{folder.name}</span>
+            <span className="truncate">{folder.name}</span>
           )}
-        </div>
-        <div
-          className="opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <DropdownMenu items={menuItems} align="right">
-            <button
-              className="p-1 rounded-lg transition-colors focus:outline-none"
-              style={{ color: "rgba(237,236,232,0.3)" }}
-              onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
-              onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-              aria-label="Menu d'actions"
-            >
-              <MoreHorizontal className="w-4 h-4" />
-            </button>
-          </DropdownMenu>
-        </div>
-      </motion.div>
+        </button>
+        {!isDefault && (
+          <div className="shrink-0 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100" onClick={(e) => e.stopPropagation()}>
+            <DropdownMenu items={menuItems} align="right" triggerClassName="app-icon-btn app-icon-btn-sm">
+              <MoreHorizontal className="h-4 w-4" />
+            </DropdownMenu>
+          </div>
+        )}
+      </div>
 
       <Dialog
         open={showDeleteDialog}
         onOpenChange={setShowDeleteDialog}
-        title="Supprimer ce dossier ?"
-        description="Les ECOs de ce dossier seront déplacés vers 'Aucun dossier'. Cette action est irréversible."
+        title="Supprimer cette matière ?"
+        description="Les cours de cette matière ne sont pas supprimés : ils restent accessibles dans Tous mes cours."
       >
         <div className="flex gap-3 justify-end mt-6">
-          <button
-            onClick={() => setShowDeleteDialog(false)}
-            disabled={isDeleting}
-            className="px-4 py-2 text-sm font-medium rounded-xl transition-all disabled:opacity-50"
-            style={{
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.10)",
-              color: "rgba(237,236,232,0.7)",
-            }}
-          >
+          <button onClick={() => setShowDeleteDialog(false)} disabled={isDeleting} className="app-btn app-btn-ghost">
             Annuler
           </button>
           <button

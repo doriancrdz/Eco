@@ -39,12 +39,12 @@ function RelancerButton({ ecoId, onSuccess }: { ecoId: string; onSuccess?: () =>
       whileTap={{ scale: 0.98 }}
       className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
       style={{
-        background: "rgba(139,92,246,0.12)",
-        border: "1px solid rgba(139,92,246,0.25)",
-        color: "#A78BFA",
+        background: "rgba(201,184,255,0.12)",
+        border: "1px solid rgba(201,184,255,0.25)",
+        color: "#C9B8FF",
       }}
-      onMouseEnter={e => (e.currentTarget.style.background = "rgba(139,92,246,0.2)")}
-      onMouseLeave={e => (e.currentTarget.style.background = "rgba(139,92,246,0.12)")}
+      onMouseEnter={e => (e.currentTarget.style.background = "rgba(201,184,255,0.2)")}
+      onMouseLeave={e => (e.currentTarget.style.background = "rgba(201,184,255,0.12)")}
     >
       <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
       {loading ? "Relance en cours…" : "Relancer la génération"}
@@ -451,7 +451,7 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
             >
               <span
                 className="mt-1.5 w-1.5 h-1.5 rounded-full shrink-0"
-                style={{ background: "#8B5CF6" }}
+                style={{ background: "#C9B8FF" }}
               />
               <span style={{ color: "rgba(237,236,232,0.8)" }}>{point}</span>
             </li>
@@ -573,8 +573,8 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
                     };
                     if (!quizSubmitted) {
                       if (isSelected) style = {
-                        background: "rgba(139,92,246,0.15)",
-                        border: "1px solid rgba(139,92,246,0.4)",
+                        background: "rgba(201,184,255,0.15)",
+                        border: "1px solid rgba(201,184,255,0.4)",
                         color: "#EDECE8",
                       };
                     } else {
@@ -631,15 +631,15 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
                       border: "1px solid rgba(255,255,255,0.10)",
                       color: "rgba(237,236,232,0.8)",
                     }}
-                    onFocus={e => (e.currentTarget.style.borderColor = "rgba(139,92,246,0.35)")}
+                    onFocus={e => (e.currentTarget.style.borderColor = "rgba(201,184,255,0.35)")}
                     onBlur={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.10)")}
                   />
                   {revealedOpen.has(idx) ? (
                     <div
                       className="p-4 rounded-xl text-sm leading-relaxed"
-                      style={{ background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.15)" }}
+                      style={{ background: "rgba(201,184,255,0.08)", border: "1px solid rgba(201,184,255,0.15)" }}
                     >
-                      <p className="text-xs font-medium mb-2" style={{ color: "rgba(167,139,250,0.7)" }}>Réponse modèle</p>
+                      <p className="text-xs font-medium mb-2" style={{ color: "rgba(201,184,255,0.7)" }}>Réponse modèle</p>
                       <p style={{ color: "rgba(237,236,232,0.75)" }}>{question.answer}</p>
                     </div>
                   ) : (
@@ -667,10 +667,7 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
             <button
               type="button"
               onClick={() => setQuizSubmitted(true)}
-              className="w-full px-6 py-3 rounded-xl font-semibold text-sm transition-all"
-              style={{ background: "linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%)", color: "white" }}
-              onMouseEnter={e => (e.currentTarget.style.opacity = "0.9")}
-              onMouseLeave={e => (e.currentTarget.style.opacity = "1")}
+              className="app-btn app-btn-primary w-full"
             >
               Valider le quiz
             </button>
@@ -699,7 +696,7 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
   );
 
   const tabs = [
-    { id: "summary", label: "Résumé structuré", content: summaryContent },
+    { id: "summary", label: "Résumé", content: summaryContent },
     { id: "keypoints", label: "Points clés", content: keyPointsContent },
     { id: "notions", label: "Notions", content: notionsContent },
     { id: "quiz", label: "Quiz", content: quizContent },
@@ -707,95 +704,48 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
     { id: "transcription", label: "Transcription", content: transcriptionContent },
   ];
 
+  const durationLabel =
+    eco.duration_seconds != null && eco.duration_seconds > 0
+      ? `${Math.max(1, Math.round(eco.duration_seconds / 60))} min`
+      : null;
+  const dateLabel = new Date(eco.created_at).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+
+  const copySummary = async () => {
+    if (!summary?.resume) return;
+    const text = [summary.titre, "", summary.resume.replace(/\*\*/g, ""), "", "Points clés :", ...(summary.pointsCles ?? []).map((p) => `- ${p}`)].join("\n");
+    await navigator.clipboard.writeText(text);
+    toast.success("Fiche copiée");
+  };
+
   /* ── Render ────────────────────────────────────────────────── */
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-      className="flex-1 overflow-y-auto p-4 md:p-8"
-    >
-      <div className="max-w-[1100px] mx-auto space-y-6">
-        {/* Debug panel (dev only) */}
-        {process.env.NODE_ENV !== "production" && (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="rounded-xl border p-4 text-xs font-mono"
-            style={{
-              background: "rgba(245,158,11,0.08)",
-              borderColor: "rgba(245,158,11,0.2)",
-              color: "rgba(245,158,11,0.8)",
-            }}
-          >
-            <div className="font-bold mb-2">🔍 DEBUG PANEL</div>
-            <div className="space-y-1">
-              <div>ecoId: <span className="font-semibold">{eco.id}</span></div>
-              <div>ai_status: <span className="font-semibold">{eco.ai_status ?? "—"}</span></div>
-              <div>lastEcoFetch: {lastEcoFetch ? (
-                <span className="font-semibold block mt-1">
-                  URL: {lastEcoFetch.url}<br />
-                  statusCode: {lastEcoFetch.statusCode} | hasTranscription: {lastEcoFetch.hasTranscription ? "✅" : "❌"} ({lastEcoFetch.transcriptionLen}) | hasContent: {lastEcoFetch.hasContent ? "✅" : "❌"} ({lastEcoFetch.contentLen}) | updatedAt: {lastEcoFetch.updatedAt ? new Date(lastEcoFetch.updatedAt).toLocaleTimeString() : "—"}
-                </span>
-              ) : "—"}</div>
-            </div>
-          </motion.div>
-        )}
+    <div className="mx-auto w-full max-w-[860px] px-5 pb-24 pt-8 md:pt-12">
+      {process.env.NODE_ENV !== "production" && (
+        <div className="mb-6 rounded-xl border p-3 font-mono text-xs" style={{ borderColor: "rgba(245,158,11,0.2)", color: "rgba(245,158,11,0.8)" }}>
+          ecoId: {eco.id} · ai_status: {eco.ai_status ?? "—"} · transcription: {lastEcoFetch?.transcriptionLen ?? 0} · contenu: {lastEcoFetch?.contentLen ?? 0}
+        </div>
+      )}
 
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1, duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-        >
-          <div
-            className="relative rounded-2xl p-7 md:p-9"
-            style={{
-              background: "#141619",
-              border: "1px solid rgba(255,255,255,0.08)",
-            }}
-          >
-            {/* Subtle glow */}
-            <div
-              className="absolute -inset-4 -z-10 rounded-3xl"
-              style={{
-                background: "radial-gradient(ellipse at 30% 0%, rgba(139,92,246,0.07) 0%, transparent 70%)",
-              }}
-            />
-            <h1
-              className="text-2xl md:text-4xl lg:text-5xl font-semibold mb-2 tracking-[-0.02em]"
-              style={{ color: "#EDECE8" }}
-            >
-              {eco.title}
-            </h1>
-            <p className="text-sm mt-2" style={{ color: "rgba(237,236,232,0.4)" }}>
-              {new Date(eco.created_at).toLocaleDateString("fr-FR", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </p>
-            {eco.duration_seconds != null && eco.duration_seconds > 0 && (
-              <p className="text-sm mt-1" style={{ color: "rgba(237,236,232,0.35)" }}>
-                Durée : {Math.floor(eco.duration_seconds / 60)} min {Math.round(eco.duration_seconds % 60)} s
-              </p>
-            )}
+      <header>
+        <p className="text-[13px] first-letter:uppercase" style={{ color: "var(--mk-faint)" }}>
+          {dateLabel}
+          {durationLabel && <> · {durationLabel}</>}
+          {eco.source_type === "screen" ? " · son d'un onglet" : ""}
+          {eco.has_pdf_context ? " · avec le PDF du cours" : ""}
+        </p>
+        <h1 className="mk-display mt-2 text-[34px] leading-[1.08] sm:text-[44px]">{eco.title}</h1>
+        {summary?.resume && (
+          <div className="mt-5 flex flex-wrap gap-2">
+            <button type="button" onClick={copySummary} className="app-btn app-btn-ghost !h-8 !rounded-lg !px-3 !text-[13px]">
+              <Copy className="h-3.5 w-3.5" /> Copier la fiche
+            </button>
           </div>
-        </motion.div>
+        )}
+      </header>
 
-        {/* Tabs */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15, duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
-          className="rounded-2xl overflow-hidden"
-          style={{ border: "1px solid rgba(255,255,255,0.08)" }}
-        >
-          <Tabs tabs={tabs} defaultTab="summary" />
-        </motion.div>
+      <div className="mt-8">
+        <Tabs tabs={tabs} defaultTab="summary" />
       </div>
-    </motion.div>
+    </div>
   );
 }

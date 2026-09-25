@@ -115,38 +115,26 @@ export default function FocusMode({
             </div>
             <div className="text-center mb-6 lg:mb-8">
               <div className="flex items-center justify-center gap-2">
-                <span className={`w-2.5 h-2.5 rounded-full ${isPaused ? "bg-gray-400" : "bg-red-500 animate-pulse"}`} />
-                <span className="font-bold text-xs tracking-widest" style={{ color: isPaused ? "rgba(237,236,232,0.35)" : "#EF4444", letterSpacing: "0.15em" }}>
-                  {isPaused ? "EN PAUSE" : "REC"}
+                <span className={`h-2 w-2 rounded-full ${isPaused ? "bg-[#6E6C68]" : "animate-pulse bg-[#F87171]"}`} />
+                <span className="text-[13px]" style={{ color: isPaused ? "#9A9893" : "#FCA5A5" }}>
+                  {isPaused ? "En pause" : "Enregistrement en cours · garde cette page ouverte"}
                 </span>
               </div>
             </div>
             <div className="flex items-center justify-center gap-3 lg:gap-4 mb-6 lg:mb-8">
               {onTogglePause && (
-                <motion.button
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.97 }}
+                <button
+                  type="button"
                   onClick={onTogglePause}
                   aria-label={isPaused ? "Reprendre l'enregistrement" : "Mettre l'enregistrement en pause"}
-                  className="w-12 h-12 lg:w-14 lg:h-14 rounded-2xl flex items-center justify-center text-white font-medium transition-all"
-                style={{
-                  background: "rgba(255,255,255,0.08)",
-                  border: "1px solid rgba(255,255,255,0.12)",
-                  backdropFilter: "blur(12px)",
-                }}
-                onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.14)")}
-                onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
+                  className="inline-flex h-14 items-center gap-2 rounded-full border px-6 text-[15px] font-medium transition-colors hover:bg-white/[0.06]"
+                  style={{ borderColor: "rgba(255,255,255,0.16)", color: "#EDECE8" }}
                 >
-                  {isPaused ? <Play className="w-5 h-5 lg:w-6 lg:h-6" /> : <Pause className="w-5 h-5 lg:w-6 lg:h-6" />}
-                </motion.button>
+                  {isPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+                  {isPaused ? "Reprendre" : "Pause"}
+                </button>
               )}
-              <div className="scale-[0.75] md:scale-100 lg:scale-95">
-                <RecordButton
-                  isRecording={true}
-                  onStart={onStartRecording}
-                  onStop={onStopRecording}
-                />
-              </div>
+              <RecordButton isRecording={true} onStart={onStartRecording} onStop={onStopRecording} />
             </div>
           </motion.div>
         ) : (
@@ -192,41 +180,19 @@ export default function FocusMode({
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               onClick={(e) => e.stopPropagation()}
-              className="rounded-2xl p-6 max-w-sm w-full"
-            style={{
-              background: "#141619",
-              border: "1px solid rgba(255,255,255,0.10)",
-              boxShadow: "0 32px 64px rgba(0,0,0,0.8)",
-            }}
+              className="app-card w-full max-w-sm p-6"
+              role="dialog"
+              aria-modal="true"
             >
-              <h3 className="text-lg font-bold mb-1.5" style={{ color: "#EDECE8" }}>Terminer l&apos;enregistrement ?</h3>
-              <p className="text-sm mb-6" style={{ color: "rgba(237,236,232,0.5)" }}>L&apos;enregistrement sera traité et un résumé généré.</p>
-              <div className="flex gap-3">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={onConfirmStop}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all"
-                  style={{
-                    background: "linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%)",
-                    color: "white",
-                  }}
-                >
-                  Terminer
-                </motion.button>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={onCancelStop}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-medium transition-all"
-                  style={{
-                    background: "rgba(255,255,255,0.06)",
-                    border: "1px solid rgba(255,255,255,0.10)",
-                    color: "rgba(237,236,232,0.7)",
-                  }}
-                >
+              <h3 className="text-[17px] font-medium" style={{ color: "#EDECE8" }}>Terminer l&apos;enregistrement ?</h3>
+              <p className="mt-1.5 text-[14px]" style={{ color: "#9A9893" }}>ECO va transcrire le cours et préparer ta fiche.</p>
+              <div className="mt-6 flex justify-end gap-2">
+                <button type="button" onClick={onCancelStop} className="app-btn app-btn-ghost">
                   Continuer
-                </motion.button>
+                </button>
+                <button type="button" onClick={onConfirmStop} className="app-btn app-btn-primary">
+                  Terminer
+                </button>
               </div>
             </motion.div>
           </motion.div>

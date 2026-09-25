@@ -375,10 +375,8 @@ body {
    ============================================================ */
 
 .eco-focus-bg {
-  background-color: #050608;
-  background-image:
-    radial-gradient(ellipse at 50% 30%, rgba(139, 92, 246, 0.15) 0%, transparent 60%),
-    radial-gradient(ellipse at 20% 80%, rgba(20, 184, 166, 0.08) 0%, transparent 50%);
+  background-color: #070708;
+  background-image: radial-gradient(ellipse at 50% 28%, rgba(201, 184, 255, 0.09) 0%, transparent 55%);
 }
 
 /* ============================================================
@@ -642,3 +640,102 @@ body {
 .legal-doc li { margin: 0.35em 0; }
 .legal-doc a { color: #C9B8FF; text-decoration: underline; text-underline-offset: 3px; }
 .legal-doc strong { color: #EDECE8; font-weight: 600; }
+
+/* ============================================================
+   APP (utilisateur connecté) — même palette que le marketing (.mk)
+   ============================================================ */
+
+.app-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  color: #B5B2AC;
+  text-align: left;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.app-row:hover { background: rgba(255, 255, 255, 0.05); color: #EDECE8; }
+.app-row.is-active { background: rgba(255, 255, 255, 0.07); color: #EDECE8; }
+.app-row-strong { color: #EDECE8; font-weight: 500; }
+
+.app-section-label {
+  padding: 0 12px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #6E6C68;
+}
+
+.app-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  color: #9A9893;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.app-icon-btn:hover { background: rgba(255, 255, 255, 0.06); color: #EDECE8; }
+.app-icon-btn-sm { width: 26px; height: 26px; border-radius: 6px; }
+.app-icon-btn-solid { width: 30px; height: 30px; background: #1A1A1D; border: 1px solid rgba(255, 255, 255, 0.08); }
+.app-icon-btn-solid:hover { background: #222225; }
+
+.app-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
+}
+.app-btn:active { transform: scale(0.98); }
+.app-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.app-btn-primary { background: #EDECE8; color: #0A0A0B; }
+.app-btn-primary:hover:not(:disabled) { background: #FFFFFF; }
+.app-btn-ghost { color: #EDECE8; border: 1px solid rgba(255, 255, 255, 0.12); }
+.app-btn-ghost:hover:not(:disabled) { background: rgba(255, 255, 255, 0.05); border-color: rgba(255, 255, 255, 0.2); }
+.app-btn-quiet { color: #9A9893; }
+.app-btn-quiet:hover:not(:disabled) { color: #EDECE8; background: rgba(255, 255, 255, 0.05); }
+
+.app-row:focus-visible,
+.app-icon-btn:focus-visible,
+.app-btn:focus-visible {
+  outline: 2px solid #C9B8FF;
+  outline-offset: 2px;
+}
+
+.app-card {
+  background: #111113;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+}
+
+.app-input {
+  width: 100%;
+  height: 40px;
+  padding: 0 12px 0 36px;
+  border-radius: 10px;
+  background: #111113;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #EDECE8;
+  font-size: 14px;
+  transition: border-color 0.15s ease;
+}
+.app-input::placeholder { color: #6E6C68; }
+.app-input:focus { outline: none; border-color: rgba(201, 184, 255, 0.45); }
+
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

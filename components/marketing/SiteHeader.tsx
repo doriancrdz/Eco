@@ -76,7 +76,7 @@ export default function SiteHeader() {
             </Link>
             </>
           ) : (
-            <Link href="/" className="mk-btn mk-btn-primary !h-9 !px-4 !text-[14px]">
+            <Link href="/app" className="mk-btn mk-btn-primary !h-9 !px-4 !text-[14px]">
               Ouvrir l&apos;app
             </Link>
           )}
@@ -120,7 +120,7 @@ export default function SiteHeader() {
               </Link>
               </>
             ) : (
-              <Link href="/" onClick={() => setOpen(false)} className="mk-btn mk-btn-primary w-full">
+              <Link href="/app" onClick={() => setOpen(false)} className="mk-btn mk-btn-primary w-full">
                 Ouvrir l&apos;app
               </Link>
             )}

@@ -134,7 +134,7 @@ export default function PricingPage() {
 
   const handlePlanSelect = (planKey: PlanType) => {
     if (planKey === "free") {
-      router.push(isSignedIn ? "/" : "/sign-up");
+      router.push(isSignedIn ? "/app" : "/sign-up");
       return;
     }
     if (!isSignedIn) {

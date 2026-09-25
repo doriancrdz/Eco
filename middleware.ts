@@ -35,9 +35,20 @@ export default clerkMiddleware(async (auth, request) => {
     }
   }
 
-  // Protéger toutes les routes sauf les routes publiques
-  if (!isPublicRoute(request)) {
+  if (isPublicRoute(request)) return;
+
+  // API privée : 404 si non connecté.
+  if (pathname.startsWith('/api/') || pathname.startsWith('/trpc/')) {
     await auth.protect();
+    return;
+  }
+
+  // Page privée (/app, /settings, /admin…) : on renvoie vers la connexion, puis on revient ici.
+  const { userId } = await auth();
+  if (!userId) {
+    const signIn = new URL('/sign-in', request.url);
+    signIn.searchParams.set('redirect_url', pathname + request.nextUrl.search);
+    return NextResponse.redirect(signIn);
   }
 });
 

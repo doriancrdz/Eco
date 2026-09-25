@@ -42,7 +42,7 @@ export default function AdminPage() {
     }
 
     if (user.primaryEmailAddress?.emailAddress !== ADMIN_EMAIL) {
-      router.push('/');
+      router.push('/app');
     }
   }, [user, isLoaded, router]);
 

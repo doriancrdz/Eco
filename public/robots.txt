@@ -1,7 +1,7 @@
 User-agent: *
 Allow: /
 Disallow: /api/
-Disallow: /dashboard
+Disallow: /app
 Disallow: /admin/
 Disallow: /settings/
 Disallow: /sign-in/

@@ -186,7 +186,7 @@ const FEATURES = [
   {
     icon: MonitorSpeaker,
     title: "Cours en visio aussi",
-    body: "Sur ordinateur, ECO capte directement le son de Zoom, Teams ou Meet. Pas besoin de micro.",
+    body: "Sur ordinateur avec Chrome ou Edge, ECO capte le son d'un onglet : parfait pour un cours sur Teams, Meet ou Zoom ouvert dans le navigateur.",
   },
   {
     icon: FileText,
@@ -411,7 +411,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "Et pour les cours en visio ?",
-    a: "Sur ordinateur (Chrome), choisis l'enregistrement de l'audio système : ECO capte directement le son de Zoom, Teams ou Meet.",
+    a: "Sur ordinateur, avec Chrome ou Edge : choisis « Son d'un onglet », sélectionne l'onglet du cours (Teams, Meet ou Zoom dans le navigateur) et coche « Partager l'audio ». Avec l'application Teams ou Zoom installée, la capture dépend de ton système : le plus fiable est d'ouvrir le cours dans le navigateur.",
   },
   {
     q: "Mes enregistrements sont-ils privés ?",

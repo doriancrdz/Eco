@@ -30,7 +30,9 @@ app/api/stripe/webhook/route.ts                 # Webhook Stripe — SEUL endroi
 app/api/admin/grant-plan/route.ts               # Attribution plans gratuits
 app/api/recordings/[id]/transcribe/route.ts     # Pipeline transcription async
 app/api/recordings/[id]/status/route.ts         # Polling statut
-app/page.tsx                                    # Landing (déconnecté) ou DashboardPage (connecté)
+app/page.tsx                                    # Landing marketing, toujours (statique)
+app/app/page.tsx                                # L'app connectée (DashboardPage) — /app, redirige vers /sign-in si déconnecté
+hooks/useFolders.ts                             # Cache partagé des dossiers : une seule requête /api/folders
 components/LandingPage.tsx                      # Landing marketing
 components/marketing/                           # Header, footer, design system marketing (.mk dans globals.css)
 app/pricing/page.tsx                            # Plans et pricing
