@@ -29,16 +29,16 @@ function Hero() {
           className="mk-display mk-rise mx-auto mt-6 max-w-4xl text-[52px] sm:text-[76px] lg:text-[92px]"
           style={{ animationDelay: "120ms" }}
         >
-          Tes cours et tes réunions.
+          Tu écoutes.
           <br />
-          <span className="italic mk-iris">ECO prend les notes.</span>
+          <span className="italic mk-iris">ECO fait tes fiches.</span>
         </h1>
 
         <p
           className="mk-rise mx-auto mt-7 max-w-xl text-[17px] leading-relaxed sm:text-[18px]"
           style={{ color: "var(--mk-muted)", animationDelay: "200ms" }}
         >
-          Arrête de recopier pendant deux heures. Lance ECO au début d&apos;un cours ou d&apos;une réunion Teams : quelques minutes après la fin, tu as une fiche claire, les notions définies, un quiz et des flashcards. Tout vient de ce qui a vraiment été dit.
+          Cours en amphi ou réunion Teams : lance ECO, concentre-toi, et récupère quelques minutes après la fin une fiche claire, les notions définies, un quiz et des flashcards. Tout vient de ce qui a vraiment été dit.
         </p>
 
         <div className="mk-rise mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row" style={{ animationDelay: "280ms" }}>

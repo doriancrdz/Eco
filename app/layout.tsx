@@ -26,7 +26,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "ECO — Tes cours et tes réunions en fiches, quiz et flashcards",
+  title: "ECO — Fiches, quiz et flashcards à partir de tes cours et réunions",
   description: "Enregistre tes cours et tes réunions : ECO génère un résumé structuré, les notions définies, un quiz, des flashcards et la transcription complète. Essaie gratuitement.",
   keywords: ["enregistrer cours", "résumé automatique", "quiz IA", "transcription cours", "application étudiants", "prise de notes IA", "fiches de révision automatiques"],
   robots: {
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     follow: true,
   },
   openGraph: {
-    title: "ECO — Tes cours et tes réunions en fiches, quiz et flashcards",
+    title: "ECO — Fiches, quiz et flashcards à partir de tes cours et réunions",
     description: "Enregistre tes cours et tes réunions : ECO génère un résumé structuré, les notions définies, un quiz, des flashcards et la transcription complète. Essaie gratuitement.",
     url: "/",
     siteName: "ECO",
@@ -51,7 +51,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "ECO — Tes cours et tes réunions en fiches, quiz et flashcards",
+    title: "ECO — Fiches, quiz et flashcards à partir de tes cours et réunions",
     description: "Enregistre tes cours et tes réunions : ECO génère un résumé structuré, les notions définies, un quiz, des flashcards et la transcription complète.",
     images: ["/og.png"],
   },
