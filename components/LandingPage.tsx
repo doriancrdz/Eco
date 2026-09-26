@@ -26,19 +26,19 @@ function Hero() {
         </p>
 
         <h1
-          className="mk-display mk-rise mx-auto mt-6 max-w-4xl text-[52px] sm:text-[76px] lg:text-[92px]"
+          className="mk-display mk-rise mx-auto mt-6 max-w-5xl text-[44px] leading-[1.02] sm:text-[68px] lg:text-[84px]"
           style={{ animationDelay: "120ms" }}
         >
-          Tu écoutes.
+          Écoute tes cours et tes réunions.
           <br />
-          <span className="italic mk-iris">ECO fait tes fiches.</span>
+          <span className="italic mk-iris">ECO résume l&apos;essentiel.</span>
         </h1>
 
         <p
           className="mk-rise mx-auto mt-7 max-w-xl text-[17px] leading-relaxed sm:text-[18px]"
           style={{ color: "var(--mk-muted)", animationDelay: "200ms" }}
         >
-          Cours en amphi ou réunion Teams : lance ECO, concentre-toi, et récupère quelques minutes après la fin une fiche claire, les notions définies, un quiz et des flashcards. Tout vient de ce qui a vraiment été dit.
+          Lance ECO au début, concentre-toi, et récupère quelques minutes après la fin un résumé clair et les notions définies. Pour tes cours, un quiz et des flashcards en plus pour réviser. Tout vient de ce qui a vraiment été dit.
         </p>
 
         <div className="mk-rise mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row" style={{ animationDelay: "280ms" }}>
