@@ -13,6 +13,7 @@ import { useUser } from "@clerk/nextjs";
 import EcoView from "@/components/EcoView";
 import ReviewView from "@/components/app/ReviewView";
 import UpsellModal from "@/components/app/UpsellModal";
+import SpotlightTracker from "@/components/marketing/SpotlightTracker";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { Eco } from "@/types";
 import { getEcos } from "@/lib/storage";
@@ -1376,6 +1377,19 @@ export default function DashboardPage() {
   const minutesTotal = billingInfo ? billingInfo.minutesPerMonth + billingInfo.bonusMinutes : 0;
   const lowOnMinutes = !!billingInfo && !isFree && minutesTotal > 0 && (minutesLeft ?? 0) / minutesTotal <= 0.15;
 
+  const todayLabel = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
+  const weekAgo = Date.now() - 7 * 24 * 3600 * 1000;
+  const weekStats = ecos.reduce(
+    (acc, e) => (new Date(e.created_at).getTime() >= weekAgo ? { count: acc.count + 1, seconds: acc.seconds + (e.duration_seconds ?? 0) } : acc),
+    { count: 0, seconds: 0 }
+  );
+  const onboardingSteps = [
+    { title: "Enregistre ton premier cours", hint: "Clique sur le micro au début du cours. La fiche arrive quelques minutes après la fin.", done: ecos.length > 0 },
+    { title: "Range-le dans une matière", hint: "Crée une matière dans la barre latérale, puis déplace ton cours avec le menu « … » de sa carte.", done: ecos.some((e) => !!e.folder) },
+    { title: "Joins le PDF du prof à un cours", hint: "Avant d'enregistrer, « Joindre le PDF du cours » : les notions et le quiz reprennent son vocabulaire.", done: ecos.some((e) => e.has_pdf_context) },
+  ];
+  const onboarding = { steps: onboardingSteps, remaining: onboardingSteps.filter((s) => !s.done).length };
+
   const isPro = userPlan === "pro" || userPlan === "business";
   const view: "home" | "all" | "review" | "detail" | "processing" =
     isProcessing || processingError ? "processing" : selectedEco ? "detail" : viewReview ? "review" : viewAllEcos ? "all" : "home";
@@ -1395,6 +1409,7 @@ export default function DashboardPage() {
 
   return (
     <div className="mk flex h-screen overflow-hidden">
+      <SpotlightTracker />
       <Sidebar
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
@@ -1440,180 +1455,282 @@ export default function DashboardPage() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                className="mx-auto w-full max-w-[760px] px-5 pb-24 pt-10 md:pt-16"
+                className="relative"
               >
-                {paymentBlocked && (
-                  <div className="mb-8 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 text-[14px]" style={{ borderColor: "rgba(252,165,165,0.3)", background: "rgba(252,165,165,0.06)", color: "#FECACA" }}>
-                    <span>Ton dernier paiement a échoué : l&apos;enregistrement est suspendu.</span>
-                    <button type="button" onClick={() => router.push("/settings")} className="app-btn app-btn-primary !h-8 !text-[13px]">
-                      Régler le paiement
-                    </button>
+                {/* Ambiance, reprise de la landing */}
+                <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-[520px] overflow-hidden">
+                  <div className="absolute left-1/2 top-[-260px] -translate-x-1/2">
+                    <div className="mk-float relative h-[560px] w-[560px] opacity-[0.22] blur-[90px]">
+                      <Image src="/logo-eco-v2.png" alt="" fill sizes="560px" className="object-contain" />
+                    </div>
                   </div>
-                )}
-
-                <div className="flex flex-col items-center text-center">
-                  <Image src="/logo-eco-v2.png" alt="" width={44} height={44} className="rounded-full" priority />
-                  <h1 className="mk-display mt-5 text-[40px] sm:text-[52px]">
-                    {greeting}
-                    {firstName ? (
-                      <>
-                        , <span className="italic mk-iris">{firstName}</span>
-                      </>
-                    ) : null}
-                  </h1>
-                  <p className="mt-2 text-[15px]" style={{ color: "var(--mk-muted)" }}>
-                    Qu&apos;est-ce qu&apos;on enregistre aujourd&apos;hui ?
-                  </p>
+                  <div className="mk-grain" />
                 </div>
 
-                <div className="app-card mt-9 p-2">
-                  <div className="flex flex-col sm:flex-row">
+                <div className="relative mx-auto w-full max-w-[760px] px-5 pb-24 pt-10 md:pt-14">
+                  {paymentBlocked && (
+                    <div className="mb-8 flex flex-wrap items-center justify-between gap-3 rounded-xl border px-4 py-3 text-[14px]" style={{ borderColor: "rgba(252,165,165,0.3)", background: "rgba(252,165,165,0.06)", color: "#FECACA" }}>
+                      <span>Ton dernier paiement a échoué : l&apos;enregistrement est suspendu.</span>
+                      <button type="button" onClick={() => router.push("/settings")} className="app-btn app-btn-primary !h-8 !text-[13px]">
+                        Régler le paiement
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="text-center">
+                    <p className="mk-rise text-[12.5px] first-letter:uppercase" style={{ color: "var(--mk-faint)" }}>
+                      {todayLabel}
+                    </p>
+                    <h1 className="mk-display mk-rise mt-3 text-[42px] leading-[1.05] sm:text-[56px]" style={{ animationDelay: "60ms" }}>
+                      {greeting}
+                      {firstName ? (
+                        <>
+                          , <span className="italic mk-iris">{firstName}</span>
+                        </>
+                      ) : null}
+                    </h1>
+                    <p className="mk-rise mt-3 text-[15px]" style={{ color: "var(--mk-muted)", animationDelay: "120ms" }}>
+                      {weekStats.count > 0
+                        ? `${weekStats.count} cours enregistré${weekStats.count > 1 ? "s" : ""} cette semaine. On continue ?`
+                        : "Qu'est-ce qu'on enregistre aujourd'hui ?"}
+                    </p>
+                  </div>
+
+                  {/* Enregistreur */}
+                  <div className="mk-rise mk-spotlight app-card group/rec mt-9 overflow-hidden" style={{ animationDelay: "180ms" }}>
                     <button
                       type="button"
                       onClick={handleStartRecording}
                       disabled={paymentBlocked}
-                      className="group flex flex-1 items-center gap-4 rounded-xl p-4 text-left transition-colors hover:bg-white/[0.03] disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex w-full flex-col items-center px-6 pb-7 pt-9 text-center disabled:cursor-not-allowed disabled:opacity-50"
+                      aria-label="Enregistrer un cours avec le micro"
                     >
-                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-transform group-hover:scale-105" style={{ background: "var(--mk-text)", color: "#0A0A0B" }}>
-                        <Mic className="h-5 w-5" />
+                      <span className="relative flex h-[88px] w-[88px] items-center justify-center">
+                        <span aria-hidden className="rec-ring absolute inset-0 rounded-full" />
+                        <span aria-hidden className="rec-ring absolute inset-0 rounded-full" style={{ animationDelay: "1.2s" }} />
+                        <span
+                          className="relative flex h-[72px] w-[72px] items-center justify-center rounded-full transition-transform duration-300 group-hover/rec:scale-105"
+                          style={{ background: "var(--mk-text)", color: "#0A0A0B", boxShadow: "0 12px 40px -12px rgba(201,184,255,0.55)" }}
+                        >
+                          <Mic className="h-7 w-7" />
+                        </span>
                       </span>
-                      <span className="min-w-0">
-                        <span className="block text-[15px] font-medium" style={{ color: "var(--mk-text)" }}>
-                          Enregistrer un cours
-                        </span>
-                        <span className="block text-[13px]" style={{ color: "var(--mk-muted)" }}>
-                          Avec le micro de ton appareil
-                        </span>
+                      <span className="mt-5 text-[18px] font-medium" style={{ color: "var(--mk-text)" }}>
+                        Enregistrer un cours
+                      </span>
+                      <span className="mt-1 text-[13.5px]" style={{ color: "var(--mk-muted)" }}>
+                        Lance-le au début du cours et garde la page ouverte
+                      </span>
+                      <span aria-hidden className="rec-wave mt-6 flex h-7 items-center gap-[3px]">
+                        {Array.from({ length: 28 }).map((_, i) => (
+                          <span key={i} className="hero-bar w-[3px] rounded-full" style={{ animationDelay: `${(i * 97) % 900}ms`, background: i % 6 === 0 ? "var(--mk-lilac)" : "rgba(237,236,232,0.35)" }} />
+                        ))}
                       </span>
                     </button>
-                    {canCaptureTab && (
-                    <>
-                    <div className="mx-4 h-px sm:mx-0 sm:my-4 sm:h-auto sm:w-px" style={{ background: "var(--mk-line)" }} />
+
+                    <div className="flex flex-col gap-1 border-t p-2 sm:flex-row sm:items-center" style={{ borderColor: "var(--mk-line)" }}>
+                      {canCaptureTab && (
+                        <button
+                          type="button"
+                          onClick={handleStartSystemAudioRecording}
+                          disabled={paymentBlocked}
+                          className="app-btn app-btn-quiet !h-9 justify-start !px-3 !text-[13.5px] disabled:opacity-50"
+                          title="Pour un cours sur Teams, Meet ou Zoom ouvert dans Chrome ou Edge"
+                        >
+                          <MonitorSpeaker className="h-4 w-4" strokeWidth={1.75} /> Son d&apos;un onglet
+                          <span className="hidden text-[12px] md:inline" style={{ color: "var(--mk-faint)" }}>
+                            Teams, Meet, Zoom
+                          </span>
+                        </button>
+                      )}
+                      <input ref={pdfInputRef} type="file" accept=".pdf" className="hidden" onChange={(e) => handlePdfSelect(e.target.files)} />
+                      {pdfFiles.length > 0 ? (
+                        <span className="inline-flex max-w-full items-center gap-2 self-start rounded-lg px-3 py-2 text-[13px] sm:self-auto" style={{ background: "rgba(201,184,255,0.1)", color: "#DDD3FF" }}>
+                          <FileText className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">{pdfFiles[0].name}</span>
+                          <button type="button" onClick={() => removePdf(0)} className="shrink-0 opacity-70 hover:opacity-100" aria-label="Retirer le PDF">
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => pdfInputRef.current?.click()}
+                          disabled={isPdfExtracting}
+                          className="app-btn app-btn-quiet !h-9 justify-start !px-3 !text-[13.5px]"
+                          title="Le support du prof aide ECO à reprendre son vocabulaire dans les notions et le quiz."
+                        >
+                          {isPdfExtracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" strokeWidth={1.75} />}
+                          {isPdfExtracting ? "Lecture du PDF…" : "Joindre le PDF du cours"}
+                        </button>
+                      )}
+                      <span className="px-3 py-1 text-[12.5px] sm:ml-auto sm:py-0" style={{ color: "var(--mk-faint)" }}>
+                        Jusqu&apos;à {MAX_RECORDING_DURATION_MINUTES} min par cours
+                      </span>
+                    </div>
+                  </div>
+                  {pdfError && (
+                    <p className="mt-3 text-center text-[13px]" style={{ color: "#FCA5A5" }}>
+                      {pdfError}
+                    </p>
+                  )}
+
+                  {/* Repères */}
+                  {ecos.length > 0 && (
+                  <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                    <div className="mk-rise app-card px-4 py-3.5" style={{ animationDelay: "240ms" }}>
+                      <p className="text-[12px]" style={{ color: "var(--mk-faint)" }}>
+                        Cette semaine
+                      </p>
+                      <p className="mt-1 text-[15px] tabular-nums" style={{ color: "var(--mk-text)" }}>
+                        {weekStats.count} cours
+                        <span style={{ color: "var(--mk-muted)" }}> · {formatHours(weekStats.seconds)}</span>
+                      </p>
+                    </div>
                     <button
                       type="button"
-                      onClick={handleStartSystemAudioRecording}
-                      disabled={paymentBlocked}
-                      className="group flex flex-1 items-center gap-4 rounded-xl p-4 text-left transition-colors hover:bg-white/[0.03] disabled:cursor-not-allowed disabled:opacity-50"
+                      onClick={() => router.push(isFree || lowOnMinutes ? "/pricing" : "/settings")}
+                      className="mk-rise app-card px-4 py-3.5 text-left transition-colors hover:border-white/[0.14]"
+                      style={{ animationDelay: "280ms" }}
                     >
-                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border transition-transform group-hover:scale-105" style={{ borderColor: "var(--mk-line-strong)", color: "var(--mk-text)" }}>
-                        <MonitorSpeaker className="h-5 w-5" strokeWidth={1.75} />
+                      <p className="text-[12px]" style={{ color: "var(--mk-faint)" }}>
+                        Minutes restantes
+                      </p>
+                      <p className="mt-1 text-[15px] tabular-nums" style={{ color: lowOnMinutes ? "#FCD34D" : "var(--mk-text)" }}>
+                        {minutesLeft === null ? "—" : `${minutesLeft} min`}
+                        {minutesTotal > 0 && <span style={{ color: "var(--mk-muted)" }}> / {minutesTotal}</span>}
+                      </p>
+                      <span className="mt-2 block h-1 overflow-hidden rounded-full" style={{ background: "rgba(255,255,255,0.07)" }}>
+                        <span
+                          className="block h-full rounded-full transition-[width] duration-700"
+                          style={{ width: `${minutesTotal > 0 && minutesLeft !== null ? Math.min(100, (minutesLeft / minutesTotal) * 100) : 0}%`, background: lowOnMinutes ? "#FCD34D" : "var(--mk-lilac)" }}
+                        />
                       </span>
-                      <span className="min-w-0">
-                        <span className="block text-[15px] font-medium" style={{ color: "var(--mk-text)" }}>
-                          Son d&apos;un onglet
+                    </button>
+                    <button
+                      type="button"
+                      onClick={openReview}
+                      className="mk-rise app-card group/rev col-span-2 px-4 py-3.5 text-left transition-colors hover:border-white/[0.14] sm:col-span-1"
+                      style={{ animationDelay: "320ms" }}
+                    >
+                      <p className="flex items-center gap-2 text-[12px]" style={{ color: "var(--mk-faint)" }}>
+                        Un partiel qui approche ?
+                        {!isPro && (
+                          <span className="rounded-full px-1.5 py-px text-[10.5px] font-medium" style={{ background: "rgba(201,184,255,0.12)", color: "var(--mk-lilac)" }}>
+                            Pro
+                          </span>
+                        )}
+                      </p>
+                      <p className="mt-1 flex items-center gap-1.5 text-[15px]" style={{ color: "var(--mk-text)" }}>
+                        Réviser plusieurs cours
+                        <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover/rev:translate-x-0.5" />
+                      </p>
+                    </button>
+                  </div>
+                  )}
+
+                  {/* Premiers pas */}
+                  {!isEcosLoading && onboarding.remaining > 0 && ecos.length < 5 && (
+                    <section className="mt-10" aria-labelledby="start-title">
+                      <div className="flex items-baseline justify-between">
+                        <h2 id="start-title" className="text-[15px] font-medium" style={{ color: "var(--mk-text)" }}>
+                          Bien démarrer
+                        </h2>
+                        <span className="text-[12.5px] tabular-nums" style={{ color: "var(--mk-faint)" }}>
+                          {onboarding.steps.length - onboarding.remaining}/{onboarding.steps.length}
                         </span>
-                        <span className="block text-[13px]" style={{ color: "var(--mk-muted)" }}>
-                          Cours sur Teams, Meet ou Zoom dans Chrome ou Edge
-                        </span>
-                      </span>
-                    </button>
-                    </>
-                    )}
-                  </div>
-
-                  <div className="mt-1 flex flex-wrap items-center justify-between gap-2 border-t px-2 pb-1 pt-2" style={{ borderColor: "var(--mk-line)" }}>
-                    <input ref={pdfInputRef} type="file" accept=".pdf" className="hidden" onChange={(e) => handlePdfSelect(e.target.files)} />
-                    {pdfFiles.length > 0 ? (
-                      <span className="inline-flex max-w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-[13px]" style={{ background: "rgba(201,184,255,0.1)", color: "#DDD3FF" }}>
-                        <FileText className="h-3.5 w-3.5 shrink-0" />
-                        <span className="truncate">{pdfFiles[0].name}</span>
-                        <button type="button" onClick={() => removePdf(0)} className="shrink-0 opacity-70 hover:opacity-100" aria-label="Retirer le PDF">
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => pdfInputRef.current?.click()}
-                        disabled={isPdfExtracting}
-                        className="app-btn app-btn-quiet !h-8 !px-2.5 !text-[13px]"
-                        title="Le support du prof aide ECO à reprendre son vocabulaire dans les notions et le quiz."
-                      >
-                        {isPdfExtracting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Paperclip className="h-3.5 w-3.5" />}
-                        {isPdfExtracting ? "Lecture du PDF…" : "Joindre le PDF du cours"}
-                      </button>
-                    )}
-                    <span className="px-2 text-[12.5px]" style={{ color: "var(--mk-faint)" }}>
-                      Jusqu&apos;à {MAX_RECORDING_DURATION_MINUTES} min · fiche prête en quelques minutes
-                    </span>
-                  </div>
-                </div>
-                {pdfError && (
-                  <p className="mt-3 text-center text-[13px]" style={{ color: "#FCA5A5" }}>
-                    {pdfError}
-                  </p>
-                )}
-
-                {isFree && (
-                  <div className="mt-5 flex flex-col gap-4 rounded-2xl border p-5 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: "rgba(201,184,255,0.25)", background: "radial-gradient(120% 140% at 0% 0%, rgba(201,184,255,0.08), transparent 60%)" }}>
-                    <div>
-                      <p className="text-[14.5px] font-medium" style={{ color: "var(--mk-text)" }}>
-                        {minutesLeft !== null ? `Il te reste ${minutesLeft} min sur l'offre gratuite` : "Tu es sur l'offre gratuite"}
-                      </p>
-                      <p className="mt-1 text-[13.5px]" style={{ color: "var(--mk-muted)" }}>
-                        Avec Student : 800 min par mois, soit environ 13 h de cours, pour 19 € par mois sans engagement.
-                      </p>
-                    </div>
-                    <button type="button" onClick={() => router.push("/pricing")} className="app-btn app-btn-primary shrink-0">
-                      Voir les offres <ArrowRight className="h-4 w-4" />
-                    </button>
-                  </div>
-                )}
-                {lowOnMinutes && (
-                  <div className="mt-5 flex flex-col gap-4 rounded-2xl border p-5 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: "rgba(252,211,77,0.25)", background: "rgba(252,211,77,0.04)" }}>
-                    <p className="text-[14px]" style={{ color: "var(--mk-text)" }}>
-                      Plus que {minutesLeft} min ce mois-ci. Un pack de minutes s&apos;ajoute immédiatement et n&apos;expire jamais.
-                    </p>
-                    <button type="button" onClick={() => router.push("/pricing#packs")} className="app-btn app-btn-ghost shrink-0">
-                      Ajouter des minutes
-                    </button>
-                  </div>
-                )}
-
-                <section className="mt-14" aria-labelledby="recents-title">
-                  <div className="mb-4 flex items-center justify-between">
-                    <h2 id="recents-title" className="text-[15px] font-medium" style={{ color: "var(--mk-text)" }}>
-                      Récents
-                    </h2>
-                    {ecos.length > 0 && (
-                      <button type="button" onClick={openAll} className="app-btn app-btn-quiet !h-8 !px-2.5 !text-[13px]">
-                        Tout voir <ArrowRight className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-                  </div>
-
-                  {isEcosLoading ? (
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      {[0, 1, 2, 3].map((i) => (
-                        <div key={i} className="app-card h-[132px] p-5">
-                          <div className="h-4 w-3/4 rounded eco-skeleton" />
-                          <div className="mt-4 h-3 w-full rounded eco-skeleton" />
-                          <div className="mt-2 h-3 w-2/3 rounded eco-skeleton" />
-                        </div>
-                      ))}
-                    </div>
-                  ) : ecos.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed px-6 py-12 text-center" style={{ borderColor: "var(--mk-line-strong)" }}>
-                      <p className="text-[15px] font-medium" style={{ color: "var(--mk-text)" }}>
-                        Ton premier cours t&apos;attend
-                      </p>
-                      <p className="mx-auto mt-2 max-w-sm text-[13.5px] leading-relaxed" style={{ color: "var(--mk-muted)" }}>
-                        Lance un enregistrement au début de ton prochain cours. Quelques minutes après la fin, ta fiche apparaîtra ici.
-                      </p>
-                      {isFree && (
-                        <p className="mx-auto mt-4 max-w-sm text-[13px] leading-relaxed" style={{ color: "var(--mk-lilac)" }}>
-                          Tes 10 minutes offertes suffisent pour tout tester : fiche, notions, quiz et flashcards. Un extrait de cours ou une vidéo YouTube fait très bien l&apos;affaire.
+                      </div>
+                      <ol className="mt-4 overflow-hidden rounded-2xl border" style={{ borderColor: "var(--mk-line)" }}>
+                        {onboarding.steps.map((step, i) => (
+                          <li key={step.title} className={`flex items-start gap-4 px-5 py-4 ${i > 0 ? "border-t" : ""}`} style={{ borderColor: "var(--mk-line)" }}>
+                            <span
+                              className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[12px] tabular-nums"
+                              style={step.done ? { borderColor: "transparent", background: "var(--mk-lilac)", color: "#0A0A0B" } : { borderColor: "var(--mk-line-strong)", color: "var(--mk-muted)" }}
+                            >
+                              {step.done ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : i + 1}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-[14.5px]" style={{ color: step.done ? "var(--mk-muted)" : "var(--mk-text)", textDecoration: step.done ? "line-through" : undefined }}>
+                                {step.title}
+                              </span>
+                              {!step.done && (
+                                <span className="mt-0.5 block text-[13px] leading-relaxed" style={{ color: "var(--mk-faint)" }}>
+                                  {step.hint}
+                                </span>
+                              )}
+                            </span>
+                          </li>
+                        ))}
+                      </ol>
+                      {isFree && ecos.length === 0 && (
+                        <p className="mt-3 text-[13px] leading-relaxed" style={{ color: "var(--mk-lilac)" }}>
+                          Tes 10 minutes offertes suffisent pour tout tester. Un extrait de cours ou une vidéo de cours sur YouTube fait très bien l&apos;affaire.
                         </p>
                       )}
-                    </div>
-                  ) : (
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      {ecos.slice(0, 6).map((eco) => (
-                        <EcoCard key={eco.id} eco={eco} query="" onOpen={handleEcoClick} onChanged={loadEcos} />
-                      ))}
+                    </section>
+                  )}
+
+                  {isFree && (
+                    <div className="mt-4 flex flex-col gap-4 rounded-2xl border p-5 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: "rgba(201,184,255,0.25)", background: "radial-gradient(120% 140% at 0% 0%, rgba(201,184,255,0.08), transparent 60%)" }}>
+                      <div>
+                        <p className="text-[14.5px] font-medium" style={{ color: "var(--mk-text)" }}>
+                          {minutesLeft !== null ? `Il te reste ${minutesLeft} min sur l'offre gratuite` : "Tu es sur l'offre gratuite"}
+                        </p>
+                        <p className="mt-1 text-[13.5px]" style={{ color: "var(--mk-muted)" }}>
+                          Avec Student : 800 min par mois, soit environ 13 h de cours, pour 19 € par mois sans engagement.
+                        </p>
+                      </div>
+                      <button type="button" onClick={() => router.push("/pricing")} className="app-btn app-btn-primary shrink-0">
+                        Voir les offres <ArrowRight className="h-4 w-4" />
+                      </button>
                     </div>
                   )}
-                </section>
+                  {lowOnMinutes && (
+                    <div className="mt-4 flex flex-col gap-4 rounded-2xl border p-5 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: "rgba(252,211,77,0.25)", background: "rgba(252,211,77,0.04)" }}>
+                      <p className="text-[14px]" style={{ color: "var(--mk-text)" }}>
+                        Plus que {minutesLeft} min ce mois-ci. Un pack de minutes s&apos;ajoute immédiatement et n&apos;expire jamais.
+                      </p>
+                      <button type="button" onClick={() => router.push("/pricing#packs")} className="app-btn app-btn-ghost shrink-0">
+                        Ajouter des minutes
+                      </button>
+                    </div>
+                  )}
+
+                  {(isEcosLoading || ecos.length > 0) && (
+                    <section className="mt-12" aria-labelledby="recents-title">
+                      <div className="mb-4 flex items-center justify-between">
+                        <h2 id="recents-title" className="text-[15px] font-medium" style={{ color: "var(--mk-text)" }}>
+                          Récents
+                        </h2>
+                        {ecos.length > 0 && (
+                          <button type="button" onClick={openAll} className="app-btn app-btn-quiet !h-8 !px-2.5 !text-[13px]">
+                            Tout voir <ArrowRight className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+
+                      {isEcosLoading ? (
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          {[0, 1, 2, 3].map((i) => (
+                            <div key={i} className="app-card h-[132px] p-5">
+                              <div className="h-4 w-3/4 rounded eco-skeleton" />
+                              <div className="mt-4 h-3 w-full rounded eco-skeleton" />
+                              <div className="mt-2 h-3 w-2/3 rounded eco-skeleton" />
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          {ecos.slice(0, 6).map((eco, i) => (
+                            <div key={eco.id} className="hero-in" style={{ animationDelay: `${i * 50}ms` }}>
+                              <EcoCard eco={eco} query="" onOpen={handleEcoClick} onChanged={loadEcos} />
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </section>
+                  )}
+                </div>
               </motion.div>
             )}
 
@@ -1811,9 +1928,9 @@ export default function DashboardPage() {
         open={upsell === "pro"}
         onOpenChange={(o) => !o && setUpsell(null)}
         title="Une fonction de l'offre Pro"
-        description="Pro est fait pour les semestres chargés : plus de minutes, et des outils pour réviser une matière entière."
+        description="Pro est fait pour les semestres chargés : plus de minutes, et des outils pour réviser tout un partiel."
         points={[
-          "Réviser par matière : un quiz qui mélange tous tes cours, et toutes les notions en flashcards",
+          "Réviser plusieurs cours d'un coup : tu choisis les cours, ECO mélange leurs questions et réunit leurs flashcards",
           "Export PDF propre de chaque fiche, prête à imprimer ou à partager",
           "2 000 min par mois, soit environ 33 h de cours",
         ]}
@@ -1906,6 +2023,13 @@ function summarySnippet(eco: Eco): string {
   }
 }
 
+function formatHours(seconds: number) {
+  if (seconds < 3600) return `${Math.round(seconds / 60)} min`;
+  const h = Math.floor(seconds / 3600);
+  const m = Math.round((seconds % 3600) / 60);
+  return m ? `${h} h ${String(m).padStart(2, "0")}` : `${h} h`;
+}
+
 function formatEcoMeta(eco: Eco) {
   const date = new Date(eco.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
   const minutes = eco.duration_seconds ? Math.max(1, Math.round(eco.duration_seconds / 60)) : null;
@@ -1946,7 +2070,7 @@ function EcoCard({ eco, query, onOpen, onChanged }: EcoTileProps) {
       <button
         type="button"
         onClick={() => onOpen(eco)}
-        className="app-card flex h-full w-full flex-col p-5 text-left transition-colors hover:border-white/[0.14] hover:bg-[#141416]"
+        className="mk-spotlight app-card flex h-full w-full flex-col p-5 text-left transition-[border-color,background-color,transform] duration-200 hover:-translate-y-0.5 hover:border-white/[0.14] hover:bg-[#141416]"
       >
         <span className="line-clamp-2 pr-8 text-[15px] font-medium leading-snug" style={{ color: "var(--mk-text)" }}>
           <Highlight text={eco.title} query={query} />

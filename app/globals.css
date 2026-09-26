@@ -271,9 +271,29 @@ body {
   animation: hero-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Accueil de l'app : bouton d'enregistrement */
+@keyframes rec-ring {
+  0% { transform: scale(0.82); opacity: 0.55; }
+  100% { transform: scale(1.5); opacity: 0; }
+}
+.rec-ring {
+  border: 1px solid rgba(201, 184, 255, 0.55);
+  animation: rec-ring 2.4s cubic-bezier(0.22, 1, 0.36, 1) infinite;
+}
+.rec-wave .hero-bar {
+  animation-play-state: paused;
+  opacity: 0.45;
+  transition: opacity 0.3s ease;
+}
+.group\/rec:hover .rec-wave .hero-bar,
+.group\/rec:focus-within .rec-wave .hero-bar {
+  animation-play-state: running;
+  opacity: 1;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mk-reveal { opacity: 1; transform: none; transition: none; }
-  .mk-rise, .mk-float, .mk-featured, .mk-marquee, .hero-bar, .hero-in, .hero-phase { animation: none; }
+  .mk-rise, .mk-float, .mk-featured, .mk-marquee, .hero-bar, .hero-in, .hero-phase, .rec-ring { animation: none; }
 }
 
 /* ============================================================

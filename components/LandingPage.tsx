@@ -277,8 +277,8 @@ const FEATURES = [
   },
   {
     icon: BrainCircuit,
-    title: "Réviser une matière entière",
-    body: "Tes cours sont rangés par matière et cherchables. Avec Pro, un quiz mélange les questions de toute une matière et toutes ses notions passent en flashcards.",
+    title: "Réviser plusieurs cours d'un coup",
+    body: "Tes cours sont rangés par matière et cherchables. Avec Pro, tu coches les cours de ton partiel : ECO mélange leurs questions dans un quiz et réunit leurs notions en flashcards.",
   },
   {
     icon: Smartphone,
@@ -462,7 +462,7 @@ const TEASER_PLANS = [
     label: "Pour les partiels",
     cta: "Choisir Pro",
     href: "/pricing",
-    points: ["2 000 min par mois, ≈ 33 h de cours", "Réviser une matière entière", "Export PDF, support prioritaire"],
+    points: ["2 000 min par mois, ≈ 33 h de cours", "Réviser plusieurs cours d'un coup", "Export PDF, support prioritaire"],
   },
 ];
 

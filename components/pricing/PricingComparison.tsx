@@ -31,8 +31,8 @@ const GROUPS: Array<{ title: string; rows: Array<{ label: string; cells: [Cell, 
   {
     title: "Révisions",
     rows: [
-      { label: "Réviser par matière : quiz mélangé de tous tes cours", cells: [false, false, true, true] },
-      { label: "Toutes les notions d'une matière en flashcards", cells: [false, false, true, true] },
+      { label: "Quiz qui mélange les cours de ton choix", cells: [false, false, true, true] },
+      { label: "Flashcards de plusieurs cours réunies", cells: [false, false, true, true] },
       { label: "Export PDF des fiches", cells: [false, false, true, true] },
     ],
   },
@@ -60,7 +60,7 @@ export default function PricingComparison() {
           Comparer les offres
         </p>
         <p className="mt-1 text-[14px]" style={{ color: "var(--mk-muted)" }}>
-          L&apos;essentiel est inclus partout, même en gratuit. Pro ajoute les outils pour réviser une matière entière.
+          L&apos;essentiel est inclus partout, même en gratuit. Pro ajoute les outils pour réviser plusieurs cours d&apos;un coup.
         </p>
       </div>
       <div className="mt-6 overflow-x-auto">

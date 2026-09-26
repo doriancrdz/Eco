@@ -5,7 +5,7 @@ const faqs = [
   {
     question: "Quelle différence entre Student et Pro ?",
     answer:
-      "Student te donne 800 min par mois (environ 13 h de cours) et tout ce qu'il faut pour chaque cours : fiche, notions, quiz, flashcards et export Anki. Pro monte à 2 000 min (environ 33 h) et ajoute les outils de révision : un quiz qui mélange les questions de tous les cours d'une matière, toutes ses notions en flashcards, l'export PDF des fiches et un support prioritaire.",
+      "Student te donne 800 min par mois (environ 13 h de cours) et tout ce qu'il faut pour chaque cours : fiche, notions, quiz, flashcards et export Anki. Pro monte à 2 000 min (environ 33 h) et ajoute les outils de révision : tu choisis les cours de ton partiel et ECO mélange leurs questions dans un quiz et réunit leurs flashcards, l'export PDF des fiches et un support prioritaire.",
   },
   {
     question: "Comment tester gratuitement ?",

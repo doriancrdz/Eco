@@ -228,7 +228,7 @@ export default function PricingPage() {
               </span>
             </h1>
             <p className="mk-rise mx-auto mt-6 max-w-xl text-[17px] leading-relaxed" style={{ color: "var(--mk-muted)", animationDelay: "160ms" }}>
-              10 minutes offertes chaque mois pour tout tester, sans carte bancaire. Student couvre un semestre classique. Pro ajoute de quoi réviser une matière entière avant les partiels.
+              10 minutes offertes chaque mois pour tout tester, sans carte bancaire. Student couvre un semestre classique. Pro ajoute de quoi réviser plusieurs cours d&apos;un coup avant les partiels.
             </p>
           </div>
           <div className="mk-rise relative mt-10" style={{ animationDelay: "220ms" }}>

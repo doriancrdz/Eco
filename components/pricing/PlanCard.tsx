@@ -60,8 +60,8 @@ function getFeatures(planKey: string, plan: PlanConfig): { lead?: string; items:
         lead: "Tout Student, plus :",
         items: [
           `${formatMinutes(plan.minutesPerMonth)} min par mois, soit ≈ ${hours(plan.minutesPerMonth)} h de cours`,
-          "Réviser par matière : un quiz qui mélange tous tes cours",
-          "Toutes les notions d'une matière en flashcards",
+          "Un quiz qui mélange les cours de ton choix",
+          "Les flashcards de plusieurs cours réunies",
           "Export PDF de chaque fiche",
           "Support prioritaire",
         ],
