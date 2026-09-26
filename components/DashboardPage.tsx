@@ -14,6 +14,7 @@ import EcoView from "@/components/EcoView";
 import ReviewView from "@/components/app/ReviewView";
 import UpsellModal from "@/components/app/UpsellModal";
 import SpotlightTracker from "@/components/marketing/SpotlightTracker";
+import OnboardingModal, { type Segment } from "@/components/app/OnboardingModal";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { Eco } from "@/types";
 import { getEcos } from "@/lib/storage";
@@ -93,6 +94,7 @@ export default function DashboardPage() {
   const [viewAllEcos, setViewAllEcos] = useState(false);
   const [viewReview, setViewReview] = useState(false);
   const [upsell, setUpsell] = useState<null | "pro" | "quota">(null);
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
   const [recordingElapsedSeconds, setRecordingElapsedSeconds] = useState(0);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [processingDurationMinutes, setProcessingDurationMinutes] = useState(0);
@@ -437,6 +439,33 @@ export default function DashboardPage() {
     }, 100);
     return () => clearInterval(interval);
   }, [isRecording, isPaused]);
+
+  // Garde l'écran allumé pendant l'enregistrement : sur téléphone, la mise en veille peut couper le micro.
+  useEffect(() => {
+    if (!isRecording || typeof navigator === "undefined" || !("wakeLock" in navigator)) return;
+    let lock: WakeLockSentinel | null = null;
+    let active = true;
+    const acquire = async () => {
+      try {
+        const next = await navigator.wakeLock.request("screen");
+        if (active) lock = next;
+        else next.release().catch(() => {});
+      } catch {
+        // Refusé (batterie faible, navigateur) : l'enregistrement continue quand même.
+      }
+    };
+    acquire();
+    // Le verrou saute quand la page passe en arrière-plan : on le reprend au retour.
+    const onVisible = () => {
+      if (document.visibilityState === "visible") acquire();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      active = false;
+      document.removeEventListener("visibilitychange", onVisible);
+      lock?.release().catch(() => {});
+    };
+  }, [isRecording]);
 
   // Limite de l'enregistrement en cours : 60 min, ou les minutes restantes si c'est moins.
   // Sans ça, un cours trop long était refusé en entier à l'arrêt.
@@ -1377,6 +1406,26 @@ export default function DashboardPage() {
   const minutesTotal = billingInfo ? billingInfo.minutesPerMonth + billingInfo.bonusMinutes : 0;
   const lowOnMinutes = !!billingInfo && !isFree && minutesTotal > 0 && (minutesLeft ?? 0) / minutesTotal <= 0.15;
 
+  // Profil déclaré à la première connexion (stocké dans Clerk : aucune migration de base).
+  const meta = (user?.unsafeMetadata ?? {}) as { segment?: Segment; onboardingSkipped?: boolean };
+  const segment = meta.segment;
+  const showOnboarding = !!isLoaded && !!isSignedIn && !!user && !segment && !meta.onboardingSkipped && !onboardingDismissed && !isFocusMode && !isProcessing;
+  const isWork = segment === "salarie";
+  const isHybrid = segment === "alternant";
+  const recordNoun = isWork ? "une réunion" : isHybrid ? "un cours ou une réunion" : "un cours";
+  const saveSegment = async (value: Segment) => {
+    try {
+      await user?.update({ unsafeMetadata: { ...(user?.unsafeMetadata ?? {}), segment: value, segmentAt: new Date().toISOString() } });
+    } catch {
+      toast.error("Impossible d'enregistrer ta réponse, on te la reposera plus tard.");
+    }
+    setOnboardingDismissed(true);
+  };
+  const skipOnboarding = () => {
+    setOnboardingDismissed(true);
+    user?.update({ unsafeMetadata: { ...(user?.unsafeMetadata ?? {}), onboardingSkipped: true } }).catch(() => {});
+  };
+
   const todayLabel = new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
   const weekAgo = Date.now() - 7 * 24 * 3600 * 1000;
   const weekStats = ecos.reduce(
@@ -1384,7 +1433,11 @@ export default function DashboardPage() {
     { count: 0, seconds: 0 }
   );
   const onboardingSteps = [
-    { title: "Enregistre ton premier cours", hint: "Clique sur le micro au début du cours. La fiche arrive quelques minutes après la fin.", done: ecos.length > 0 },
+    {
+      title: isWork ? "Enregistre ta première réunion" : "Enregistre ton premier cours",
+      hint: isWork ? "Clique sur le micro au début de la réunion. La fiche arrive quelques minutes après la fin." : "Clique sur le micro au début du cours. La fiche arrive quelques minutes après la fin.",
+      done: ecos.length > 0,
+    },
     { title: "Range-le dans une matière", hint: "Crée une matière dans la barre latérale, puis déplace ton cours avec le menu « … » de sa carte.", done: ecos.some((e) => !!e.folder) },
     { title: "Joins le PDF du prof à un cours", hint: "Avant d'enregistrer, « Joindre le PDF du cours » : les notions et le quiz reprennent son vocabulaire.", done: ecos.some((e) => e.has_pdf_context) },
   ];
@@ -1503,7 +1556,7 @@ export default function DashboardPage() {
                       onClick={handleStartRecording}
                       disabled={paymentBlocked}
                       className="flex w-full flex-col items-center px-6 pb-7 pt-9 text-center disabled:cursor-not-allowed disabled:opacity-50"
-                      aria-label="Enregistrer un cours avec le micro"
+                      aria-label={`Enregistrer ${recordNoun} avec le micro`}
                     >
                       <span className="relative flex h-[88px] w-[88px] items-center justify-center">
                         <span aria-hidden className="rec-ring absolute inset-0 rounded-full" />
@@ -1516,10 +1569,10 @@ export default function DashboardPage() {
                         </span>
                       </span>
                       <span className="mt-5 text-[18px] font-medium" style={{ color: "var(--mk-text)" }}>
-                        Enregistrer un cours
+                        Enregistrer {recordNoun}
                       </span>
                       <span className="mt-1 text-[13.5px]" style={{ color: "var(--mk-muted)" }}>
-                        Lance-le au début du cours et garde la page ouverte
+                        {isWork ? "Lance-le au début de la réunion et garde la page ouverte" : "Lance-le au début du cours et garde la page ouverte"}
                       </span>
                       <span aria-hidden className="rec-wave mt-6 flex h-7 items-center gap-[3px]">
                         {Array.from({ length: 28 }).map((_, i) => (
@@ -1535,11 +1588,13 @@ export default function DashboardPage() {
                           onClick={handleStartSystemAudioRecording}
                           disabled={paymentBlocked}
                           className="app-btn app-btn-quiet !h-9 justify-start !px-3 !text-[13.5px] disabled:opacity-50"
-                          title="Pour un cours sur Teams, Meet ou Zoom ouvert dans Chrome ou Edge"
+                          title="Pour un cours ou une réunion sur Teams, Meet ou Zoom ouvert dans Chrome ou Edge"
+                          style={isWork || isHybrid ? { color: "var(--mk-lilac)" } : undefined}
                         >
-                          <MonitorSpeaker className="h-4 w-4" strokeWidth={1.75} /> Son d&apos;un onglet
+                          <MonitorSpeaker className="h-4 w-4" strokeWidth={1.75} />
+                          {isWork || isHybrid ? "Réunion Teams, Meet ou Zoom" : "Son d'un onglet"}
                           <span className="hidden text-[12px] md:inline" style={{ color: "var(--mk-faint)" }}>
-                            Teams, Meet, Zoom
+                            {isWork || isHybrid ? "son de l'onglet" : "Teams, Meet, Zoom"}
                           </span>
                         </button>
                       )}
@@ -1924,6 +1979,7 @@ export default function DashboardPage() {
         />
       )}
 
+      <OnboardingModal open={showOnboarding} onSelect={saveSegment} onSkip={skipOnboarding} />
       <UpsellModal
         open={upsell === "pro"}
         onOpenChange={(o) => !o && setUpsell(null)}

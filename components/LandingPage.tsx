@@ -22,23 +22,23 @@ function Hero() {
 
       <div className="relative mx-auto max-w-6xl px-5 text-center sm:px-8">
         <p className="mk-rise mk-eyebrow" style={{ animationDelay: "40ms" }}>
-          Pour les étudiants en école et à la fac
+          Pour les étudiants et les alternants
         </p>
 
         <h1
           className="mk-display mk-rise mx-auto mt-6 max-w-4xl text-[52px] sm:text-[76px] lg:text-[92px]"
           style={{ animationDelay: "120ms" }}
         >
-          Écoute ton cours.
+          Tes cours et tes réunions.
           <br />
-          <span className="italic mk-iris">ECO écrit tes fiches.</span>
+          <span className="italic mk-iris">ECO prend les notes.</span>
         </h1>
 
         <p
           className="mk-rise mx-auto mt-7 max-w-xl text-[17px] leading-relaxed sm:text-[18px]"
           style={{ color: "var(--mk-muted)", animationDelay: "200ms" }}
         >
-          Arrête de recopier pendant deux heures. Lance ECO au début du cours : quelques minutes après la fin, tu as une fiche claire, les notions définies, un quiz et des flashcards. Tout vient de ce que ton prof a vraiment dit.
+          Arrête de recopier pendant deux heures. Lance ECO au début d&apos;un cours ou d&apos;une réunion Teams : quelques minutes après la fin, tu as une fiche claire, les notions définies, un quiz et des flashcards. Tout vient de ce qui a vraiment été dit.
         </p>
 
         <div className="mk-rise mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row" style={{ animationDelay: "280ms" }}>
@@ -196,6 +196,87 @@ function Product() {
         <Reveal delay={120} className="mx-auto mt-14 max-w-4xl">
           <ProductPreview />
         </Reveal>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Alternants ────────────────────────────────────────────────────── */
+
+const WEEK = [
+  { day: "Lun", place: "École", item: "Amphi de finance", out: "Fiche, quiz" },
+  { day: "Mar", place: "École", item: "TD de droit du travail", out: "Flashcards" },
+  { day: "Mer", place: "Entreprise", item: "Réunion d'équipe sur Teams", out: "Résumé, notions" },
+  { day: "Jeu", place: "Entreprise", item: "Point client", out: "Résumé" },
+  { day: "Ven", place: "Entreprise", item: "Formation interne", out: "Notions, quiz" },
+] as const;
+
+function Alternants() {
+  return (
+    <section id="alternants" className="scroll-mt-20 px-5 pt-32 sm:px-8 sm:pt-40">
+      <div className="mx-auto max-w-6xl">
+        <div className="grid gap-12 lg:grid-cols-[1fr_1.25fr] lg:items-center lg:gap-16">
+          <Reveal>
+            <p className="mk-eyebrow">En alternance</p>
+            <h2 className="mk-display mt-5 text-[42px] sm:text-[56px]">
+              De l&apos;amphi
+              <br />
+              <span className="italic" style={{ color: "var(--mk-muted)" }}>
+                à la réunion d&apos;équipe.
+              </span>
+            </h2>
+            <p className="mt-6 max-w-md text-[16px] leading-relaxed" style={{ color: "var(--mk-muted)" }}>
+              Deux jours à l&apos;école, trois en entreprise, et deux fois plus de choses à retenir. ECO enregistre tes cours comme tes réunions, sur place avec le micro ou sur Teams, Meet et Zoom avec le son de l&apos;onglet. Tout est rangé au même endroit, avec un seul abonnement.
+            </p>
+            <ul className="mt-7 space-y-3">
+              {[
+                "Une matière « Entreprise » à côté de tes matières de cours",
+                "Le jargon de ton métier défini dans les notions",
+                "Tu arrives à la réunion suivante en sachant ce qui a été décidé",
+              ].map((t) => (
+                <li key={t} className="flex items-start gap-3 text-[15px]" style={{ color: "#C9C6C0" }}>
+                  <Check className="mt-1 h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--mk-lilac)" }} />
+                  {t}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-6 text-[13px]" style={{ color: "var(--mk-faint)" }}>
+              En entreprise comme en cours, demande l&apos;accord des participants avant d&apos;enregistrer.
+            </p>
+          </Reveal>
+
+          <Reveal delay={100}>
+            <ol className="mk-card overflow-hidden" aria-label="Exemple de semaine d'un alternant">
+              {WEEK.map((d, i) => {
+                const work = d.place === "Entreprise";
+                return (
+                  <li key={d.day} className={`mk-spotlight grid grid-cols-[52px_1fr] items-center gap-4 px-5 py-4 sm:grid-cols-[56px_1fr_auto] sm:px-7 ${i > 0 ? "border-t" : ""}`} style={{ borderColor: "var(--mk-line)" }}>
+                    <span className="mk-display text-[26px] leading-none" style={{ color: "var(--mk-text)" }}>
+                      {d.day}
+                    </span>
+                    <span className="min-w-0">
+                      <span
+                        className="inline-block rounded-full px-2 py-0.5 text-[11px] font-medium uppercase tracking-[0.06em]"
+                        style={work ? { background: "rgba(166,236,245,0.1)", color: "var(--mk-ice)" } : { background: "rgba(201,184,255,0.12)", color: "var(--mk-lilac)" }}
+                      >
+                        {d.place}
+                      </span>
+                      <span className="mt-1 block truncate text-[15px]" style={{ color: "var(--mk-text)" }}>
+                        {d.item}
+                      </span>
+                      <span className="block text-[13px] sm:hidden" style={{ color: "var(--mk-faint)" }}>
+                        {d.out}
+                      </span>
+                    </span>
+                    <span className="hidden text-[13px] sm:block" style={{ color: "var(--mk-muted)" }}>
+                      {d.out}
+                    </span>
+                  </li>
+                );
+              })}
+            </ol>
+          </Reveal>
+        </div>
       </div>
     </section>
   );
@@ -547,6 +628,10 @@ const FAQ_ITEMS = [
     a: `${MAX_RECORDING_DURATION_MINUTES} minutes. À ${MAX_RECORDING_DURATION_MINUTES} minutes, l'enregistrement s'arrête tout seul et ta fiche se prépare : pour un cours plus long, relance un second enregistrement pour la suite.`,
   },
   {
+    q: "Ça marche aussi pour une réunion en entreprise ?",
+    a: "Oui. Sur place, avec le micro de ton ordinateur ou de ton téléphone. En visio, sur ordinateur avec Chrome ou Edge, avec « Son d'un onglet » sur Teams, Meet ou Zoom ouvert dans le navigateur. Tu obtiens un résumé structuré, les notions et termes techniques définis, et la transcription complète. Demande l'accord des participants et respecte les règles de ton entreprise sur les informations confidentielles.",
+  },
+  {
     q: "Ai-je le droit d'enregistrer mon cours ?",
     a: "Demande toujours l'accord de ton enseignant avant d'enregistrer : les règles varient d'un établissement à l'autre. ECO est conçu pour un usage personnel de révision. Tes fiches restent privées, et l'audio est supprimé de nos serveurs dès que la transcription est terminée.",
   },
@@ -661,6 +746,7 @@ export default function LandingPage() {
         <ProofStrip />
         <BeforeAfter />
         <Product />
+        <Alternants />
         <HowItWorks />
         <Features />
         <WhyNotChatbot />

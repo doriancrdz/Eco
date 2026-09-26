@@ -26,16 +26,16 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "ECO — Transforme tes cours en résumés, quiz et fiches automatiques",
-  description: "Enregistre tes cours, ECO génère automatiquement un résumé structuré, des points clés, un quiz et une transcription grâce à l'IA. Essaie gratuitement.",
+  title: "ECO — Tes cours et tes réunions en fiches, quiz et flashcards",
+  description: "Enregistre tes cours et tes réunions : ECO génère un résumé structuré, les notions définies, un quiz, des flashcards et la transcription complète. Essaie gratuitement.",
   keywords: ["enregistrer cours", "résumé automatique", "quiz IA", "transcription cours", "application étudiants", "prise de notes IA", "fiches de révision automatiques"],
   robots: {
     index: true,
     follow: true,
   },
   openGraph: {
-    title: "ECO — Transforme tes cours en résumés, quiz et fiches automatiques",
-    description: "Enregistre tes cours, ECO génère automatiquement un résumé structuré, des points clés, un quiz et une transcription grâce à l'IA. Essaie gratuitement.",
+    title: "ECO — Tes cours et tes réunions en fiches, quiz et flashcards",
+    description: "Enregistre tes cours et tes réunions : ECO génère un résumé structuré, les notions définies, un quiz, des flashcards et la transcription complète. Essaie gratuitement.",
     url: "/",
     siteName: "ECO",
     type: "website",
@@ -51,8 +51,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "ECO — Transforme tes cours en résumés, quiz et fiches automatiques",
-    description: "Enregistre tes cours, ECO génère automatiquement un résumé structuré, des points clés, un quiz et une transcription grâce à l'IA.",
+    title: "ECO — Tes cours et tes réunions en fiches, quiz et flashcards",
+    description: "Enregistre tes cours et tes réunions : ECO génère un résumé structuré, les notions définies, un quiz, des flashcards et la transcription complète.",
     images: ["/og.png"],
   },
 };

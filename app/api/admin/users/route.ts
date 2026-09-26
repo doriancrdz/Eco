@@ -47,6 +47,7 @@ export async function GET() {
           const email = cu.primaryEmailAddress?.emailAddress ?? "";
           const firstName = cu.firstName ?? null;
           const lastName = cu.lastName ?? null;
+          const segment = (cu.unsafeMetadata?.segment as string | undefined) ?? null;
 
           const minutesIncluded = Math.floor(u.quotaSecondsTotal / 60);
           const minutesUsed = Math.ceil(u.quotaSecondsUsed / 60);
@@ -58,6 +59,7 @@ export async function GET() {
             email,
             firstName,
             lastName,
+            segment,
             plan: u.plan,
             minutesIncluded,
             minutesUsed,

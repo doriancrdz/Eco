@@ -8,12 +8,20 @@ import { Search, Crown, Users, Gift } from 'lucide-react';
 // EMAIL ADMIN - À REMPLACER PAR TON EMAIL
 const ADMIN_EMAIL = 'cdorian654@yahoo.com';
 
+const SEGMENT_LABEL: Record<string, string> = {
+  etudiant: 'Étudiant',
+  alternant: 'Alternant',
+  salarie: 'Salarié / indépendant',
+  autre: 'Autre',
+};
+
 interface User {
   id: string;
   clerkUserId: string;
   email: string;
   firstName: string | null;
   lastName: string | null;
+  segment?: string | null;
   plan: string;
   minutesIncluded: number;
   minutesUsed: number;
@@ -153,6 +161,22 @@ export default function AdminPage() {
           </div>
         </div>
 
+        {/* Profils déclarés à la première connexion */}
+        <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
+          <p className="text-sm text-gray-600 mb-3">Profils déclarés (question d&apos;accueil)</p>
+          <div className="flex flex-wrap gap-2">
+            {[...Object.keys(SEGMENT_LABEL), 'none'].map((key) => {
+              const count = users.filter((u) => (u.segment ?? 'none') === key).length;
+              return (
+                <span key={key} className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-800">
+                  {key === 'none' ? 'Pas encore répondu' : SEGMENT_LABEL[key]}
+                  <strong>{count}</strong>
+                </span>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Search */}
         <div className="mb-6">
           <div className="relative">
@@ -177,6 +201,9 @@ export default function AdminPage() {
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
                   Email
+                </th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
+                  Profil
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
                   Plan
@@ -204,6 +231,9 @@ export default function AdminPage() {
                   </td>
                   <td className="px-6 py-4">
                     <p className="text-gray-600">{u.email}</p>
+                  </td>
+                  <td className="px-6 py-4">
+                    <p className="text-gray-600">{u.segment ? SEGMENT_LABEL[u.segment] ?? u.segment : '—'}</p>
                   </td>
                   <td className="px-6 py-4">
                     <span

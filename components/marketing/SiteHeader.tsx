@@ -9,6 +9,7 @@ import SpotlightTracker from "./SpotlightTracker";
 
 const LINKS = [
   { label: "Produit", href: "/#produit" },
+  { label: "Alternants", href: "/#alternants" },
   { label: "Comment ça marche", href: "/#comment" },
   { label: "Tarifs", href: "/pricing" },
   { label: "FAQ", href: "/#faq" },
