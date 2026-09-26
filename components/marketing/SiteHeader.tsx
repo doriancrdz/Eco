@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@clerk/nextjs";
 import { Menu, X } from "lucide-react";
 import BrandMark from "./BrandMark";
+import SpotlightTracker from "./SpotlightTracker";
 
 const LINKS = [
   { label: "Produit", href: "/#produit" },
@@ -34,6 +35,8 @@ export default function SiteHeader() {
   }, [open]);
 
   return (
+    <>
+    <SpotlightTracker />
     <header
       className="fixed inset-x-0 top-0 z-50 transition-[background-color,border-color,backdrop-filter] duration-300"
       style={{
@@ -128,5 +131,6 @@ export default function SiteHeader() {
         </div>
       )}
     </header>
+    </>
   );
 }

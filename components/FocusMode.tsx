@@ -27,6 +27,9 @@ interface FocusModeProps {
   onConfirmStop?: () => void;
   onCancelStop?: () => void;
   recordingElapsedSeconds?: number;
+  /** Arrêt automatique (60 min, ou minutes restantes si c'est moins). */
+  limitSeconds?: number;
+  isQuotaLimited?: boolean;
   analyserRef?: React.RefObject<AnalyserNode | null>;
 }
 
@@ -44,6 +47,8 @@ export default function FocusMode({
   onConfirmStop,
   onCancelStop,
   recordingElapsedSeconds = 0,
+  limitSeconds,
+  isQuotaLimited = false,
   analyserRef,
 }: FocusModeProps) {
   const [isMobile, setIsMobile] = useState(false);
@@ -120,6 +125,13 @@ export default function FocusMode({
                   {isPaused ? "En pause" : "Enregistrement en cours · garde cette page ouverte"}
                 </span>
               </div>
+              {limitSeconds !== undefined && Number.isFinite(limitSeconds) && (
+                <p className="mt-2 text-[12.5px]" style={{ color: limitSeconds - recordingElapsedSeconds <= 120 ? "#FCD34D" : "#7C7A76" }}>
+                  {isQuotaLimited
+                    ? `Il te reste ${Math.floor(limitSeconds / 60)} min : arrêt automatique à ${formatTimer(limitSeconds)}, ta fiche sera quand même créée.`
+                    : `Arrêt automatique à ${formatTimer(limitSeconds)}, ta fiche sera créée.`}
+                </p>
+              )}
             </div>
             <div className="flex items-center justify-center gap-3 lg:gap-4 mb-6 lg:mb-8">
               {onTogglePause && (

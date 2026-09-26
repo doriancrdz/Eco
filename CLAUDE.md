@@ -70,7 +70,12 @@ Règles :
 |------|------|---------|
 | Student | 19€/mois | 800 min |
 | Pro | 49€/mois | 2000 min |
-| Business | 149€/mois | 6000 min |
+| Business | Affiché « Sur devis » (contact mail) — le prix Stripe 149€/mois reste actif pour les abonnés existants | 6000 min |
+
+Différences de plans (affichées sur /pricing, `components/pricing/PlanCard.tsx` + `PricingComparison.tsx`) :
+- Tous les plans, même gratuit : fiche, notions, quiz, flashcards, export Anki, PDF du prof, son d'onglet, matières.
+- Pro/Business uniquement (vérifié côté client via `userPlan`) : « Réviser » par matière (`components/app/ReviewView.tsx`), export PDF des fiches (`lib/exportFiche.ts`, 100 % navigateur), support prioritaire.
+- Enregistrement : arrêt automatique à 60 min OU aux minutes restantes (DashboardPage) — un enregistrement n'est plus jamais perdu pour dépassement.
 
 Packs one-time : +800, +2000, +6000 min  
 Codes promo : `EDHEC26` et `ESCP26` → -25%  

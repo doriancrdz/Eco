@@ -3,7 +3,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Eco, QuizQuestion } from "@/types";
 import { motion } from "framer-motion";
-import { RefreshCw, Copy, Check } from "lucide-react";
+import { RefreshCw, Copy, Check, FileDown } from "lucide-react";
+import { exportFicheToPdf } from "@/lib/exportFiche";
 import { generateSummary } from "@/lib/transcription";
 import type { Summary } from "@/lib/transcription";
 import Tabs from "@/components/ui/Tabs";
@@ -167,9 +168,12 @@ interface EcoViewProps {
   eco: Eco | null;
   onRefresh?: () => void;
   onBack?: () => void;
+  /** Export PDF réservé à Pro ; sinon on affiche l'offre. */
+  isPro?: boolean;
+  onUpsell?: () => void;
 }
 
-export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
+export default function EcoView({ eco, onRefresh, onBack, isPro = false, onUpsell }: EcoViewProps) {
   const [showRetryHint, setShowRetryHint] = useState(false);
   const [quizAnswers, setQuizAnswers] = useState<Record<number, string>>({});
   const [revealedOpen, setRevealedOpen] = useState<Set<number>>(new Set());
@@ -717,6 +721,22 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
     toast.success("Fiche copiée");
   };
 
+  const exportPdf = () => {
+    if (!summary?.resume) return;
+    if (!isPro) {
+      onUpsell?.();
+      return;
+    }
+    const ok = exportFicheToPdf({
+      title: eco.title,
+      dateLabel,
+      resume: summary.resume,
+      pointsCles: summary.pointsCles ?? [],
+      notions: notionList,
+    });
+    if (!ok) toast.error("Autorise les fenêtres pop-up pour exporter la fiche.");
+  };
+
   /* ── Render ────────────────────────────────────────────────── */
   return (
     <div className="mx-auto w-full max-w-[860px] px-5 pb-24 pt-8 md:pt-12">
@@ -738,6 +758,14 @@ export default function EcoView({ eco, onRefresh, onBack }: EcoViewProps) {
           <div className="mt-5 flex flex-wrap gap-2">
             <button type="button" onClick={copySummary} className="app-btn app-btn-ghost !h-8 !rounded-lg !px-3 !text-[13px]">
               <Copy className="h-3.5 w-3.5" /> Copier la fiche
+            </button>
+            <button type="button" onClick={exportPdf} className="app-btn app-btn-ghost !h-8 !rounded-lg !px-3 !text-[13px]">
+              <FileDown className="h-3.5 w-3.5" /> Exporter en PDF
+              {!isPro && (
+                <span className="ml-0.5 rounded-full px-1.5 py-px text-[10.5px] font-medium" style={{ background: "rgba(201,184,255,0.12)", color: "var(--mk-lilac)" }}>
+                  Pro
+                </span>
+              )}
             </button>
           </div>
         )}

@@ -11,6 +11,8 @@ import { ArrowLeft, ArrowRight, Check, FileText, Loader2, Mic, MonitorSpeaker, P
 import EcoCardMenu from "@/components/EcoCardMenu";
 import { useUser } from "@clerk/nextjs";
 import EcoView from "@/components/EcoView";
+import ReviewView from "@/components/app/ReviewView";
+import UpsellModal from "@/components/app/UpsellModal";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { Eco } from "@/types";
 import { getEcos } from "@/lib/storage";
@@ -41,6 +43,9 @@ const FocusMode = dynamic(() => import("@/components/FocusMode"), {
 });
 
 
+
+/** Marge de dépassement acceptée quand l'arrêt automatique est retardé par le navigateur. */
+const AUTO_STOP_TOLERANCE_MS = 2 * 60 * 1000;
 
 export type CurrentView = "home" | "recording" | "generating" | "detail" | "pricing" | "list";
 
@@ -85,6 +90,8 @@ export default function DashboardPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [viewAllEcos, setViewAllEcos] = useState(false);
+  const [viewReview, setViewReview] = useState(false);
+  const [upsell, setUpsell] = useState<null | "pro" | "quota">(null);
   const [recordingElapsedSeconds, setRecordingElapsedSeconds] = useState(0);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [processingDurationMinutes, setProcessingDurationMinutes] = useState(0);
@@ -235,6 +242,9 @@ export default function DashboardPage() {
   const totalPausedMsRef = useRef(0);
   const pausedAtRef = useRef<number | null>(null);
   const elapsedAtStopRef = useRef(0);
+  const recordingLimitSecondsRef = useRef(MAX_RECORDING_DURATION_MINUTES * 60);
+  const autoStoppedRef = useRef(false);
+  const confirmStopRef = useRef<() => void>(() => {});
   const mimeTypeRef = useRef<string>("audio/webm");
 
   // Cache pour éviter les refetch inutiles
@@ -426,6 +436,25 @@ export default function DashboardPage() {
     }, 100);
     return () => clearInterval(interval);
   }, [isRecording, isPaused]);
+
+  // Limite de l'enregistrement en cours : 60 min, ou les minutes restantes si c'est moins.
+  // Sans ça, un cours trop long était refusé en entier à l'arrêt.
+  const quotaLimitSeconds = billingInfo ? Math.max(0, Math.floor(billingInfo.availableMinutes) * 60) : Infinity;
+  const recordingLimitSeconds = Math.min(MAX_RECORDING_DURATION_MINUTES * 60, quotaLimitSeconds);
+  useEffect(() => {
+    if (!isRecording) {
+      autoStoppedRef.current = false;
+      return;
+    }
+    if (autoStoppedRef.current || recordingElapsedSeconds < recordingLimitSecondsRef.current) return;
+    autoStoppedRef.current = true;
+    toast(
+      recordingLimitSecondsRef.current < MAX_RECORDING_DURATION_MINUTES * 60
+        ? "Tes minutes sont épuisées : l'enregistrement s'arrête et ta fiche se prépare."
+        : `Limite de ${MAX_RECORDING_DURATION_MINUTES} min atteinte : l'enregistrement s'arrête et ta fiche se prépare.`
+    );
+    confirmStopRef.current();
+  }, [isRecording, recordingElapsedSeconds]);
 
   useEffect(() => {
     if (!isSignedIn) {
@@ -766,7 +795,8 @@ export default function DashboardPage() {
         console.log("[MediaRecorder] start(1000) appelé, state:", mediaRecorder.state);
       }
 
-      // Initialiser le timer
+      // Initialiser le timer (la limite est figée au démarrage)
+      recordingLimitSecondsRef.current = recordingLimitSeconds;
       startTimeRef.current = Date.now();
       totalPausedMsRef.current = 0;
       pausedAtRef.current = null;
@@ -829,7 +859,15 @@ export default function DashboardPage() {
       return;
     }
     
-    const durationMs = endTime - startTime - totalPausedMsRef.current;
+    // Si on arrête pendant une pause, la pause en cours ne compte pas non plus.
+    const pausedNowMs = pausedAtRef.current !== null ? endTime - pausedAtRef.current : 0;
+    let durationMs = endTime - startTime - totalPausedMsRef.current - pausedNowMs;
+    // L'arrêt automatique peut dépasser de quelques secondes si le navigateur ralentit
+    // les timers (onglet en arrière-plan) : on plafonne au lieu de perdre le cours.
+    const limitMs = recordingLimitSecondsRef.current * 1000;
+    if (durationMs > limitMs && durationMs - limitMs <= AUTO_STOP_TOLERANCE_MS) {
+      durationMs = limitMs;
+    }
     const durationSeconds = durationMs / 1000; // PRÉCIS à 2 décimales
     const durationMinutes = durationSeconds / 60; // PRÉCIS
     
@@ -851,7 +889,7 @@ export default function DashboardPage() {
       return;
     }
     
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
       // Stocker la durée exacte pour processRecording
       elapsedAtStopRef.current = durationSeconds;
       mediaRecorderRef.current.stop();
@@ -884,6 +922,7 @@ export default function DashboardPage() {
     setIsFocusMode(false);
     setShowStopConfirm(false);
   };
+  confirmStopRef.current = confirmStop;
 
   const processRecording = async (audioBlob: Blob, durationSeconds: number, mimeType: string = "audio/webm", sourceType: "mic" | "screen" = "mic") => {
     const traceId = createPipelineTraceId();
@@ -1222,6 +1261,10 @@ export default function DashboardPage() {
       setShowAuthModal(true);
       return;
     }
+    if (billingInfo && Math.floor(billingInfo.availableMinutes) < 1) {
+      setUpsell("quota");
+      return;
+    }
     if (!isRecording) {
       startRecording("mic");
     }
@@ -1232,6 +1275,10 @@ export default function DashboardPage() {
     if (!isLoaded) return;
     if (!isSignedIn) {
       setShowAuthModal(true);
+      return;
+    }
+    if (billingInfo && Math.floor(billingInfo.availableMinutes) < 1) {
+      setUpsell("quota");
       return;
     }
     if (!isRecording) {
@@ -1252,6 +1299,7 @@ export default function DashboardPage() {
     setSelectedEco(null);
     setSelectedFolder(null);
     setViewAllEcos(false);
+    setViewReview(false);
     setIsFocusMode(false);
     setIsRecording(false);
     setIsPaused(false);
@@ -1280,6 +1328,7 @@ export default function DashboardPage() {
     setSelectedEco(eco.id);
     setSelectedFolder(eco.folder && eco.folder !== "" ? eco.folder : null);
     setViewAllEcos(false);
+    setViewReview(false);
   };
 
   const currentView: CurrentView = isFocusMode
@@ -1308,6 +1357,8 @@ export default function DashboardPage() {
           onConfirmStop={confirmStop}
           onCancelStop={() => setShowStopConfirm(false)}
           recordingElapsedSeconds={recordingElapsedSeconds}
+          limitSeconds={isRecording ? recordingLimitSecondsRef.current : undefined}
+          isQuotaLimited={isRecording && recordingLimitSecondsRef.current < MAX_RECORDING_DURATION_MINUTES * 60}
           analyserRef={analyserRef}
         />
       </div>
@@ -1325,13 +1376,21 @@ export default function DashboardPage() {
   const minutesTotal = billingInfo ? billingInfo.minutesPerMonth + billingInfo.bonusMinutes : 0;
   const lowOnMinutes = !!billingInfo && !isFree && minutesTotal > 0 && (minutesLeft ?? 0) / minutesTotal <= 0.15;
 
-  const view: "home" | "all" | "detail" | "processing" =
-    isProcessing || processingError ? "processing" : selectedEco ? "detail" : viewAllEcos ? "all" : "home";
+  const isPro = userPlan === "pro" || userPlan === "business";
+  const view: "home" | "all" | "review" | "detail" | "processing" =
+    isProcessing || processingError ? "processing" : selectedEco ? "detail" : viewReview ? "review" : viewAllEcos ? "all" : "home";
 
   const openAll = () => {
     setSelectedEco(null);
     setSelectedFolder(null);
+    setViewReview(false);
     setViewAllEcos(true);
+  };
+  const openReview = () => {
+    setSelectedEco(null);
+    setSelectedFolder(null);
+    setViewAllEcos(false);
+    setViewReview(true);
   };
 
   return (
@@ -1349,6 +1408,8 @@ export default function DashboardPage() {
           handleStartRecording();
         }}
         onViewAll={openAll}
+        onReview={openReview}
+        isPro={isPro}
         onNavigatePricing={() => router.push("/pricing")}
         onManageSubscription={() => router.push("/settings")}
         onNavigateSettings={() => router.push("/settings/preferences")}
@@ -1364,8 +1425,8 @@ export default function DashboardPage() {
         <Header
           sidebarOpen={sidebarOpen}
           onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
-          title={view === "detail" ? currentEco?.title : view === "all" ? "Tous mes cours" : undefined}
-          onBack={view === "detail" || view === "all" ? () => goHome("back") : undefined}
+          title={view === "detail" ? currentEco?.title : view === "all" ? "Tous mes cours" : view === "review" ? "Réviser" : undefined}
+          onBack={view === "detail" || view === "all" || view === "review" ? () => goHome("back") : undefined}
           showUpgrade={isFree}
           onUpgrade={() => router.push("/pricing")}
         />
@@ -1539,6 +1600,11 @@ export default function DashboardPage() {
                       <p className="mx-auto mt-2 max-w-sm text-[13.5px] leading-relaxed" style={{ color: "var(--mk-muted)" }}>
                         Lance un enregistrement au début de ton prochain cours. Quelques minutes après la fin, ta fiche apparaîtra ici.
                       </p>
+                      {isFree && (
+                        <p className="mx-auto mt-4 max-w-sm text-[13px] leading-relaxed" style={{ color: "var(--mk-lilac)" }}>
+                          Tes 10 minutes offertes suffisent pour tout tester : fiche, notions, quiz et flashcards. Un extrait de cours ou une vidéo YouTube fait très bien l&apos;affaire.
+                        </p>
+                      )}
                     </div>
                   ) : (
                     <div className="grid gap-3 sm:grid-cols-2">
@@ -1602,6 +1668,18 @@ export default function DashboardPage() {
               </motion.div>
             )}
 
+            {view === "review" && (
+              <motion.div
+                key="review"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+              >
+                <ReviewView isPro={isPro} onUpsell={() => setUpsell("pro")} />
+              </motion.div>
+            )}
+
             {view === "detail" && (
               <motion.div key="detail" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}>
                 <EcoView
@@ -1620,6 +1698,8 @@ export default function DashboardPage() {
                       : null)
                   }
                   onBack={resetToHome}
+                  isPro={isPro}
+                  onUpsell={() => setUpsell("pro")}
                   onRefresh={() => {
                     if (!selectedEco) return;
                     currentEcoCacheRef.current = null;
@@ -1721,9 +1801,42 @@ export default function DashboardPage() {
           onConfirmStop={confirmStop}
           onCancelStop={() => setShowStopConfirm(false)}
           recordingElapsedSeconds={recordingElapsedSeconds}
+          limitSeconds={isRecording ? recordingLimitSecondsRef.current : undefined}
+          isQuotaLimited={isRecording && recordingLimitSecondsRef.current < MAX_RECORDING_DURATION_MINUTES * 60}
           analyserRef={analyserRef}
         />
       )}
+
+      <UpsellModal
+        open={upsell === "pro"}
+        onOpenChange={(o) => !o && setUpsell(null)}
+        title="Une fonction de l'offre Pro"
+        description="Pro est fait pour les semestres chargés : plus de minutes, et des outils pour réviser une matière entière."
+        points={[
+          "Réviser par matière : un quiz qui mélange tous tes cours, et toutes les notions en flashcards",
+          "Export PDF propre de chaque fiche, prête à imprimer ou à partager",
+          "2 000 min par mois, soit environ 33 h de cours",
+        ]}
+        ctaLabel="Voir l'offre Pro"
+        onCta={() => router.push("/pricing")}
+      />
+      <UpsellModal
+        open={upsell === "quota"}
+        onOpenChange={(o) => !o && setUpsell(null)}
+        title={isFree ? "Tes minutes offertes sont utilisées" : "Tu n'as plus de minutes ce mois-ci"}
+        description={
+          isFree
+            ? "Tes 10 minutes gratuites reviennent le mois prochain. Pour enregistrer tes cours dès maintenant :"
+            : "Tes minutes reviennent à ton prochain renouvellement. Pour continuer dès maintenant :"
+        }
+        points={
+          isFree
+            ? ["Student : 800 min par mois, soit environ 13 h de cours", "19 € par mois, sans engagement, résiliable à tout moment", "Toutes tes fiches déjà créées restent accessibles"]
+            : ["Un pack de minutes s'ajoute immédiatement", "Les minutes d'un pack n'expirent jamais", "À partir de 15 € les 800 min"]
+        }
+        ctaLabel={isFree ? "Passer à Student" : "Ajouter des minutes"}
+        onCta={() => router.push(isFree ? "/pricing" : "/pricing#packs")}
+      />
 
       <AnimatePresence>
         {showAuthModal && (

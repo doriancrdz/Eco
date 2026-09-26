@@ -1,19 +1,18 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, AudioLines, FileText, FolderClosed, Layers, Lock, MonitorSpeaker, Plus, Smartphone, Star } from "lucide-react";
+import { ArrowRight, AudioLines, BrainCircuit, Check, FileText, Layers, Lock, MonitorSpeaker, Plus, Smartphone, Star, X } from "lucide-react";
 import SiteHeader from "@/components/marketing/SiteHeader";
 import SiteFooter from "@/components/marketing/SiteFooter";
 import Reveal from "@/components/marketing/Reveal";
 import ProductPreview from "@/components/marketing/ProductPreview";
+import HeroDemo from "@/components/marketing/HeroDemo";
 import { PLANS, MAX_RECORDING_DURATION_MINUTES } from "@/lib/billingConfig";
-
-const DEMO_VIDEO = "https://pub-0270797b38de40338d1b41adf0ef1dca.r2.dev/Demo%20Eco.mp4";
 
 /* ─── Hero ───────────────────────────────────────────────────────────── */
 
 function Hero() {
   return (
-    <section className="relative overflow-hidden pt-32 sm:pt-40">
+    <section className="relative overflow-hidden pt-28 sm:pt-36">
       <div aria-hidden className="pointer-events-none absolute left-1/2 top-[-140px] -translate-x-1/2">
         <div className="mk-float relative h-[560px] w-[560px] opacity-[0.28] blur-[90px] sm:h-[720px] sm:w-[720px]">
           <Image src="/logo-eco-v2.png" alt="" fill sizes="720px" className="object-contain" priority />
@@ -23,7 +22,7 @@ function Hero() {
 
       <div className="relative mx-auto max-w-6xl px-5 text-center sm:px-8">
         <p className="mk-rise mk-eyebrow" style={{ animationDelay: "40ms" }}>
-          Pour les étudiants · Cours en français
+          Pour les étudiants en école et à la fac
         </p>
 
         <h1
@@ -39,7 +38,7 @@ function Hero() {
           className="mk-rise mx-auto mt-7 max-w-xl text-[17px] leading-relaxed sm:text-[18px]"
           style={{ color: "var(--mk-muted)", animationDelay: "200ms" }}
         >
-          Enregistre l&apos;amphi depuis ton navigateur. Quelques minutes après, tu as un résumé structuré, les notions définies, un quiz et des flashcards. Tout vient de ce que ton prof a vraiment dit.
+          Arrête de recopier pendant deux heures. Lance ECO au début du cours : quelques minutes après la fin, tu as une fiche claire, les notions définies, un quiz et des flashcards. Tout vient de ce que ton prof a vraiment dit.
         </p>
 
         <div className="mk-rise mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row" style={{ animationDelay: "280ms" }}>
@@ -47,41 +46,42 @@ function Hero() {
             Commencer gratuitement <ArrowRight className="h-4 w-4" />
           </Link>
           <Link href="#produit" className="mk-btn mk-btn-ghost w-full sm:w-auto">
-            Voir un exemple de fiche
+            Voir une vraie fiche
           </Link>
         </div>
         <p className="mk-rise mt-4 text-[13px]" style={{ color: "var(--mk-faint)", animationDelay: "320ms" }}>
-          10 minutes offertes · Sans carte bancaire · Rien à installer
+          10 minutes offertes chaque mois · Sans carte bancaire · Rien à installer
         </p>
 
-        <div className="mk-rise relative mx-auto mt-16 max-w-5xl sm:mt-20" style={{ animationDelay: "380ms" }}>
-          <div
-            className="overflow-hidden rounded-[18px] border p-1.5 shadow-[0_50px_140px_-30px_rgba(0,0,0,0.95)] sm:rounded-[22px] sm:p-2"
-            style={{ borderColor: "var(--mk-line-strong)", background: "rgba(255,255,255,0.03)" }}
-          >
-            <video
-              src={DEMO_VIDEO}
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="metadata"
-              aria-label="Démonstration d'ECO : enregistrement d'un cours puis affichage du résumé"
-              className="block aspect-video w-full rounded-[13px] bg-[var(--mk-surface)] object-contain sm:rounded-[16px]"
-            />
-          </div>
+        <div className="mk-rise relative mx-auto mt-12 max-w-5xl sm:mt-14" style={{ animationDelay: "380ms" }}>
+          <HeroDemo />
         </div>
       </div>
     </section>
   );
 }
 
-/* ─── Social proof strip ────────────────────────────────────────────── */
+/* ─── Social proof + disciplines ───────────────────────────────────── */
+
+const DISCIPLINES = [
+  "Macroéconomie",
+  "Droit des contrats",
+  "Finance d'entreprise",
+  "Marketing",
+  "Comptabilité",
+  "Statistiques",
+  "Histoire contemporaine",
+  "Biologie cellulaire",
+  "Droit constitutionnel",
+  "Microéconomie",
+  "Philosophie politique",
+  "Contrôle de gestion",
+];
 
 function ProofStrip() {
   return (
-    <section className="mx-auto max-w-6xl px-5 pt-20 sm:px-8">
-      <Reveal className="flex flex-col items-center gap-3 text-center sm:flex-row sm:justify-center sm:gap-6">
+    <section className="pt-20">
+      <Reveal className="mx-auto flex max-w-6xl flex-col items-center gap-3 px-5 text-center sm:flex-row sm:justify-center sm:gap-6 sm:px-8">
         <p className="text-[14px]" style={{ color: "var(--mk-muted)" }}>
           Utilisé par des étudiants de
         </p>
@@ -93,6 +93,83 @@ function ProofStrip() {
           ))}
         </div>
       </Reveal>
+      <div className="mk-marquee-mask mt-12 overflow-hidden" aria-hidden>
+        <div className="mk-marquee">
+          {[0, 1].map((k) => (
+            <div key={k} className="flex shrink-0 items-center">
+              {DISCIPLINES.map((d) => (
+                <span key={`${k}-${d}`} className="mk-display flex items-center whitespace-nowrap px-6 text-[26px] italic" style={{ color: "#4A4946" }}>
+                  {d}
+                  <span className="ml-12 inline-block h-1 w-1 rounded-full" style={{ background: "#3A3937" }} />
+                </span>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Before / after (le quotidien de l'étudiant) ───────────────────── */
+
+const BEFORE = [
+  "Tu recopies au lieu d'écouter, et tu décroches dès que le prof accélère.",
+  "Trois semaines plus tard, tes notes sont illisibles ou à moitié vides.",
+  "Tu passes tes soirées à tout remettre au propre.",
+  "La veille du partiel, tu relis tout sans savoir ce que tu as retenu.",
+];
+
+const AFTER = [
+  "Tu écoutes, tu comprends, tu poses tes questions.",
+  "Rien n'est perdu : le cours est transcrit en entier.",
+  "Une fiche claire par cours, rangée dans la bonne matière.",
+  "Tu révises avec un quiz et des flashcards : tu sais ce qui coince.",
+];
+
+function BeforeAfter() {
+  return (
+    <section className="px-5 pt-32 sm:px-8 sm:pt-40">
+      <div className="mx-auto max-w-6xl">
+        <Reveal className="mx-auto max-w-2xl text-center">
+          <p className="mk-eyebrow">Le problème</p>
+          <h2 className="mk-display mt-5 text-[42px] sm:text-[56px]">
+            Tu ne peux pas écouter
+            <br />
+            <span className="italic" style={{ color: "var(--mk-muted)" }}>
+              et tout noter à la fois.
+            </span>
+          </h2>
+        </Reveal>
+        <div className="mt-14 grid gap-5 md:grid-cols-2">
+          <Reveal className="mk-card p-7 sm:p-9">
+            <p className="text-[13px] font-medium uppercase tracking-[0.08em]" style={{ color: "var(--mk-faint)" }}>
+              Sans ECO
+            </p>
+            <ul className="mt-6 space-y-4">
+              {BEFORE.map((t) => (
+                <li key={t} className="flex items-start gap-3 text-[15px] leading-relaxed" style={{ color: "var(--mk-muted)" }}>
+                  <X className="mt-1 h-4 w-4 shrink-0" strokeWidth={1.75} style={{ color: "#6E6C68" }} />
+                  {t}
+                </li>
+              ))}
+            </ul>
+          </Reveal>
+          <Reveal delay={100} className="mk-card mk-spotlight p-7 sm:p-9" >
+            <p className="text-[13px] font-medium uppercase tracking-[0.08em]" style={{ color: "var(--mk-lilac)" }}>
+              Avec ECO
+            </p>
+            <ul className="mt-6 space-y-4">
+              {AFTER.map((t) => (
+                <li key={t} className="flex items-start gap-3 text-[15px] leading-relaxed" style={{ color: "var(--mk-text)" }}>
+                  <Check className="mt-1 h-4 w-4 shrink-0" strokeWidth={2} style={{ color: "var(--mk-lilac)" }} />
+                  {t}
+                </li>
+              ))}
+            </ul>
+          </Reveal>
+        </div>
+      </div>
     </section>
   );
 }
@@ -199,9 +276,9 @@ const FEATURES = [
     body: "Quiz QCM et questions ouvertes avec réponse modèle, flashcards, export vers Anki.",
   },
   {
-    icon: FolderClosed,
-    title: "Rangé par matière",
-    body: "Un dossier par UE et une recherche dans tous tes cours. Tu retrouves une notion en deux secondes.",
+    icon: BrainCircuit,
+    title: "Réviser une matière entière",
+    body: "Tes cours sont rangés par matière et cherchables. Avec Pro, un quiz mélange les questions de toute une matière et toutes ses notions passent en flashcards.",
   },
   {
     icon: Smartphone,
@@ -230,7 +307,7 @@ function Features() {
           style={{ borderColor: "var(--mk-line)", background: "var(--mk-line)", gap: "1px" }}
         >
           {FEATURES.map((f, i) => (
-            <Reveal key={f.title} delay={(i % 3) * 80} className="bg-[var(--mk-bg)] p-7 sm:p-8">
+            <Reveal key={f.title} delay={(i % 3) * 80} className="mk-spotlight bg-[var(--mk-bg)] p-7 sm:p-8">
               <div className="h-full">
                 <f.icon className="h-5 w-5" strokeWidth={1.6} style={{ color: "var(--mk-lilac)" }} />
                 <h3 className="mt-6 text-[16px] font-medium" style={{ color: "var(--mk-text)" }}>
@@ -243,6 +320,57 @@ function Features() {
             </Reveal>
           ))}
         </div>
+      </div>
+    </section>
+  );
+}
+
+/* ─── Pourquoi pas ChatGPT ? ────────────────────────────────────────── */
+
+const COMPARE = [
+  ["Enregistrer le cours avec une autre appli, puis trouver comment le transcrire", "Un clic au début du cours, depuis le navigateur"],
+  ["Coller le texte, réécrire ton prompt, recommencer à chaque cours", "La même fiche structurée à chaque fois : intro, contenu, conclusion"],
+  ["Des réponses éparpillées dans des dizaines de conversations", "Tous tes cours rangés par matière et cherchables"],
+  ["Demander un quiz, puis des flashcards, puis les recopier dans Anki", "Quiz, flashcards et export Anki prêts avec la fiche"],
+] as const;
+
+function WhyNotChatbot() {
+  return (
+    <section className="px-5 pt-32 sm:px-8 sm:pt-40">
+      <div className="mx-auto max-w-6xl">
+        <Reveal className="max-w-2xl">
+          <p className="mk-eyebrow">La question qu&apos;on nous pose</p>
+          <h2 className="mk-display mt-5 text-[42px] sm:text-[56px]">
+            Pourquoi pas
+            <br />
+            <span className="italic" style={{ color: "var(--mk-muted)" }}>
+              juste ChatGPT ?
+            </span>
+          </h2>
+          <p className="mt-6 max-w-lg text-[16px] leading-relaxed" style={{ color: "var(--mk-muted)" }}>
+            Un chatbot peut résumer un texte. Mais entre ton amphi et une fiche prête à réviser, c&apos;est toi qui fais tout le travail. ECO le fait à ta place, cours après cours.
+          </p>
+        </Reveal>
+        <Reveal delay={80} className="mk-card mt-12 overflow-hidden">
+          <div className="grid grid-cols-2 border-b text-[12.5px] font-medium uppercase tracking-[0.08em]" style={{ borderColor: "var(--mk-line)" }}>
+            <p className="px-5 py-4 sm:px-8" style={{ color: "var(--mk-faint)" }}>
+              Avec un chatbot
+            </p>
+            <p className="border-l px-5 py-4 sm:px-8" style={{ color: "var(--mk-lilac)", borderColor: "var(--mk-line)" }}>
+              Avec ECO
+            </p>
+          </div>
+          {COMPARE.map(([bad, good], i) => (
+            <div key={good} className={`grid grid-cols-2 text-[14px] leading-relaxed sm:text-[15px] ${i > 0 ? "border-t" : ""}`} style={{ borderColor: "var(--mk-line)" }}>
+              <p className="px-5 py-5 sm:px-8" style={{ color: "var(--mk-muted)" }}>
+                {bad}
+              </p>
+              <p className="border-l px-5 py-5 sm:px-8" style={{ color: "var(--mk-text)", borderColor: "var(--mk-line)", background: "rgba(201,184,255,0.025)" }}>
+                {good}
+              </p>
+            </div>
+          ))}
+        </Reveal>
       </div>
     </section>
   );
@@ -314,15 +442,29 @@ function Testimonials() {
 /* ─── Pricing teaser ────────────────────────────────────────────────── */
 
 const TEASER_PLANS = [
-  { key: "free" as const, label: "Pour essayer", cta: "Commencer", href: "/sign-up" },
-  { key: "student" as const, label: "Le plus choisi", cta: "Choisir Student", href: "/pricing", highlight: true },
-  { key: "pro" as const, label: "Pour les gros semestres", cta: "Choisir Pro", href: "/pricing" },
+  {
+    key: "free" as const,
+    label: "Pour essayer",
+    cta: "Commencer gratuitement",
+    href: "/sign-up",
+    points: ["10 min offertes chaque mois", "Fiche, notions, quiz et flashcards", "Sans carte bancaire"],
+  },
+  {
+    key: "student" as const,
+    label: "Recommandé",
+    cta: "Choisir Student",
+    href: "/pricing",
+    highlight: true,
+    points: ["800 min par mois, ≈ 13 h de cours", "Toutes les fiches de ton semestre", "Export Anki, matières, recherche"],
+  },
+  {
+    key: "pro" as const,
+    label: "Pour les partiels",
+    cta: "Choisir Pro",
+    href: "/pricing",
+    points: ["2 000 min par mois, ≈ 33 h de cours", "Réviser une matière entière", "Export PDF, support prioritaire"],
+  },
 ];
-
-function formatHours(minutes: number) {
-  if (minutes < 60) return "de quoi tester sur un cours";
-  return `≈ ${Math.round(minutes / 60)} h de cours / mois`;
-}
 
 function PricingTeaser() {
   return (
@@ -332,57 +474,56 @@ function PricingTeaser() {
           <p className="mk-eyebrow">Tarifs</p>
           <h2 className="mk-display mt-5 text-[42px] sm:text-[56px]">Moins cher qu&apos;un cours particulier.</h2>
           <p className="mt-5 text-[16px]" style={{ color: "var(--mk-muted)" }}>
-            Commence gratuitement. Passe à un abonnement quand ECO fait partie de ta routine.
+            Teste gratuitement sur un vrai cours. Passe à Student quand ECO fait partie de ta routine.
           </p>
         </Reveal>
         <div className="mt-14 grid gap-5 md:grid-cols-3">
           {TEASER_PLANS.map((p, i) => {
             const plan = PLANS[p.key];
             return (
-              <Reveal
-                key={p.key}
-                delay={i * 90}
-                className="mk-card relative flex flex-col p-7"
-              >
-                {p.highlight && (
-                  <div
-                    aria-hidden
-                    className="pointer-events-none absolute inset-0 rounded-[20px]"
-                    style={{ boxShadow: "inset 0 0 0 1px rgba(201,184,255,0.45)", background: "radial-gradient(120% 60% at 50% 0%, rgba(201,184,255,0.08), transparent 70%)" }}
-                  />
-                )}
-                <div className="relative flex items-center justify-between">
-                  <p className="text-[15px] font-medium" style={{ color: "var(--mk-text)" }}>
-                    {plan.name}
-                  </p>
-                  <p className="text-[12px]" style={{ color: p.highlight ? "var(--mk-lilac)" : "var(--mk-faint)" }}>
-                    {p.label}
-                  </p>
-                </div>
-                <p className="relative mt-6 flex items-baseline gap-1.5">
-                  <span className="mk-display text-[52px]" style={{ color: "var(--mk-text)" }}>
-                    {plan.priceMonthly}€
-                  </span>
-                  <span className="text-[14px]" style={{ color: "var(--mk-muted)" }}>
-                    {plan.priceMonthly === 0 ? "" : "/ mois"}
-                  </span>
-                </p>
-                <p className="relative mt-1 text-[14px]" style={{ color: "var(--mk-muted)" }}>
-                  {plan.minutesPerMonth} minutes · {formatHours(plan.minutesPerMonth)}
-                </p>
-                <Link
-                  href={p.href}
-                  className={`mk-btn relative mt-8 w-full ${p.highlight ? "mk-btn-primary" : "mk-btn-ghost"}`}
+              <Reveal key={p.key} delay={i * 90} className="h-full">
+                <div
+                  className={`mk-spotlight flex h-full flex-col rounded-[20px] border p-7 ${p.highlight ? "mk-featured" : ""}`}
+                  style={p.highlight ? undefined : { background: "var(--mk-surface)", borderColor: "var(--mk-line)" }}
                 >
-                  {p.cta}
-                </Link>
+                  <div className="flex items-center justify-between">
+                    <p className="text-[15px] font-medium" style={{ color: "var(--mk-text)" }}>
+                      {plan.name}
+                    </p>
+                    <p className="text-[12px]" style={{ color: p.highlight ? "var(--mk-lilac)" : "var(--mk-faint)" }}>
+                      {p.label}
+                    </p>
+                  </div>
+                  <p className="mt-6 flex items-baseline gap-1.5">
+                    <span className="mk-display text-[52px]" style={{ color: "var(--mk-text)" }}>
+                      {plan.priceMonthly}€
+                    </span>
+                    <span className="text-[14px]" style={{ color: "var(--mk-muted)" }}>
+                      {plan.priceMonthly === 0 ? "" : "/ mois"}
+                    </span>
+                  </p>
+                  <ul className="mt-5 flex-1 space-y-2.5">
+                    {p.points.map((pt) => (
+                      <li key={pt} className="flex items-start gap-2.5 text-[14px]" style={{ color: "#C9C6C0" }}>
+                        <Check className="mt-0.5 h-4 w-4 shrink-0" strokeWidth={2} style={{ color: p.highlight || p.key === "pro" ? "var(--mk-lilac)" : "var(--mk-muted)" }} />
+                        {pt}
+                      </li>
+                    ))}
+                  </ul>
+                  <Link href={p.href} className={`mk-btn mt-8 w-full ${p.highlight ? "mk-btn-primary" : "mk-btn-ghost"}`}>
+                    {p.cta}
+                  </Link>
+                </div>
               </Reveal>
             );
           })}
         </div>
-        <Reveal className="mt-8 text-center">
-          <Link href="/pricing" className="inline-flex items-center gap-1.5 text-[14px] hover:text-[var(--mk-text)]" style={{ color: "var(--mk-muted)" }}>
-            Voir tous les plans, l&apos;annuel et les packs de minutes <ArrowRight className="h-3.5 w-3.5" />
+        <Reveal className="mt-8 flex flex-col items-center gap-2 text-center text-[14px] sm:flex-row sm:justify-center sm:gap-6">
+          <Link href="/pricing" className="inline-flex items-center gap-1.5 hover:text-[var(--mk-text)]" style={{ color: "var(--mk-muted)" }}>
+            Comparer les offres, l&apos;annuel et les packs <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+          <Link href="/pricing" className="inline-flex items-center gap-1.5 hover:text-[var(--mk-text)]" style={{ color: "var(--mk-muted)" }}>
+            École ou asso : offre Business sur devis <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </Reveal>
       </div>
@@ -403,7 +544,15 @@ const FAQ_ITEMS = [
   },
   {
     q: "Quelle est la durée maximum d'un enregistrement ?",
-    a: `Jusqu'à ${MAX_RECORDING_DURATION_MINUTES} minutes par enregistrement. Pour un cours plus long, lance un second enregistrement à la pause.`,
+    a: `${MAX_RECORDING_DURATION_MINUTES} minutes. À ${MAX_RECORDING_DURATION_MINUTES} minutes, l'enregistrement s'arrête tout seul et ta fiche se prépare : pour un cours plus long, relance un second enregistrement pour la suite.`,
+  },
+  {
+    q: "Ai-je le droit d'enregistrer mon cours ?",
+    a: "Demande toujours l'accord de ton enseignant avant d'enregistrer : les règles varient d'un établissement à l'autre. ECO est conçu pour un usage personnel de révision. Tes fiches restent privées, et l'audio est supprimé de nos serveurs dès que la transcription est terminée.",
+  },
+  {
+    q: "Comment tester gratuitement ?",
+    a: "Crée un compte : tu as 10 minutes offertes chaque mois, sans carte bancaire. C'est assez pour enregistrer un extrait de cours, ou une vidéo de cours sur YouTube, et voir la fiche, les notions, le quiz et les flashcards.",
   },
   {
     q: "Ça marche sur téléphone ?",
@@ -510,9 +659,11 @@ export default function LandingPage() {
       <main>
         <Hero />
         <ProofStrip />
+        <BeforeAfter />
         <Product />
         <HowItWorks />
         <Features />
+        <WhyNotChatbot />
         <Testimonials />
         <PricingTeaser />
         <FAQ />

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import { CreditCard, Gem, Home, Library, LogOut, MoreHorizontal, PanelLeftClose, Plus, Settings, X } from "lucide-react";
+import { BrainCircuit, CreditCard, Gem, Home, Library, LogOut, MoreHorizontal, PanelLeftClose, Plus, Settings, X } from "lucide-react";
 import { useClerk } from "@clerk/nextjs";
 import FolderList from "./FolderList";
 import EcoHistory from "./EcoHistory";
@@ -22,13 +22,15 @@ export interface SidebarBilling {
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
-  activeView: "home" | "all" | "detail" | "other";
+  activeView: "home" | "all" | "review" | "detail" | "other";
   selectedFolder: string | null;
   selectedEco: string | null;
   onSelectEco: (eco: Eco) => void;
   onNavigateHome: () => void;
   onNewRecording: () => void;
   onViewAll: () => void;
+  onReview: () => void;
+  isPro: boolean;
   onNavigatePricing: () => void;
   onManageSubscription: () => void;
   onNavigateSettings: () => void;
@@ -47,16 +49,23 @@ function NavRow({
   label,
   active,
   onClick,
+  tag,
 }: {
   icon: typeof Home;
   label: string;
   active?: boolean;
   onClick: () => void;
+  tag?: string;
 }) {
   return (
     <button type="button" onClick={onClick} className={`app-row ${active ? "is-active" : ""}`} aria-current={active ? "page" : undefined}>
       <Icon className="h-4 w-4 shrink-0" strokeWidth={1.75} />
       <span className="truncate">{label}</span>
+      {tag && (
+        <span className="ml-auto rounded-full px-1.5 py-px text-[10.5px] font-medium" style={{ background: "rgba(201,184,255,0.12)", color: "var(--mk-lilac)" }}>
+          {tag}
+        </span>
+      )}
     </button>
   );
 }
@@ -118,6 +127,8 @@ export default function Sidebar({
   onNavigateHome,
   onNewRecording,
   onViewAll,
+  onReview,
+  isPro,
   onNavigatePricing,
   onManageSubscription,
   onNavigateSettings,
@@ -196,6 +207,7 @@ export default function Sidebar({
             </button>
             <NavRow icon={Home} label="Accueil" active={activeView === "home"} onClick={run(onNavigateHome)} />
             <NavRow icon={Library} label="Tous mes cours" active={activeView === "all"} onClick={run(onViewAll)} />
+            <NavRow icon={BrainCircuit} label="Réviser" active={activeView === "review"} onClick={run(onReview)} tag={isPro ? undefined : "Pro"} />
             <NavRow icon={Gem} label="Abonnement" onClick={run(onNavigatePricing)} />
           </div>
 

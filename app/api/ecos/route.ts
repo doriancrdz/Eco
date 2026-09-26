@@ -38,6 +38,9 @@ export async function GET(req: NextRequest) {
     const folderId = searchParams.get("folderId");
     const limitParam = searchParams.get("limit");
     const take = limitParam ? Math.min(Math.max(1, parseInt(limitParam, 10)), 100) : 30;
+    const includeQuiz = searchParams.get("includeQuiz") === "1";
+    // La révision n'a pas besoin des transcriptions (lourdes) : on ne les rapatrie pas.
+    const skipTranscription = searchParams.get("noTranscription") === "1";
 
     const where: any = {
       userId: user.id,
@@ -66,11 +69,12 @@ export async function GET(req: NextRequest) {
         id: true,
         title: true,
         audioUrl: true,
-        transcriptionText: true,
+        transcriptionText: !skipTranscription,
         content: true,
         folderId: true,
         createdAt: true,
         updatedAt: true,
+        quiz: includeQuiz,
       },
       orderBy: { createdAt: "desc" },
       take,
@@ -79,13 +83,21 @@ export async function GET(req: NextRequest) {
 
     // Enrichir avec les métadonnées Recording (durée, source, PDF) — 1 seule requête IN
     const ecoIds = ecos.map((e) => e.id);
-    const recordings = ecoIds.length > 0
-      ? await prisma.recording.findMany({
-          where: { id: { in: ecoIds } },
-          select: { id: true, durationMs: true, durationSeconds: true, sourceType: true, pdfContext: true },
-        })
-      : [];
+    const [recordings, withPdf] = ecoIds.length > 0
+      ? await Promise.all([
+          prisma.recording.findMany({
+            where: { id: { in: ecoIds } },
+            select: { id: true, durationMs: true, durationSeconds: true, sourceType: true },
+          }),
+          // Présence du PDF seulement : inutile de rapatrier son texte complet.
+          prisma.recording.findMany({
+            where: { id: { in: ecoIds }, pdfContext: { not: null } },
+            select: { id: true },
+          }),
+        ])
+      : [[], []];
     const recordingMap = new Map(recordings.map((r) => [r.id, r]));
+    const pdfIds = new Set(withPdf.map((r) => r.id));
 
     // Transformer pour correspondre au format attendu par le frontend
     const formattedEcos = ecos.map((eco) => {
@@ -103,7 +115,8 @@ export async function GET(req: NextRequest) {
         created_at: eco.createdAt.toISOString(),
         duration_seconds: durationSeconds,
         source_type: (rec?.sourceType ?? "mic") as "mic" | "screen",
-        has_pdf_context: rec?.pdfContext != null && rec.pdfContext.length > 0,
+        has_pdf_context: pdfIds.has(eco.id),
+        ...(includeQuiz ? { quiz: eco.quiz ?? null } : {}),
       };
     });
 

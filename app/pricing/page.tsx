@@ -221,14 +221,14 @@ export default function PricingPage() {
           <div className="relative mx-auto max-w-3xl text-center">
             <p className="mk-rise mk-eyebrow">Tarifs</p>
             <h1 className="mk-display mk-rise mt-6 text-[48px] sm:text-[72px]" style={{ animationDelay: "80ms" }}>
-              Un prix simple.
+              Moins cher qu&apos;un
               <br />
               <span className="italic" style={{ color: "var(--mk-muted)" }}>
-                Toutes les fonctionnalités.
+                cours particulier.
               </span>
             </h1>
             <p className="mk-rise mx-auto mt-6 max-w-xl text-[17px] leading-relaxed" style={{ color: "var(--mk-muted)", animationDelay: "160ms" }}>
-              Les plans ne diffèrent que par le nombre de minutes d&apos;enregistrement. Commence gratuitement, passe à un abonnement quand ECO fait partie de ta routine.
+              10 minutes offertes chaque mois pour tout tester, sans carte bancaire. Student couvre un semestre classique. Pro ajoute de quoi réviser une matière entière avant les partiels.
             </p>
           </div>
           <div className="mk-rise relative mt-10" style={{ animationDelay: "220ms" }}>

@@ -3,13 +3,28 @@ import { MAX_RECORDING_DURATION_MINUTES } from "@/lib/billingConfig";
 
 const faqs = [
   {
+    question: "Quelle différence entre Student et Pro ?",
+    answer:
+      "Student te donne 800 min par mois (environ 13 h de cours) et tout ce qu'il faut pour chaque cours : fiche, notions, quiz, flashcards et export Anki. Pro monte à 2 000 min (environ 33 h) et ajoute les outils de révision : un quiz qui mélange les questions de tous les cours d'une matière, toutes ses notions en flashcards, l'export PDF des fiches et un support prioritaire.",
+  },
+  {
+    question: "Comment tester gratuitement ?",
+    answer:
+      "Crée un compte : tu as 10 minutes offertes chaque mois, sans carte bancaire. C'est assez pour enregistrer un extrait de cours et voir la fiche, les notions, le quiz et les flashcards qu'ECO en tire.",
+  },
+  {
+    question: "Comment marche l'offre Business ?",
+    answer:
+      "Elle s'adresse aux écoles, associations étudiantes et groupes. Écris-nous à support@econewapp.com avec le nombre d'étudiants et le volume de cours : on te propose un tarif, on active les comptes Pro de tout le groupe et tu reçois une seule facture.",
+  },
+  {
     question: "Les minutes sont-elles cumulables d'un mois sur l'autre ?",
     answer:
       "Les minutes incluses dans ton plan se réinitialisent un mois après ta date de souscription (et non le 1er du mois). Par exemple, si tu t'abonnes le 15 février, elles se réinitialisent le 15 mars. Les minutes des packs, elles, sont permanentes : elles s'ajoutent à ton compteur et n'expirent jamais.",
   },
   {
-    question: "Puis-je acheter des packs avec le plan Free ?",
-    answer: "Oui. Les packs de minutes sont disponibles pour tous, y compris sur le plan Free. C'est pratique si tu as besoin de minutes ponctuellement sans t'abonner.",
+    question: "Puis-je acheter des packs sans abonnement ?",
+    answer: "Oui. Les packs de minutes sont disponibles pour tous, y compris sur l'offre gratuite. C'est pratique si tu as besoin de minutes ponctuellement sans t'abonner.",
   },
   {
     question: "Y a-t-il une limite de durée par enregistrement ?",
